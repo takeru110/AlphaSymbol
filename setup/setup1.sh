@@ -5,6 +5,7 @@ apt-get update && apt-get install -y --no-install-recommends \
          git \
          curl \
          vim \
+         tmux \
          ssh \
          tzdata \
          ca-certificates \
