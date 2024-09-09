@@ -1,0 +1,158 @@
+2024-09-05 17:56:58 243586d21f4a Coach[25687] INFO ACCEPTING NEW MODEL
+Checkpoint Directory exists! 
+Checkpoint Directory exists! 
+2024-09-05 17:56:58 243586d21f4a Coach[25687] INFO Starting Iter #8 ...
+Self Play: 100%|█████████████████████████████████████| 100/100 [02:44<00:00,  1.65s/it]
+Checkpoint Directory exists! 
+EPOCH ::: 1
+Training Net: 100%|█| 3260/3260 [00:51<00:00, 62.98it/s, Loss_pi=7.70e-01, Loss_v=3.12e
+EPOCH ::: 2
+Training Net: 100%|█| 3260/3260 [00:49<00:00, 65.53it/s, Loss_pi=7.21e-01, Loss_v=2.88e
+EPOCH ::: 3
+Training Net: 100%|█| 3260/3260 [00:49<00:00, 65.38it/s, Loss_pi=6.94e-01, Loss_v=2.74e
+EPOCH ::: 4
+Training Net: 100%|█| 3260/3260 [00:49<00:00, 65.40it/s, Loss_pi=6.82e-01, Loss_v=2.69e
+EPOCH ::: 5
+Training Net: 100%|█| 3260/3260 [00:50<00:00, 63.94it/s, Loss_pi=6.69e-01, Loss_v=2.65e
+EPOCH ::: 6
+Training Net: 100%|█| 3260/3260 [00:51<00:00, 63.90it/s, Loss_pi=6.64e-01, Loss_v=2.60e
+EPOCH ::: 7
+Training Net: 100%|█| 3260/3260 [00:50<00:00, 64.69it/s, Loss_pi=6.55e-01, Loss_v=2.58e
+EPOCH ::: 8
+Training Net: 100%|█| 3260/3260 [00:50<00:00, 64.51it/s, Loss_pi=6.55e-01, Loss_v=2.56e
+EPOCH ::: 9
+Training Net: 100%|█| 3260/3260 [00:51<00:00, 63.80it/s, Loss_pi=6.47e-01, Loss_v=2.54e
+EPOCH ::: 10
+Training Net: 100%|█| 3260/3260 [00:50<00:00, 64.77it/s, Loss_pi=6.43e-01, Loss_v=2.49e
+2024-09-05 18:08:43 243586d21f4a Coach[25687] INFO PITTING AGAINST PREVIOUS VERSION
+Arena.playGames (1): 100%|█████████████████████████████| 20/20 [00:40<00:00,  2.04s/it]
+Arena.playGames (2): 100%|█████████████████████████████| 20/20 [00:40<00:00,  2.01s/it]
+2024-09-05 18:10:04 243586d21f4a Coach[25687] INFO NEW/PREV WINS : 14 / 26 ; DRAWS : 0
+2024-09-05 18:10:04 243586d21f4a Coach[25687] INFO REJECTING NEW MODEL
+2024-09-05 18:10:04 243586d21f4a Coach[25687] INFO Starting Iter #9 ...
+Self Play: 100%|█████████████████████████████████████| 100/100 [02:59<00:00,  1.79s/it]
+Checkpoint Directory exists! 
+EPOCH ::: 1
+Training Net: 100%|█| 3668/3668 [00:56<00:00, 65.10it/s, Loss_pi=8.41e-01, Loss_v=3.52e
+EPOCH ::: 2
+Training Net: 100%|█| 3668/3668 [00:56<00:00, 65.06it/s, Loss_pi=7.63e-01, Loss_v=3.20e
+EPOCH ::: 3
+Training Net: 100%|█| 3668/3668 [00:56<00:00, 65.39it/s, Loss_pi=7.26e-01, Loss_v=2.99e
+EPOCH ::: 4
+Training Net: 100%|█| 3668/3668 [00:56<00:00, 65.21it/s, Loss_pi=7.02e-01, Loss_v=2.88e
+EPOCH ::: 5
+Training Net: 100%|█| 3668/3668 [00:56<00:00, 64.36it/s, Loss_pi=6.87e-01, Loss_v=2.82e
+EPOCH ::: 6
+Training Net: 100%|█| 3668/3668 [00:56<00:00, 64.86it/s, Loss_pi=6.73e-01, Loss_v=2.76e
+EPOCH ::: 7
+Training Net: 100%|█| 3668/3668 [00:56<00:00, 64.70it/s, Loss_pi=6.64e-01, Loss_v=2.71e
+EPOCH ::: 8
+Training Net: 100%|█| 3668/3668 [00:56<00:00, 64.40it/s, Loss_pi=6.62e-01, Loss_v=2.68e
+EPOCH ::: 9
+Training Net: 100%|█| 3668/3668 [00:58<00:00, 62.92it/s, Loss_pi=6.53e-01, Loss_v=2.64e
+EPOCH ::: 10
+Training Net: 100%|█| 3668/3668 [00:58<00:00, 62.62it/s, Loss_pi=6.48e-01, Loss_v=2.63e
+2024-09-05 18:23:10 243586d21f4a Coach[25687] INFO PITTING AGAINST PREVIOUS VERSION
+Arena.playGames (1): 100%|█████████████████████████████| 20/20 [00:36<00:00,  1.82s/it]
+Arena.playGames (2): 100%|█████████████████████████████| 20/20 [00:38<00:00,  1.94s/it]
+2024-09-05 18:24:25 243586d21f4a Coach[25687] INFO NEW/PREV WINS : 27 / 13 ; DRAWS : 0
+2024-09-05 18:24:25 243586d21f4a Coach[25687] INFO ACCEPTING NEW MODEL
+Checkpoint Directory exists! 
+Checkpoint Directory exists! 
+2024-09-05 18:24:25 243586d21f4a Coach[25687] INFO Starting Iter #10 ...
+Self Play: 100%|█████████████████████████████████████| 100/100 [02:43<00:00,  1.64s/it]
+Checkpoint Directory exists! 
+EPOCH ::: 1
+Training Net: 100%|█| 4076/4076 [01:02<00:00, 65.11it/s, Loss_pi=7.29e-01, Loss_v=3.05e
+EPOCH ::: 2
+Training Net: 100%|█| 4076/4076 [01:02<00:00, 65.15it/s, Loss_pi=6.87e-01, Loss_v=2.88e
+EPOCH ::: 3
+Training Net: 100%|█| 4076/4076 [01:02<00:00, 65.29it/s, Loss_pi=6.67e-01, Loss_v=2.83e
+EPOCH ::: 4
+Training Net: 100%|█| 4076/4076 [01:03<00:00, 64.24it/s, Loss_pi=6.56e-01, Loss_v=2.74e
+EPOCH ::: 5
+Training Net: 100%|█| 4076/4076 [01:02<00:00, 65.21it/s, Loss_pi=6.47e-01, Loss_v=2.70e
+EPOCH ::: 6
+Training Net: 100%|█| 4076/4076 [01:02<00:00, 64.76it/s, Loss_pi=6.42e-01, Loss_v=2.68e
+EPOCH ::: 7
+Training Net: 100%|█| 4076/4076 [01:02<00:00, 65.02it/s, Loss_pi=6.37e-01, Loss_v=2.63e
+EPOCH ::: 8
+Training Net: 100%|█| 4076/4076 [01:04<00:00, 63.64it/s, Loss_pi=6.30e-01, Loss_v=2.61e
+EPOCH ::: 9
+Training Net: 100%|█| 4076/4076 [01:02<00:00, 65.02it/s, Loss_pi=6.32e-01, Loss_v=2.60e
+EPOCH ::: 10
+Training Net: 100%|█| 4076/4076 [01:03<00:00, 64.17it/s, Loss_pi=6.25e-01, Loss_v=2.57e
+2024-09-05 18:38:21 243586d21f4a Coach[25687] INFO PITTING AGAINST PREVIOUS VERSION
+Arena.playGames (1): 100%|█████████████████████████████| 20/20 [00:36<00:00,  1.80s/it]
+Arena.playGames (2): 100%|█████████████████████████████| 20/20 [00:38<00:00,  1.93s/it]
+2024-09-05 18:39:36 243586d21f4a Coach[25687] INFO NEW/PREV WINS : 20 / 20 ; DRAWS : 0
+2024-09-05 18:39:36 243586d21f4a Coach[25687] INFO REJECTING NEW MODEL
+2024-09-05 18:39:36 243586d21f4a Coach[25687] INFO Starting Iter #11 ...
+Self Play: 100%|█████████████████████████████████████| 100/100 [02:43<00:00,  1.64s/it]
+Checkpoint Directory exists! 
+EPOCH ::: 1
+Training Net: 100%|█| 4483/4483 [01:04<00:00, 69.46it/s, Loss_pi=7.90e-01, Loss_v=3.42e
+EPOCH ::: 2
+Training Net: 100%|█| 4483/4483 [01:04<00:00, 69.49it/s, Loss_pi=7.27e-01, Loss_v=3.15e
+EPOCH ::: 3
+Training Net: 100%|█| 4483/4483 [01:04<00:00, 69.13it/s, Loss_pi=6.93e-01, Loss_v=3.04e
+EPOCH ::: 4
+Training Net: 100%|█| 4483/4483 [01:05<00:00, 68.66it/s, Loss_pi=6.74e-01, Loss_v=2.92e
+EPOCH ::: 5
+Training Net: 100%|█| 4483/4483 [01:05<00:00, 68.83it/s, Loss_pi=6.62e-01, Loss_v=2.85e
+EPOCH ::: 6
+Training Net: 100%|█| 4483/4483 [01:05<00:00, 68.50it/s, Loss_pi=6.54e-01, Loss_v=2.82e
+EPOCH ::: 7
+Training Net: 100%|█| 4483/4483 [01:05<00:00, 68.55it/s, Loss_pi=6.44e-01, Loss_v=2.77e
+EPOCH ::: 8
+Training Net: 100%|█| 4483/4483 [01:05<00:00, 68.45it/s, Loss_pi=6.40e-01, Loss_v=2.74e
+EPOCH ::: 9
+Training Net: 100%|█| 4483/4483 [01:05<00:00, 68.44it/s, Loss_pi=6.35e-01, Loss_v=2.71e
+EPOCH ::: 10
+Training Net: 100%|█| 4483/4483 [01:08<00:00, 65.50it/s, Loss_pi=6.28e-01, Loss_v=2.68e
+2024-09-05 18:54:00 243586d21f4a Coach[25687] INFO PITTING AGAINST PREVIOUS VERSION
+Arena.playGames (1): 100%|█████████████████████████████| 20/20 [00:37<00:00,  1.86s/it]
+Arena.playGames (2): 100%|█████████████████████████████| 20/20 [00:41<00:00,  2.06s/it]
+2024-09-05 18:55:18 243586d21f4a Coach[25687] INFO NEW/PREV WINS : 14 / 26 ; DRAWS : 0
+2024-09-05 18:55:18 243586d21f4a Coach[25687] INFO REJECTING NEW MODEL
+2024-09-05 18:55:18 243586d21f4a Coach[25687] INFO Starting Iter #12 ...
+Self Play: 100%|█████████████████████████████████████| 100/100 [02:43<00:00,  1.64s/it]
+Checkpoint Directory exists! 
+EPOCH ::: 1
+Training Net: 100%|█| 4893/4893 [01:15<00:00, 65.15it/s, Loss_pi=8.31e-01, Loss_v=3.68e
+EPOCH ::: 2
+Training Net: 100%|█| 4893/4893 [01:15<00:00, 65.12it/s, Loss_pi=7.57e-01, Loss_v=3.34e
+EPOCH ::: 3
+Training Net: 100%|█| 4893/4893 [01:15<00:00, 64.89it/s, Loss_pi=7.16e-01, Loss_v=3.16e
+EPOCH ::: 4
+Training Net: 100%|█| 4893/4893 [01:15<00:00, 65.10it/s, Loss_pi=6.92e-01, Loss_v=3.06e
+EPOCH ::: 5
+Training Net: 100%|█| 4893/4893 [01:15<00:00, 64.95it/s, Loss_pi=6.76e-01, Loss_v=2.96e
+EPOCH ::: 6
+Training Net: 100%|█| 4893/4893 [01:15<00:00, 65.06it/s, Loss_pi=6.61e-01, Loss_v=2.90e-0
+EPOCH ::: 7
+Training Net: 100%|█| 4893/4893 [01:16<00:00, 64.12it/s, Loss_pi=6.51e-01, Loss_v=2.86e-0
+EPOCH ::: 8
+Training Net: 100%|█| 4893/4893 [01:17<00:00, 63.36it/s, Loss_pi=6.44e-01, Loss_v=2.80e-0
+EPOCH ::: 9
+Training Net: 100%|█| 4893/4893 [01:18<00:00, 62.60it/s, Loss_pi=6.40e-01, Loss_v=2.79e-0
+EPOCH ::: 10
+Training Net: 100%|█| 4893/4893 [01:17<00:00, 63.26it/s, Loss_pi=6.33e-01, Loss_v=2.76e-0
+2024-09-05 19:11:33 243586d21f4a Coach[25687] INFO PITTING AGAINST PREVIOUS VERSION
+Arena.playGames (1): 100%|███████████████████████████████| 20/20 [00:35<00:00,  1.76s/it]
+Arena.playGames (2): 100%|███████████████████████████████| 20/20 [00:37<00:00,  1.89s/it]
+2024-09-05 19:12:46 243586d21f4a Coach[25687] INFO NEW/PREV WINS : 21 / 19 ; DRAWS : 0
+2024-09-05 19:12:46 243586d21f4a Coach[25687] INFO REJECTING NEW MODEL
+2024-09-05 19:12:46 243586d21f4a Coach[25687] INFO Starting Iter #13 ...
+Self Play: 100%|███████████████████████████████████████| 100/100 [02:42<00:00,  1.62s/it]
+Checkpoint Directory exists! 
+EPOCH ::: 1
+Training Net: 100%|█| 5300/5300 [01:16<00:00, 69.46it/s, Loss_pi=8.69e-01, Loss_v=3.88e-0
+EPOCH ::: 2
+Training Net: 100%|█| 5300/5300 [01:16<00:00, 69.25it/s, Loss_pi=7.84e-01, Loss_v=3.50e-0
+EPOCH ::: 3
+Training Net: 100%|█| 5300/5300 [01:17<00:00, 68.65it/s, Loss_pi=7.37e-01, Loss_v=3.30e-0
+EPOCH ::: 4
+Training Net: 100%|█| 5300/5300 [01:17<00:00, 68.57it/s, Loss_pi=7.05e-01, Loss_v=3.15e-0
+EPOCH ::: 5
+Training Net:  78%|▊| 4158/5300 [01:00<00:16, 68.54it/s, Loss                              Training Net:  78%|▊| 4158/5300 [01:00<00:16, 68.54it/s, Loss                                 Trai
