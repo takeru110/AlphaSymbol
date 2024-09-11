@@ -7,3 +7,8 @@ indent-width = 4
 
 quote-style = "double"
 indent-style = "space"
+
+[tool.pytest.ini_options]
+norecursedirs = ["alpha-zero-general"]
+pythonpath = "."
+testpaths = ["tests",]
