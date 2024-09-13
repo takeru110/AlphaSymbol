@@ -18,6 +18,22 @@ class Expr:
         """木構造の複雑さを計算する"""
         raise NotImplementedError()
 
+    def validate_semantic(self):
+        """自然数関数の入力の次元が正しいかをチェックする
+        AssertionError:
+            自然数関数に変換しようとしたとき、引数の数が合わないなどによって変換不可能であるとき
+        """
+        raise NotImplementedError()
+
+    def arity(self):
+        """自然数関数にしたときの引数の数
+        Return:
+            int: 自然数関数に直したときの引数の数
+        AssertionError:
+            そもそも自然数関数に直せないときに起きる
+        """
+        raise NotImplementedError()
+
 
 class Z(Expr):
     def evaluate(self, *args: int) -> int:
@@ -33,12 +49,17 @@ class Z(Expr):
         return 1.0
 
     def arity(self):
+        self.validate_semantic()
         return None
+
+    def validate_semantic(self):
+        return True
 
 
 class S(Expr):
-    def evaluate(self, x: int) -> int:
-        return x + 1
+    def evaluate(self, *args: int) -> int:
+        assert len(args) == 1, "The number of args of S should be 1."
+        return args[0] + 1
 
     def tree_string(self, indent: int = 0) -> None:
         return " " * indent + "S"
@@ -50,7 +71,11 @@ class S(Expr):
         return 1.0
 
     def arity(self):
+        self.validate_semantic()
         return 1
+
+    def validate_semantic(self):
+        return True
 
 
 class P(Expr):
@@ -75,7 +100,11 @@ class P(Expr):
         return 1.0
 
     def arity(self):
+        self.validate_semantic()
         return self.n
+
+    def validate_semantic(self):
+        return True
 
 
 class C(Expr):
@@ -111,12 +140,18 @@ class C(Expr):
                         return False
                 return True
 
+        self.func.validate_semantic()
+
+        for arg in self.args:
+            arg.validate_semantic()
+
         assert (
             self.func.arity() == len(self.args)
         ), "Error: the number of args in C should be equal to the number of args of C - 1"
         arity_list_not_none = [
             arg.arity() for arg in self.args if arg.arity() is not None
         ]
+
         assert all_elements_equal(
             arity_list_not_none
         ), "Error: all arity of remaining args after the first arg should be the same"

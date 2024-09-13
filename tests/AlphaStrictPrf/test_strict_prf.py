@@ -1,8 +1,13 @@
+import logging
+
 from AlphaStrictPrf.strict_prf import C, P, R, S, Z
+
+logging.basicConfig(level=logging.DEBUG)
 
 
 def test_Z():
     z_func = Z()
+    logging.debug("Z()")
     assert z_func.evaluate(23) == 0, "Error: Z evaluation is wrong."
     assert (
         z_func.arity() is None
@@ -16,6 +21,7 @@ def test_Z():
 
 def test_S():
     s_func = S()
+    logging.debug("S()")
     assert s_func.evaluate(31) == 32, "Error: S evaluation is wrong."
     assert (
         s_func.arity() == 1
@@ -30,6 +36,7 @@ def test_S():
 def test_P():
     # Test for the P class with i = 2
     p_func = P(3, 2)
+    logging.debug("P(3, 2)")
 
     # Test evaluate method
     assert p_func.evaluate(10, 20, 30) == 20, "Error: P evaluate is wrong."
@@ -52,6 +59,7 @@ def test_P():
 
 def test_C():
     c_func_always_one = C(S(), Z())
+    logging.debug("C(S(), Z())")
     assert c_func_always_one.evaluate(34) == 1, "Error: C evaluation is wrong"
     assert c_func_always_one.arity() is None, "Error: C arity is wrong."
     assert (
@@ -65,6 +73,7 @@ def test_C():
     ), "Error: C Complexity is wrong."
 
     add_two = C(S(), S())
+    logging.debug("C(S(), S())")
     assert add_two.evaluate(17) == 19, "Error: C evaluation is wrong"
     assert add_two.arity() == 1, "Error: C arity is wrong."
     assert add_two.tree_string() == "C^2\n  S\n  S", "C tree is wrong."
@@ -77,7 +86,8 @@ def test_C():
 def test_R():
     # Add function
     add = R(P(1, 1), C(S(), P(3, 2)))
-    assert add.arity() == 2, "Error: R arity is wrong"
+    logging.debug("R(P(1, 1), C(S(), P(3, 2)))")
+    assert add.arity() == 2, "Error: arity is wrong"
     assert add.evaluate(2, 3) == 5, "Error: R evaluation is wrong."
     assert (
         add.tree_string() == "R\n  P^1_1\n  C^2\n    S\n    P^3_2"
@@ -89,5 +99,7 @@ def test_R():
 
     # when input is 0 then returns 1 else returns 0
     when0_then1_else0 = C(R(S(), P(3, 3)), P(1, 1), Z())
+    logging.debug("C(R(S(), P(3, 3)), P(1, 1), Z())")
     ans_sequence = [when0_then1_else0.evaluate(i) for i in range(5)]
     assert ans_sequence == [1, 0, 0, 0, 0], "Error: prf is wrong"
+    assert when0_then1_else0.arity() == 1, "Error: arity is wrong"
