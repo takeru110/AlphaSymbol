@@ -32,6 +32,9 @@ class Z(Expr):
     def complexity(self) -> float:
         return 1.0
 
+    def arity(self):
+        return None
+
 
 class S(Expr):
     def evaluate(self, x: int) -> int:
@@ -46,22 +49,33 @@ class S(Expr):
     def complexity(self) -> float:
         return 1.0
 
+    def arity(self):
+        return 1
+
 
 class P(Expr):
-    def __init__(self, i: int):
+    def __init__(self, n: int, i: int):
+        self.n = n  # == len(self.args)
         self.i = i
+        assert self.i <= self.n, "Error: P should be self.i <= self.n"
 
     def evaluate(self, *args: int) -> int:
+        assert (
+            len(args) == self.n
+        ), f"Error: the number of args of P.evaluate() should be {self.n + 1} but now {len(args)}"
         return args[self.i - 1]
 
     def tree_string(self, indent: int = 0) -> None:
-        return " " * indent + f"P{self.i}"
+        return " " * indent + f"P^{self.n}_{self.i}"
 
     def parenthesized_string(self) -> str:
-        return f"P{self.i}"
+        return f"P^{self.n}_{self.i}"
 
     def complexity(self) -> float:
         return 1.0
+
+    def arity(self):
+        return self.n
 
 
 class C(Expr):
@@ -74,7 +88,7 @@ class C(Expr):
         return self.func.evaluate(*results_args)
 
     def tree_string(self, indent: int = 0) -> None:
-        buffer = " " * indent + f"C{1 + len(self.args)}\n"
+        buffer = " " * indent + f"C^{1 + len(self.args)}\n"
         buffer = buffer + self.func.tree_string(indent + 2)
         for arg in self.args:
             buffer = buffer + "\n" + arg.tree_string(indent + 2)
@@ -82,10 +96,34 @@ class C(Expr):
 
     def parenthesized_string(self) -> str:
         args_str = ", ".join(arg.parenthesized_string() for arg in self.args)
-        return f"C{1 + len(self.args)}({self.func.parenthesized_string()}, {args_str})"
+        return f"C^{1 + len(self.args)}({self.func.parenthesized_string()}, {args_str})"
 
     def complexity(self) -> float:
         return 1.0
+
+    def validate_semantic(self):
+        def all_elements_equal(li: List[int]) -> bool:
+            if li == []:
+                return True
+            else:
+                for el in li:
+                    if li[0] != el:
+                        return False
+                return True
+
+        assert (
+            self.func.arity() == len(self.args)
+        ), "Error: the number of args in C should be equal to the number of args of C - 1"
+        arity_list_not_none = [
+            arg.arity() for arg in self.args if arg.arity() is not None
+        ]
+        assert all_elements_equal(
+            arity_list_not_none
+        ), "Error: all arity of remaining args after the first arg should be the same"
+
+    def arity(self):
+        self.validate_semantic()
+        return self.args[0].arity()
 
 
 class R(Expr):
@@ -114,3 +152,12 @@ class R(Expr):
 
     def complexity(self) -> float:
         return 1.0
+
+    def validate_semantic(self):
+        assert (self.base.arity() is not None) & (
+            self.base.arity() + 2 == self.step.arity()
+        ), "Error: the arity of the args of R operator are wrong."
+
+    def arity(self):
+        self.validate_semantic()
+        return self.base.arity() + 1
