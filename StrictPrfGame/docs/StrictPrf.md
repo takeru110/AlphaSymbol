@@ -9,7 +9,7 @@ PRFとは`Z, S, P^n_i, C_i, R`(`n`, `i`は自然数)を用いて以下のよう�
 1. (零関数) Expr ::= Z
 2. (後者関数) Expr ::= S
 3. (射影作用素) Expr ::= P^n_i (n, iは任意の自然数)
-4. (合成作用素) Expr ::= C_i(Expr, Expr, ...,) (iは自然数でi個のargsを取る)
+4. (合成作用素) Expr ::= C_i(Expr, Expr, ...,) (iは自然数でExprはi個)
 5. (原始再帰作用素) Expr ::= R(Expr, Expr)
 ```
 Prfの例を挙げる
@@ -29,17 +29,17 @@ PRFの言語は $\mathbb{N}^d \to \mathbb{N}$ 以下の意味を持つ
 
 # 実装する機能
 
-Prfの語が持つ値
+StrictPRFの語が持つ値
 - 語の木構造
 - 語の表す自然数関数の引数の数
 
-Prfに適用したい関数
-- Prfが有効か調べる関数
-- Prfからそれが表すpythonのCallable[int, int]関数を返す関数
-- Prfから新たなPrfを生成する操作関数
-- Prfの木構造をインデントを用いて標準出力する関数
-- Prfの木構造を括弧を用いて標準出力する関数
-- Prfの木構造の複雑さを表現するfloat値を返す関数
+StrictPRFに適用したい関数
+- StrictPRFが有効か調べる関数
+- StrictPRFからそれが表すpythonのCallable[int, int]関数を返す関数
+- StrictPRFから新たなPrfを生成する操作関数
+- StrictPRFの木構造をインデントを用いて標準出力する関数
+- StrictPRFの木構造を括弧を用いて標準出力する関数
+- StrictPRFの木構造の複雑さを表現するfloat値を返す関数
 
 
 # 参考
