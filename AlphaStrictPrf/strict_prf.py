@@ -3,25 +3,28 @@ from typing import List
 
 class Expr:
     def evaluate(self, *args: int) -> int:
-        """自然数関数としてのPRFを評価する"""
+        """PRFを自然数関数に変換して入力に対する値を評価する"""
         raise NotImplementedError()
 
     def tree_string(self, indent: int = 0) -> str:
-        """木構造をインデント付きで出力する"""
+        """語の木構造をインデント付きで出力する"""
         raise NotImplementedError()
 
     def parenthesized_string(self) -> str:
-        """木構造を括弧で表現して出力する"""
+        """語の木構造を括弧で表現して出力する"""
         raise NotImplementedError()
 
     def complexity(self) -> float:
-        """木構造の複雑さを計算する"""
+        """語の木構造の複雑さ。強化学習のスコアとして利用"""
         raise NotImplementedError()
 
     def validate_semantic(self):
-        """自然数関数としての入力の次元が正しいかをチェックする
+        """自然数関数が定義できるかをチェックする
+
+        自然数関数に直したとき、arityの数などで矛盾が生じないかを再帰的に確認する。
+
         Return:
-            Bool: 自然数関数に変換しようとしたとき、引数の数が合わないなどによって変換不可能であるとき
+            Bool: 自然数関数に変換しようとしたとき、引数の数が合わないなどによって変換不可能であるときFalse
         """
         raise NotImplementedError()
 
