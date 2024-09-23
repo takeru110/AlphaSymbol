@@ -39,7 +39,7 @@ def generate_expressions(
         )
 
         # Generate composite functions C with different number of arguments
-        for num_args in range(1, max_c_args + 1):
+        for num_args in range(1, max_c_args):
             for args in combinations(smaller_expressions, num_args):
                 for func in smaller_expressions:
                     expressions.append(C(func, *args))
@@ -82,8 +82,8 @@ def filter_by_test_case(
 
 
 # Target inputs and outputs (provided in the problem)
-target_input = [0, 1, 2, 3, 4, 5, 6]
-target_output = [1, 0, 0, 0, 0, 0, 0]
+target_input = [1, 2, 3]
+target_output = [3, 4, 5]
 
 
 # Step 1: Generate all possible PRF expressions
