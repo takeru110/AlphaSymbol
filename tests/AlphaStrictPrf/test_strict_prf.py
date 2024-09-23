@@ -16,7 +16,7 @@ def test_Z():
         z_func.arity() is None
     ), f"Error: Z arity should be 0 but now {z_func.arity()}."
     assert (
-        z_func.parenthesized_string() == "Z"
+        z_func.parenthesized_string() == "Z()"
     ), "Error: Z parenthesized wrongly."
     assert z_func.tree_string() == "Z", "Error: Z tree is wrong."
     assert z_func.complexity() == 1.0, "Error: Complesity of Z is wrong"
@@ -36,7 +36,7 @@ def test_S():
         s_func.arity() == 1
     ), f"Error: S arity should be 1 but {s_func.arity()}."
     assert (
-        s_func.parenthesized_string() == "S"
+        s_func.parenthesized_string() == "S()"
     ), "Error: S parenthesized wrongly."
     assert s_func.tree_string() == "S", "Error: S tree is wrong."
     assert s_func.complexity() == 1.0, "Error: Complesity of S is wrong"
@@ -54,7 +54,7 @@ def test_P():
     ), "Error: P print_tree with indent is wrong."
     assert (
         p_func.tree_string() == "P^3_2"
-    ), "Error: P print_parenthesized is wrong."
+    ), "Error: P print tree_string is wrong."
     assert p_func.complexity() == 1.0, "Error: Complexity of P is wrong"
 
 
@@ -70,7 +70,7 @@ def test_C():
         c_func_always_one.tree_string() == "C^2\n  S\n  Z"
     ), "C tree is wrong."
     assert (
-        c_func_always_one.parenthesized_string() == "C^2(S, Z)"
+        c_func_always_one.parenthesized_string() == "C(S(), Z())"
     ), "Error: C is parenthesized wrongly"
     assert (
         c_func_always_one.complexity() == 1.0
@@ -85,7 +85,7 @@ def test_C():
     assert add_two.arity() == 1, "Error: C arity is wrong."
     assert add_two.tree_string() == "C^2\n  S\n  S", "C tree is wrong."
     assert (
-        add_two.parenthesized_string() == "C^2(S, S)"
+        add_two.parenthesized_string() == "C(S(), S())"
     ), "Error: C is parenthesized wrongly"
     assert add_two.complexity() == 1.0, "Error: C Complexity is wrong."
 
@@ -114,7 +114,7 @@ def test_R():
         add.tree_string() == "R\n  P^1_1\n  C^2\n    S\n    P^3_2"
     ), "Error: R tree is wrong"
     assert (
-        add.parenthesized_string() == "R(P^1_1, C^2(S, P^3_2))"
+        add.parenthesized_string() == "R(P(1, 1), C(S(), P(3, 2)))"
     ), "Error: R parenthesis is wrong"
     assert add.complexity() == 1.0, "Error: add complexity is wrong."
 
@@ -144,5 +144,3 @@ def test_R():
     assert (
         inner_invalid2.validate_semantic() is False
     ), "Error: validate_semantic() works incorrectly"
-    
-    
