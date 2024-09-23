@@ -138,3 +138,11 @@ def test_R():
     assert (
         inner_invalid.validate_semantic() is False
     ), "Error: validate_semantic() works incorrectly"
+
+    inner_invalid2 = R(S(), Z())
+    logging.debug("R(S(), Z())")
+    assert (
+        inner_invalid2.validate_semantic() is False
+    ), "Error: validate_semantic() works incorrectly"
+    
+    

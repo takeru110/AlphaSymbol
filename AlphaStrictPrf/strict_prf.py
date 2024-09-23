@@ -206,6 +206,8 @@ class R(Expr):
             return False
         if self.step.validate_semantic() is False:
             return False
+        if isinstance(self.step, Z):
+            return False
         if (self.base.arity() is None) & (self.step.arity() >= 2) or (
             self.base.arity() is not None
         ) & (self.base.arity() + 2 != self.step.arity()):
