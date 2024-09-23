@@ -49,7 +49,7 @@ class Z(Expr):
         return " " * indent + "Z"
 
     def parenthesized_string(self) -> str:
-        return "Z"
+        return "Z()"
 
     def complexity(self) -> float:
         return 1.0
@@ -73,7 +73,7 @@ class S(Expr):
         return " " * indent + "S"
 
     def parenthesized_string(self) -> str:
-        return "S"
+        return "S()"
 
     def complexity(self) -> float:
         return 1.0
@@ -102,7 +102,7 @@ class P(Expr):
         return " " * indent + f"P^{self.n}_{self.i}"
 
     def parenthesized_string(self) -> str:
-        return f"P^{self.n}_{self.i}"
+        return f"P({self.n}, {self.i})"
 
     def complexity(self) -> float:
         return 1.0
@@ -133,7 +133,7 @@ class C(Expr):
 
     def parenthesized_string(self) -> str:
         args_str = ", ".join(arg.parenthesized_string() for arg in self.args)
-        return f"C^{1 + len(self.args)}({self.func.parenthesized_string()}, {args_str})"
+        return f"C({self.func.parenthesized_string()}, {args_str})"
 
     def complexity(self) -> float:
         return 1.0
@@ -207,7 +207,7 @@ class R(Expr):
         if self.step.validate_semantic() is False:
             return False
         # arity is None when expr is const like Z, S(Z), S(S(Z)), S(S(S(Z))), ...
-        if self.step is not None:
+        if self.step.arity() is not None:
             return False
         if (self.base.arity() is None and self.step.arity() >= 2) or (
             self.base.arity() is not None
