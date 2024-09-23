@@ -19,9 +19,9 @@ class Expr:
         raise NotImplementedError()
 
     def validate_semantic(self):
-        """自然数関数の入力の次元が正しいかをチェックする
-        AssertionError:
-            自然数関数に変換しようとしたとき、引数の数が合わないなどによって変換不可能であるとき
+        """自然数関数としての入力の次元が正しいかをチェックする
+        Return:
+            Bool: 自然数関数に変換しようとしたとき、引数の数が合わないなどによって変換不可能であるとき
         """
         raise NotImplementedError()
 
@@ -52,7 +52,7 @@ class Z(Expr):
         return 1.0
 
     def arity(self):
-        self.validate_semantic()
+        assert self.validate_semantic(), "Error: Invalid semantically"
         return None
 
     def validate_semantic(self):
@@ -60,9 +60,11 @@ class Z(Expr):
 
 
 class S(Expr):
-    def evaluate(self, *args: int) -> int:
-        assert len(args) == 1, "The number of args of S should be 1."
-        return args[0] + 1
+    def __init__(self, *args):
+        assert len(args) == 0, "The number of args of S should be 0."
+
+    def evaluate(self, arg: int) -> int:
+        return arg + 1
 
     def tree_string(self, indent: int = 0) -> None:
         return " " * indent + "S"
@@ -74,7 +76,7 @@ class S(Expr):
         return 1.0
 
     def arity(self):
-        self.validate_semantic()
+        assert self.validate_semantic(), "Error: Invalid semantically"
         return 1
 
     def validate_semantic(self):
@@ -83,7 +85,7 @@ class S(Expr):
 
 class P(Expr):
     def __init__(self, n: int, i: int):
-        self.n = n  # == len(self.args)
+        self.n = n
         self.i = i
         assert self.i <= self.n, "Error: P should be self.i <= self.n"
 
@@ -103,7 +105,7 @@ class P(Expr):
         return 1.0
 
     def arity(self):
-        self.validate_semantic()
+        assert self.validate_semantic(), "Error: Invalid semantically"
         return self.n
 
     def validate_semantic(self):
@@ -143,24 +145,29 @@ class C(Expr):
                         return False
                 return True
 
-        self.func.validate_semantic()
+        if self.func.validate_semantic() is False:
+            return False
 
         for arg in self.args:
-            arg.validate_semantic()
+            if arg.validate_semantic() is False:
+                return False
 
-        assert (
-            self.func.arity() == len(self.args)
-        ), "Error: the number of args in C should be equal to the number of args of C - 1"
+        if self.func.arity() != len(self.args):
+            # the number of args in C should be equal to the number of args of C - 1
+            return False
+
         arity_list_not_none = [
             arg.arity() for arg in self.args if arg.arity() is not None
         ]
 
-        assert all_elements_equal(
-            arity_list_not_none
-        ), "Error: all arity of remaining args after the first arg should be the same"
+        if not all_elements_equal(arity_list_not_none):
+            # all arity of remaining args after the first arg should be the same
+            return False
+
+        return True
 
     def arity(self):
-        self.validate_semantic()
+        assert self.validate_semantic(), "Error: Invalid semantically"
         return self.args[0].arity()
 
 
@@ -192,10 +199,21 @@ class R(Expr):
         return 1.0
 
     def validate_semantic(self):
-        assert (self.base.arity() is not None) & (
-            self.base.arity() + 2 == self.step.arity()
-        ), "Error: the arity of the args of R operator are wrong."
+        if self.base.validate_semantic() is False:
+            return False
+        if self.step.validate_semantic() is False:
+            return False
+        if (self.base.arity() is None) & (self.step.arity() >= 2) or (
+            self.base.arity() is not None
+        ) & (self.base.arity() + 2 != self.step.arity()):
+            # the arity of the args of R operator are wrong.
+            return False
+        return True
 
     def arity(self):
-        self.validate_semantic()
-        return self.base.arity() + 1
+        assert self.validate_semantic(), "Error: Invalid semantically"
+        return (
+            self.base.arity() + 1
+            if self.base.arity() is not None
+            else self.step.arity() - 1
+        )
