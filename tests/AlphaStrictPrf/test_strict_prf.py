@@ -7,7 +7,10 @@ logging.basicConfig(level=logging.DEBUG)
 
 def test_Z():
     z_func = Z()
-    logging.debug("Z()")
+    logging.debug("Test Sample: Z()")
+    assert (
+        z_func.validate_semantic() is True
+    ), "There are something wrong in validate_semantic()."
     assert z_func.evaluate(23) == 0, "Error: Z evaluation is wrong."
     assert (
         z_func.arity() is None
@@ -17,6 +20,12 @@ def test_Z():
     ), "Error: Z parenthesized wrongly."
     assert z_func.tree_string() == "Z", "Error: Z tree is wrong."
     assert z_func.complexity() == 1.0, "Error: Complesity of Z is wrong"
+
+    zss_func = Z(S, S)
+    logging.debug("Test Sample: Z(S, S)")
+    assert (
+        zss_func.validate_semantic() is False
+    ), "There are something wrong in validate_semantic()."
 
 
 def test_S():
@@ -37,20 +46,12 @@ def test_P():
     # Test for the P class with i = 2
     p_func = P(3, 2)
     logging.debug("P(3, 2)")
-
-    # Test evaluate method
     assert p_func.evaluate(10, 20, 30) == 20, "Error: P evaluate is wrong."
-
-    # Test arity method
     assert p_func.arity() == 3, "Error: P arity is wrong."
-
-    # Test print_tree method
     assert p_func.tree_string() == "P^3_2", "Error: P print_tree is wrong."
     assert (
         p_func.tree_string(indent=4) == "    P^3_2"
     ), "Error: P print_tree with indent is wrong."
-
-    # Test print_parenthesized method
     assert (
         p_func.tree_string() == "P^3_2"
     ), "Error: P print_parenthesized is wrong."
@@ -97,7 +98,6 @@ def test_R():
     ), "Error: R parenthesis is wrong"
     assert add.complexity() == 1.0, "Error: add complexity is wrong."
 
-    # when input is 0 then returns 1 else returns 0
     when0_then1_else0 = C(R(S(), P(3, 3)), P(1, 1), Z())
     logging.debug("C(R(S(), P(3, 3)), P(1, 1), Z())")
     ans_sequence = [when0_then1_else0.evaluate(i) for i in range(5)]

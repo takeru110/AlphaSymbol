@@ -36,6 +36,9 @@ class Expr:
 
 
 class Z(Expr):
+    def __init__(self, *args: any):
+        self.num_args = len(args)
+
     def evaluate(self, *args: int) -> int:
         return 0
 
@@ -53,7 +56,7 @@ class Z(Expr):
         return None
 
     def validate_semantic(self):
-        return True
+        return self.num_args == 0
 
 
 class S(Expr):
