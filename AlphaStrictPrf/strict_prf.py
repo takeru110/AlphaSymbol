@@ -206,7 +206,8 @@ class R(Expr):
             return False
         if self.step.validate_semantic() is False:
             return False
-        if isinstance(self.step, Z):
+        # arity is None when expr is const like Z, S(Z), S(S(Z)), S(S(S(Z))), ...
+        if self.step is not None:
             return False
         if (self.base.arity() is None and self.step.arity() >= 2) or (
             self.base.arity() is not None
