@@ -1,3 +1,22 @@
+"""
+入力数列、出力数列を与えるとそれを満たすStrictPrfをBrute Force探索する。
+
+target_input: input numbers list (non-negative)
+target_output: output numbers list (non-negative)
+output_dir: Directory Path in which output files is made
+
+MAX_P_ARITY: 探索における射影作用素Pのarityの最大
+EXPR_DEPTH: 探索における式の構造の深さの最大
+MAX_C_ARGS: 探索におけるCの取る引数の数 (C(X1, X2, ..., Xn)のn)
+
+Output:
+    - possible.txt: 式の構造上取りえるすべての数式
+    - valid.txt: arityを考慮して意味を持つ数式
+    - matching.txt: 与えられたデータを満足する数式
+
+"""
+
+import os
 from itertools import combinations
 from typing import List
 
@@ -6,6 +25,15 @@ from strict_prf import C, Expr, P, R, S, Z
 MAX_P_ARITY = 2
 EXPR_DEPTH = 2
 MAX_C_ARGS = 2
+
+# Target inputs and outputs (provided in the problem)
+target_input = [1, 2, 3]
+target_output = [3, 4, 5]
+output_dir = "output"
+
+# make output directory
+if not os.path.exists(output_dir):
+    os.makedirs(output_dir)
 
 
 # Step 1: Generate all possible PRF expressions (up to a certain depth)
@@ -81,24 +109,19 @@ def filter_by_test_case(
     return matching_expressions
 
 
-# Target inputs and outputs (provided in the problem)
-target_input = [1, 2, 3]
-target_output = [3, 4, 5]
-
-
 # Step 1: Generate all possible PRF expressions
 all_possible_expressions = generate_expressions(
     depth=EXPR_DEPTH, max_p_arity=MAX_P_ARITY, max_c_args=MAX_C_ARGS
 )
 print(f"Generated {len(all_possible_expressions)} expressions.")
-with open("output/possible.txt", "w") as file:
+with open(os.path.join(output_dir, "possible.csv"), "w") as file:
     for item in all_possible_expressions:
         file.write(f"{item.parenthesized_string()}\n")
 
 # Step 2: Filter out invalid expressions according to validate_semantic()
 valid_expressions = filter_valid_expressions(all_possible_expressions)
 print(f"Filtered down to {len(valid_expressions)} valid expressions.")
-with open("output/valid.txt", "w") as file:
+with open(os.path.join(output_dir, "valid.csv"), "w") as file:
     for item in valid_expressions:
         file.write(f"{item.parenthesized_string()}\n")
 
@@ -107,7 +130,7 @@ matching_expressions = filter_by_test_case(
     valid_expressions, target_input, target_output
 )
 print(f"Found {len(matching_expressions)} matching expressions.")
-with open("output/matching.txt", "w") as file:
+with open(os.path.join(output_dir, "matching.csv"), "w") as file:
     for item in matching_expressions:
         file.write(f"{item.parenthesized_string()}\n")
 
