@@ -160,3 +160,7 @@ def test_eq():
     expr1 = R(S(), C(P(3, 1), S(), S()))
     expr2 = R(S(), C(P(3, 1), Z(), Z()))
     assert expr1 is not expr2, "Error: Expr.__eq__()"
+
+    expr_set1 = {C(S(), Z()), R(S(), C(P(3, 1), S(), S())), Z()}
+    expr_set2 = {R(S(), C(P(3, 1), S(), S())), Z(), C(S(), Z())}
+    assert expr_set1 == expr_set2, "Error: Expr set equality"
