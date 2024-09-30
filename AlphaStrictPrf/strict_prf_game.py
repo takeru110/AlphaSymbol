@@ -1,8 +1,6 @@
-# strict_prf_game.py
-
 from typing import Any, Dict, List, Optional
 
-from strict_prf import C, Expr, P, R, S, Z
+from AlphaStrictPrf.strict_prf import C, Expr, P, R, S, Z
 
 
 class StrictPrfGame:
@@ -288,19 +286,33 @@ class StrictPrfGame:
             )
         return positions
 
-    def generate_tokens(self) -> List[str]:
+    def generate_tokens(self) -> List[Expr]:
         """
-        Generates all possible tokens based on the game parameters.
+        Generates all possible expressions (tokens) based on the game parameters.
 
         Returns:
-            tokens (List[str]): A list of tokens.
+            tokens (List[Expr]): A list of Expr objects representing valid expressions.
         """
-        tokens = ["z", "s", "r"]
+        tokens = [
+            Z(),
+            S(),
+            R(Z(), Z()),
+        ]  # Z(), S(), R(Z(), Z()) をデフォルトで追加
+
+        # P(n, i) の生成
         for n in range(1, self.max_p_arity + 1):
             for i in range(1, n + 1):
-                tokens.append(f"p_{n}_{i}")
+                tokens.append(P(n, i))  # P(n, i) は Expr 型のインスタンス
+
+        # C(Expr1, Expr2, ..., Exprn) の生成
         for c_args in range(1, self.max_c_args + 1):
-            tokens.append(f"c_{c_args}")
+            args = [
+                Z() for _ in range(c_args)
+            ]  # C関数の引数としてすべてZ()を初期値にする
+            tokens.append(
+                C(Z(), *args)
+            )  # C(Z(), Z(), ...) のように Expr 型を生成
+
         return tokens
 
     def available_actions(self) -> List[Dict[str, Any]]:
