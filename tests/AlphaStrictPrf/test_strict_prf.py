@@ -144,3 +144,13 @@ def test_R():
     assert (
         inner_invalid2.validate_semantic() is False
     ), "Error: validate_semantic() works incorrectly"
+
+
+def test_eq():
+    expr1 = C(S(), Z())
+    expr2 = C(S(), Z())
+    assert expr1 == expr2, "Error: Expr.__eq__()"
+
+    expr1 = R(S(), C(P(3, 1), Z(), S()))
+    expr2 = R(S(), C(P(3, 1), Z(), S()))
+    assert expr1 == expr2, "Error: Expr.__eq__()"
