@@ -1,6 +1,9 @@
+from collections import namedtuple
 from typing import Any, Dict, List, Optional
 
 from AlphaStrictPrf.strict_prf import C, Expr, P, R, S, Z
+
+Action = namedtuple("Action", ["place", "word"])
 
 
 class StrictPrfGame:
@@ -45,7 +48,7 @@ class StrictPrfGame:
         observation = self.get_observation()
         return observation
 
-    def step(self, action: Dict[str, Any]):
+    def step(self, action: Action):
         """
         Executes one time step within the environment.
 
@@ -315,12 +318,12 @@ class StrictPrfGame:
 
         return tokens
 
-    def available_actions(self) -> List[Dict[str, Any]]:
+    def available_actions(self) -> List[Action]:
         """
         Generates a list of all possible actions from the current state.
 
         Returns:
-            actions (List[Dict[str, Any]]): A list of possible actions.
+            actions (List[Action]): A list of possible actions.
         """
         positions = self.generate_positions(
             self.current_expr, [], self.expr_depth
@@ -328,7 +331,7 @@ class StrictPrfGame:
         actions = []
         for pos in positions:
             for token in self.tokens:
-                actions.append({"place": pos, "word": token})
+                actions.append(Action(pos, token))
         return actions
 
     def is_done(self) -> bool:

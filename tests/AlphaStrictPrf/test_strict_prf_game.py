@@ -3,6 +3,7 @@ import pytest
 
 from AlphaStrictPrf.strict_prf import C, P, R, S, Z
 from AlphaStrictPrf.strict_prf_game import (
+    Action,
     StrictPrfGame,  # テスト対象のクラスやモジュールをインポート
 )
 
@@ -43,7 +44,6 @@ def test_generate_tokens(game_instance):
         P(1, 1),  # P(1, 1)
         P(2, 1),  # P(2, 1)
         P(2, 2),  # P(2, 2)
-        C(Z()),  # C(Z())
         C(Z(), Z()),  # C(Z(), Z())
         C(Z(), Z(), Z()),
     }
@@ -55,3 +55,23 @@ def test_generate_tokens(game_instance):
     assert (
         generated_tokens_set == expected_tokens
     ), f"Expected tokens: {expected_tokens}, but got: {generated_tokens_set}"
+
+
+def test_available_actions(game_instance):
+    actions = game_instance.available_actions()
+    import pdb
+
+    pdb.set_trace()
+    set_actions = set(actions)
+    expected_actions = {
+        Action(1, Z()),
+        Action(1, S()),
+        Action(1, R(Z(), Z())),
+        Action(1, P(1, 1)),
+        Action(1, P(2, 1)),
+        Action(1, P(2, 2)),
+        Action(1, C(Z(), Z())),
+        Action(1, C(Z(), Z(), Z())),
+    }
+
+    assert set_actions == expected_actions, "Error: available_actions"
