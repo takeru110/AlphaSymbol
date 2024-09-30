@@ -2,6 +2,24 @@ from typing import List
 
 
 class Expr:
+    def __eq__(self, other):
+        """Expr型のクラスの等価性を確認する"""
+        if type(self) is not type(other):
+            return False
+        return self._eq_impl(other)
+
+    def _eq_impl(self, other):
+        """派生クラスで実装する等価性の比較"""
+        raise NotImplementedError()
+
+    def __hash__(self):
+        """Expr型のクラスのハッシュ値を計算する"""
+        return hash(self._hash_impl())
+
+    def _hash_impl(self):
+        """派生クラスで実装するハッシュ値の計算"""
+        raise NotImplementedError()
+
     def evaluate(self, *args: int) -> int:
         """PRFを自然数関数に変換して入力に対する値を評価する"""
         raise NotImplementedError()
@@ -42,6 +60,12 @@ class Z(Expr):
     def __init__(self, *args: any):
         self.num_args = len(args)
 
+    def _eq_impl(self, other):
+        return True  # Z() は常に等しい
+
+    def _hash_impl(self):
+        return hash("Z")  # 固定のハッシュ値を返す
+
     def evaluate(self, *args: int) -> int:
         return 0
 
@@ -65,6 +89,12 @@ class Z(Expr):
 class S(Expr):
     def __init__(self, *args):
         assert len(args) == 0, "The number of args of S should be 0."
+
+    def _eq_impl(self, other):
+        return True  # S() も常に等しい
+
+    def _hash_impl(self):
+        return hash("S")
 
     def evaluate(self, arg: int) -> int:
         return arg + 1
@@ -91,6 +121,13 @@ class P(Expr):
         self.n = n
         self.i = i
         assert self.i <= self.n, "Error: P should be self.i <= self.n"
+
+    def _eq_impl(self, other):
+        # n と i が同じなら等しい
+        return self.n == other.n and self.i == other.i
+
+    def _hash_impl(self):
+        return hash((self.n, self.i))
 
     def evaluate(self, *args: int) -> int:
         assert (
@@ -119,6 +156,13 @@ class C(Expr):
     def __init__(self, func: Expr, *args: Expr):
         self.func = func
         self.args = args
+
+    def _eq_impl(self, other):
+        # func と args の全てが同じなら等しい
+        return self.func == other.func and self.args == other.args
+
+    def _hash_impl(self):
+        return hash((self.func, tuple(self.args)))
 
     def evaluate(self, *args: int) -> int:
         results_args: List[int] = [arg.evaluate(*args) for arg in self.args]
@@ -178,6 +222,13 @@ class R(Expr):
     def __init__(self, base: Expr, step: Expr):
         self.base = base
         self.step = step
+
+    def _eq_impl(self, other):
+        # base と step が同じなら等しい
+        return self.base == other.base and self.step == other.step
+
+    def _hash_impl(self):
+        return hash((self.base, self.step))
 
     def evaluate(self, n: int, *args: int) -> int:
         if n == 0:

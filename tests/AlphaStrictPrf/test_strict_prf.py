@@ -150,7 +150,13 @@ def test_eq():
     expr1 = C(S(), Z())
     expr2 = C(S(), Z())
     assert expr1 == expr2, "Error: Expr.__eq__()"
+    assert hash(expr1) == hash(expr2), "Error: Expr.__hash__()"
 
-    expr1 = R(S(), C(P(3, 1), Z(), S()))
-    expr2 = R(S(), C(P(3, 1), Z(), S()))
+    expr1 = R(S(), C(P(3, 1), S(), S()))
+    expr2 = R(S(), C(P(3, 1), S(), S()))
     assert expr1 == expr2, "Error: Expr.__eq__()"
+    assert hash(expr1) == hash(expr2), "Error: Expr.__hash__()"
+
+    expr1 = R(S(), C(P(3, 1), S(), S()))
+    expr2 = R(S(), C(P(3, 1), Z(), Z()))
+    assert expr1 is not expr2, "Error: Expr.__eq__()"
