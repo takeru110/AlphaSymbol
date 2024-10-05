@@ -1,5 +1,5 @@
 from collections import namedtuple
-from typing import Any, Dict, List, Optional
+from typing import Any, Deque, Dict, List, Optional
 
 from AlphaStrictPrf.strict_prf import C, Expr, P, R, S, Z
 
@@ -286,6 +286,9 @@ class StrictPrfGame:
             )  # C(Z(), Z(), ...) のように Expr 型を生成
 
         return tokens
+
+    def generate_positions(self) -> List[Deque[int]]:
+        return self.current_expr.positions()
 
     def available_actions(self) -> List[Action]:
         """

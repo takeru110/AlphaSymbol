@@ -57,6 +57,24 @@ def test_generate_tokens(game_instance):
     ), f"Expected tokens: {expected_tokens}, but got: {generated_tokens_set}"
 
 
+def test_generate_positions(game_instance):
+    current_expression = C(P(2, 1), Z(), C(P(1, 1), S()))
+    game_instance._set_current_expression(current_expression)
+    positions = game_instance.generate_positions()
+    expected_positions = [
+        [1],
+        [1, 1],
+        [1, 2],
+        [1, 3],
+        [1, 3, 1],
+        [1, 3, 2],
+    ]
+
+    pos_comp = set(tuple(sublist) for sublist in positions)
+    exp_pos_comp = set(tuple(sublist) for sublist in expected_positions)
+    assert set(pos_comp) == set(exp_pos_comp), "Error: generate_positions()"
+
+
 def test_available_actions(game_instance):
     actions = game_instance.available_actions()
     import pdb
