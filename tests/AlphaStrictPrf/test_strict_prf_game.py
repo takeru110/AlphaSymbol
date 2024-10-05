@@ -61,12 +61,12 @@ def test_available_positions(game_instance):
     game_instance._set_current_expression(current_expression)
     positions = game_instance.available_positions()
     expected_positions = [
+        [],
         [1],
-        [1, 1],
-        [1, 2],
-        [1, 3],
-        [1, 3, 1],
-        [1, 3, 2],
+        [2],
+        [3],
+        [3, 1],
+        [3, 2],
     ]
 
     pos_comp = set(tuple(sublist) for sublist in positions)

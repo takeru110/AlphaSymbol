@@ -9,12 +9,12 @@ def test_Expr_positions():
     func = C(P(2, 1), Z(), C(P(1, 1), S()))
     positions = func.positions()
     expected_positions = [
+        [],
         [1],
-        [1, 1],
-        [1, 2],
-        [1, 3],
-        [1, 3, 1],
-        [1, 3, 2],
+        [2],
+        [3],
+        [3, 1],
+        [3, 2],
     ]
     pos_comp = set(tuple(sublist) for sublist in positions)
     exp_pos_comp = set(tuple(sublist) for sublist in expected_positions)

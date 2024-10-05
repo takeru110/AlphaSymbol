@@ -99,7 +99,7 @@ class Z(Expr):
         return self.num_args == 0
 
     def positions(self):
-        return [deque([1])]
+        return [deque([])]
 
 
 class S(Expr):
@@ -132,7 +132,7 @@ class S(Expr):
         return True
 
     def positions(self):
-        return [deque([1])]
+        return [deque([])]
 
 
 class P(Expr):
@@ -171,7 +171,7 @@ class P(Expr):
         return True
 
     def positions(self):
-        return [deque([1])]
+        return [deque([])]
 
 
 class C(Expr):
@@ -240,19 +240,16 @@ class C(Expr):
         return self.args[0].arity()
 
     def positions(self):
-        positions = []
+        positions = [deque([])]
         func_positions = self.func.positions()
         for pos in func_positions:
-            pos[0] = 1
             pos.appendleft(1)
         positions.extend(func_positions)
         for i, arg in enumerate(self.args):
             arg_positions = arg.positions()
             for pos in arg_positions:
-                pos[0] = i + 2
-                pos.appendleft(1)
+                pos.appendleft(i + 2)
             positions.extend(arg_positions)
-        positions.append(deque([1]))
         return positions
 
 
@@ -315,16 +312,13 @@ class R(Expr):
         )
 
     def positions(self) -> List[deque[int]]:
-        positions = []
+        positions = [deque([])]
         base_positions = self.base.positions()
         for pos in base_positions:
-            pos[0] = 1
             pos.appendleft(1)
         positions.extend(base_positions)
         step_positions = self.base.positions()
         for pos in step_positions:
-            pos[0] = 2
-            pos.appendleft(1)
+            pos.appendleft(2)
         positions.extend(step_positions)
-        positions.append(deque([1]))
         return positions
