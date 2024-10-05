@@ -1,9 +1,9 @@
-from collections import namedtuple
-from typing import Any, Deque, Dict, List, Optional
+from collections import deque, namedtuple
+from typing import Any, Dict, List, Optional
 
 from AlphaStrictPrf.strict_prf import C, Expr, P, R, S, Z
 
-Action = namedtuple("Action", ["place", "word"])
+Action = namedtuple("Action", ["position", "expr"])
 
 
 class StrictPrfGame:
@@ -31,8 +31,6 @@ class StrictPrfGame:
         self.output_sequence = output_sequence if output_sequence else [0, 1, 2]
 
         self.current_expr = Z()
-        self.step_count = 0
-        self.done = False
 
         # Generate possible tokens based on game parameters
         self.tokens = self.available_tokens()
@@ -50,55 +48,6 @@ class StrictPrfGame:
 
     def _set_current_expression(self, expr: Expr):
         self.current_expr = expr
-
-    def step(self, action: Action):
-        """
-        Executes one time step within the environment.
-
-        Args:
-            action (dict): The action to take, should have 'place' and 'word' keys.
-
-        Returns:
-            observation (dict): The current observation.
-            reward (float): The reward obtained after taking the action.
-            done (bool): Whether the episode has ended.
-            info (dict): Additional information.
-        """
-        if self.done:
-            raise Exception(
-                "Cannot call step() on a finished game. Please reset the environment."
-            )
-
-        self.step_count += 1
-
-        # Extract action components
-        position = action.get("place")
-        word_token = action.get("word")
-
-        # Validate action
-        if position is None or word_token is None:
-            raise ValueError("Action must contain 'place' and 'word' keys.")
-
-        # Apply the action
-        success = self.apply_action(position, word_token)
-
-        # Check if the current expression matches the test cases
-        is_correct = self.check_expression()
-
-        # Calculate reward
-        if is_correct:
-            reward = 1.0
-            self.done = True
-        elif self.step_count >= self.max_steps:
-            reward = 0.0
-            self.done = True
-        else:
-            reward = -0.01  # Small penalty to encourage efficiency
-
-        observation = self.get_observation()
-        info = {"success": success}
-
-        return observation, reward, self.done, info
 
     def render(self):
         """
@@ -123,140 +72,6 @@ class StrictPrfGame:
             "step_count": self.step_count,
         }
         return observation
-
-    def apply_action(self, position: List[int], token: str) -> bool:
-        """
-        Applies the action to the current expression.
-
-        Args:
-            position (List[int]): The position to apply the action.
-            token (str): The token representing the new sub-expression.
-
-        Returns:
-            success (bool): Whether the action was successfully applied.
-        """
-        try:
-            new_subexpr = self.token_to_expr(token)
-            self.current_expr = self.replace_subexpr(
-                self.current_expr, position, new_subexpr
-            )
-            return True
-        except Exception as e:
-            # Invalid action or replacement; action fails
-            print(f"Error applying action: {e}")
-            return False
-
-    def token_to_expr(self, token: str) -> Expr:
-        """
-        Converts a token string to an Expr object.
-
-        Args:
-            token (str): The token to convert.
-
-        Returns:
-            expr (Expr): The corresponding expression object.
-        """
-        if token == "z":
-            return Z()
-        elif token == "s":
-            return S()
-        elif token.startswith("p_"):
-            parts = token.split("_")
-            n = int(parts[1])
-            i = int(parts[2])
-            if n > self.max_p_arity or i > n:
-                raise ValueError(f"Invalid P(n, i) with n={n}, i={i}")
-            return P(n, i)
-        elif token.startswith("c_"):
-            num_args = int(token.split("_")[1])
-            if num_args > self.max_c_args:
-                raise ValueError(
-                    f"Number of C arguments exceeds max_c_args: {num_args}"
-                )
-            args = [Z() for _ in range(num_args)]
-            return C(Z(), *args)
-        elif token == "r":
-            return R(Z(), Z())
-        else:
-            raise ValueError(f"Unknown token: {token}")
-
-    def replace_subexpr(
-        self, expr: Expr, position: List[int], new_subexpr: Expr
-    ) -> Expr:
-        """
-        Recursively replaces a sub-expression at the given position.
-
-        Args:
-            expr (Expr): The current expression.
-            position (List[int]): The position to replace.
-            new_subexpr (Expr): The new sub-expression.
-
-        Returns:
-            expr (Expr): The updated expression.
-        """
-        if not position:
-            return new_subexpr
-        else:
-            if isinstance(expr, C):
-                index = position[0]
-                if index == 0:
-                    func = self.replace_subexpr(
-                        expr.func, position[1:], new_subexpr
-                    )
-                    return C(func, *expr.args)
-                else:
-                    args = list(expr.args)
-                    if index - 1 >= len(args):
-                        raise ValueError(
-                            "Invalid position index in C arguments."
-                        )
-                    args[index - 1] = self.replace_subexpr(
-                        args[index - 1], position[1:], new_subexpr
-                    )
-                    return C(expr.func, *args)
-            elif isinstance(expr, R):
-                index = position[0]
-                if index == 1:
-                    base = self.replace_subexpr(
-                        expr.base, position[1:], new_subexpr
-                    )
-                    return R(base, expr.step)
-                elif index == 2:
-                    step = self.replace_subexpr(
-                        expr.step, position[1:], new_subexpr
-                    )
-                    return R(expr.base, step)
-                else:
-                    raise ValueError("Invalid position in R")
-            else:
-                if not position:
-                    return new_subexpr
-                else:
-                    raise ValueError(
-                        "Cannot replace sub-expression in terminal node"
-                    )
-
-    def check_expression(self) -> bool:
-        """
-        Checks if the current expression produces the correct outputs for the input sequence.
-
-        Returns:
-            is_correct (bool): Whether the expression matches the test cases.
-        """
-        try:
-            if not self.current_expr.validate_semantic():
-                return False
-            arity = self.current_expr.arity()
-            for inp, expected_out in zip(
-                self.input_sequence, self.output_sequence
-            ):
-                inputs = [inp] * arity if arity else []
-                result = self.current_expr.evaluate(*inputs)
-                if result != expected_out:
-                    return False
-            return True
-        except Exception:
-            return False
 
     def available_tokens(self) -> List[Expr]:
         """
@@ -287,7 +102,7 @@ class StrictPrfGame:
 
         return tokens
 
-    def available_positions(self) -> List[Deque[int]]:
+    def available_positions(self) -> List[deque[int]]:
         return self.current_expr.positions()
 
     def available_actions(self) -> List[Action]:
@@ -297,20 +112,6 @@ class StrictPrfGame:
         Returns:
             actions (List[Action]): A list of possible actions.
         """
-        positions = self.available_positions(
-            self.current_expr, [], self.expr_depth
-        )
-        actions = []
-        for pos in positions:
-            for token in self.tokens:
-                actions.append(Action(pos, token))
-        return actions
-
-    def is_done(self) -> bool:
-        """
-        Returns whether the game is finished.
-
-        Returns:
-            done (bool): True if the game is finished, False otherwise.
-        """
-        return self.done
+        positions = self.available_positions()
+        tokens = self.available_tokens()
+        return [Action(pos, token) for pos in positions for token in tokens]

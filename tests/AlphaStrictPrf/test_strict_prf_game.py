@@ -1,8 +1,11 @@
 # test_my_class.py
+from collections import deque
+
 import pytest
 
 from AlphaStrictPrf.strict_prf import C, P, R, S, Z
 from AlphaStrictPrf.strict_prf_game import (
+    Action,
     StrictPrfGame,  # テスト対象のクラスやモジュールをインポート
 )
 
@@ -74,22 +77,47 @@ def test_available_positions(game_instance):
     assert set(pos_comp) == set(exp_pos_comp), "Error: generate_positions()"
 
 
-"""
 def test_available_actions(game_instance):
     actions = game_instance.available_actions()
-    import pdb
+    expected_actions = [
+        Action(deque([]), Z()),
+        Action(deque([]), S()),
+        Action(deque([]), R(Z(), Z())),
+        Action(deque([]), P(1, 1)),
+        Action(deque([]), P(2, 1)),
+        Action(deque([]), P(2, 2)),
+        Action(deque([]), C(Z(), Z())),
+        Action(deque([]), C(Z(), Z(), Z())),
+    ]
+    processed_expected_actions = [
+        Action(tuple(action.position), action.expr)
+        for action in expected_actions
+    ]
+    processed_actions = [
+        Action(tuple(action.position), action.expr) for action in actions
+    ]
+    assert (
+        processed_actions == processed_expected_actions
+    ), "Error: available_actions"
 
-    pdb.set_trace()
-    set_actions = set(actions)
-    expected_actions = {
-        Action(1, Z()),
-        Action(1, S()),
-        Action(1, R(Z(), Z())),
-        Action(1, P(1, 1)),
-        Action(1, P(2, 1)),
-        Action(1, P(2, 2)),
-        Action(1, C(Z(), Z())),
-        Action(1, C(Z(), Z(), Z())),
-    }
-    assert set_actions == expected_actions, "Error: available_actions"
-"""
+    actions = game_instance.available_actions()
+    expected_actions = [
+        Action(deque([]), Z()),
+        Action(deque([]), S()),
+        Action(deque([]), R(Z(), Z())),
+        Action(deque([]), P(1, 1)),
+        Action(deque([]), P(2, 1)),
+        Action(deque([]), P(2, 2)),
+        Action(deque([]), C(Z(), Z())),
+        Action(deque([]), C(Z(), Z(), Z())),
+    ]
+    processed_expected_actions = [
+        Action(tuple(action.position), action.expr)
+        for action in expected_actions
+    ]
+    processed_actions = [
+        Action(tuple(action.position), action.expr) for action in actions
+    ]
+    assert (
+        processed_actions == processed_expected_actions
+    ), "Error: available_actions"
