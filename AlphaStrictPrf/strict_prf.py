@@ -1,4 +1,5 @@
-from typing import List
+from collections import deque
+from typing import Deque, List
 
 
 class Expr:
@@ -55,6 +56,18 @@ class Expr:
         """
         raise NotImplementedError()
 
+    def positions(self) -> List[Deque[int]]:
+        """
+        Generates all possible positions up to a certain depth.
+
+        Args:
+            depth (int): The maximum depth to generate positions for.
+
+        Returns:
+            positions (List[List[int]]): A list of positions.
+        """
+        raise NotImplementedError()
+
 
 class Z(Expr):
     def __init__(self, *args: any):
@@ -85,6 +98,9 @@ class Z(Expr):
     def validate_semantic(self):
         return self.num_args == 0
 
+    def positions(self):
+        return [deque([1])]
+
 
 class S(Expr):
     def __init__(self, *args):
@@ -114,6 +130,9 @@ class S(Expr):
 
     def validate_semantic(self):
         return True
+
+    def positions(self):
+        return [deque([1])]
 
 
 class P(Expr):
@@ -150,6 +169,9 @@ class P(Expr):
 
     def validate_semantic(self):
         return True
+
+    def positions(self):
+        return [deque([1])]
 
 
 class C(Expr):
@@ -217,6 +239,22 @@ class C(Expr):
         assert self.validate_semantic(), "Error: Invalid semantically"
         return self.args[0].arity()
 
+    def positions(self):
+        positions = []
+        func_positions = self.func.positions()
+        for pos in func_positions:
+            pos[0] = 1
+            pos.appendleft(1)
+        positions.extend(func_positions)
+        for i, arg in enumerate(self.args):
+            arg_positions = arg.positions()
+            for pos in arg_positions:
+                pos[0] = i + 2
+                pos.appendleft(1)
+            positions.extend(arg_positions)
+        positions.append(deque([1]))
+        return positions
+
 
 class R(Expr):
     def __init__(self, base: Expr, step: Expr):
@@ -275,3 +313,18 @@ class R(Expr):
             if self.base.arity() is not None
             else self.step.arity() - 1
         )
+
+    def positions(self) -> List[deque[int]]:
+        positions = []
+        base_positions = self.base.positions()
+        for pos in base_positions:
+            pos[0] = 1
+            pos.appendleft(1)
+        positions.extend(base_positions)
+        step_positions = self.base.positions()
+        for pos in step_positions:
+            pos[0] = 2
+            pos.appendleft(1)
+        positions.extend(step_positions)
+        positions.append(deque([1]))
+        return positions
