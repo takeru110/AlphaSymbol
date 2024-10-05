@@ -48,6 +48,9 @@ class StrictPrfGame:
         observation = self.get_observation()
         return observation
 
+    def _set_current_expression(self, expr: Expr):
+        self.current_expr = expr
+
     def step(self, action: Action):
         """
         Executes one time step within the environment.
@@ -255,46 +258,12 @@ class StrictPrfGame:
         except Exception:
             return False
 
-    def generate_positions(
-        self, expr: Expr, path: List[int], depth: int
-    ) -> List[List[int]]:
-        """
-        Generates all possible positions up to a certain depth.
-
-        Args:
-            expr (Expr): The current expression.
-            path (List[int]): The path to the current node.
-            depth (int): The remaining depth.
-
-        Returns:
-            positions (List[List[int]]): A list of positions.
-        """
-        if depth == 0:
-            return [path]
-        positions = [path]
-        if isinstance(expr, C):
-            positions += self.generate_positions(
-                expr.func, path + [0], depth - 1
-            )
-            for i, arg in enumerate(expr.args):
-                positions += self.generate_positions(
-                    arg, path + [i + 1], depth - 1
-                )
-        elif isinstance(expr, R):
-            positions += self.generate_positions(
-                expr.base, path + [1], depth - 1
-            )
-            positions += self.generate_positions(
-                expr.step, path + [2], depth - 1
-            )
-        return positions
-
     def generate_tokens(self) -> List[Expr]:
         """
         Generates all possible expressions (tokens) based on the game parameters.
 
         Returns:
-            tokens (List[Expr]): A list of Expr objects representing valid expressions.
+            tokens (List[Expr]): A list of Expr objects representing valid expressions after substituting.
         """
         tokens = [
             Z(),
