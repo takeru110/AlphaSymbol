@@ -99,25 +99,3 @@ def test_available_actions(game_instance):
     assert (
         processed_actions == processed_expected_actions
     ), "Error: available_actions"
-
-    actions = game_instance.available_actions()
-    expected_actions = [
-        Action(deque([]), Z()),
-        Action(deque([]), S()),
-        Action(deque([]), R(Z(), Z())),
-        Action(deque([]), P(1, 1)),
-        Action(deque([]), P(2, 1)),
-        Action(deque([]), P(2, 2)),
-        Action(deque([]), C(Z(), Z())),
-        Action(deque([]), C(Z(), Z(), Z())),
-    ]
-    processed_expected_actions = [
-        Action(tuple(action.position), action.expr)
-        for action in expected_actions
-    ]
-    processed_actions = [
-        Action(tuple(action.position), action.expr) for action in actions
-    ]
-    assert (
-        processed_actions == processed_expected_actions
-    ), "Error: available_actions"
