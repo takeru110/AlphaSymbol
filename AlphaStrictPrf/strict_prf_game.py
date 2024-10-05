@@ -35,7 +35,7 @@ class StrictPrfGame:
         self.done = False
 
         # Generate possible tokens based on game parameters
-        self.tokens = self.generate_tokens()
+        self.tokens = self.available_tokens()
 
     def reset(self):
         """
@@ -258,7 +258,7 @@ class StrictPrfGame:
         except Exception:
             return False
 
-    def generate_tokens(self) -> List[Expr]:
+    def available_tokens(self) -> List[Expr]:
         """
         Generates all possible expressions (tokens) based on the game parameters.
 
@@ -287,7 +287,7 @@ class StrictPrfGame:
 
         return tokens
 
-    def generate_positions(self) -> List[Deque[int]]:
+    def available_positions(self) -> List[Deque[int]]:
         return self.current_expr.positions()
 
     def available_actions(self) -> List[Action]:
@@ -297,7 +297,7 @@ class StrictPrfGame:
         Returns:
             actions (List[Action]): A list of possible actions.
         """
-        positions = self.generate_positions(
+        positions = self.available_positions(
             self.current_expr, [], self.expr_depth
         )
         actions = []
