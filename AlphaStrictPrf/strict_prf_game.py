@@ -1,9 +1,18 @@
+import random
 from collections import deque, namedtuple
 from typing import Any, Dict, List, Optional
 
 from AlphaStrictPrf.strict_prf import C, Expr, P, R, S, Z
 
 Action = namedtuple("Action", ["position", "expr"])
+
+
+class ActType:
+    def __init__(self, p, c, d):
+        self.n = c**d * (3 + int(1 / 2 * p * (p + 1)) + c)
+
+    def sample(self):
+        return random.randint(0, self.n)
 
 
 class StrictPrfGame:
@@ -31,6 +40,9 @@ class StrictPrfGame:
         self.output_sequence = output_sequence if output_sequence else [0, 1, 2]
 
         self.current_expr = Z()
+        self.action_space = ActType(
+            self.max_p_arity, self.max_c_args, self.expr_depth
+        )
 
         # Generate possible tokens based on game parameters
         self.tokens = self.available_tokens()
