@@ -363,11 +363,11 @@ class R(Expr):
         if pos == Deque([]):
             return expr
         arg_id = pos.popleft()
-        assert arg_id in {
-            1,
-            2,
-        }, "Error: invaid pos argument (not 1 or 2) at R.change()"
         if arg_id == 1:
             return self.base.change(pos, expr)
         elif arg_id == 2:
             return self.step.change(pos, expr)
+        else:
+            raise ValueError(
+                "Error: invaid pos argument (not 1 or 2) at R.change()"
+            )
