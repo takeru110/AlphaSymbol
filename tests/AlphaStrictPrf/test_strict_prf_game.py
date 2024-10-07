@@ -1,4 +1,3 @@
-# test_my_class.py
 from collections import deque
 
 import pytest
@@ -99,3 +98,15 @@ def test_available_actions(game_instance):
     assert (
         processed_actions == processed_expected_actions
     ), "Error: available_actions"
+
+
+def test_reset(game_instance):
+    state, info = game_instance.reset()
+    expected_state = (
+        [90, 40, 41]  # ascii of "Z()"
+        + [0] * 19997
+    )
+
+    expected_info = {"expression": "Z()", "step_count": 0}
+    assert state == expected_state, "Error: state of StrictPrfGame.reset()"
+    assert info == expected_info, "Error: info of StrictPrfGame.reset()"

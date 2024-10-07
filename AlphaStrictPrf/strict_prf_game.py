@@ -30,6 +30,7 @@ class StrictPrfGame:
         max_steps: int = 100,
         input_sequence: Optional[List[int]] = None,
         output_sequence: Optional[List[int]] = None,
+        n_obs: int = 20000,
     ):
         self.max_p_arity = max_p_arity
         self.expr_depth = expr_depth
@@ -46,6 +47,9 @@ class StrictPrfGame:
 
         # Generate possible tokens based on game parameters
         self.tokens = self.available_tokens()
+        self.n_obs = (
+            n_obs  # like a size of display which will be input of DQN model
+        )
 
     def reset(self):
         """
@@ -56,7 +60,15 @@ class StrictPrfGame:
         self.done = False
 
         observation = self.get_observation()
-        return observation
+        state = self._string_to_state(observation["expression"])
+        return state, observation
+
+    def _string_to_state(self, st: str):
+        # string to state
+        ascii_list = [ord(char) for char in st]
+        ascii_list = ascii_list[: self.n_obs]
+        ascii_list.extend([0] * (self.n_obs - len(ascii_list)))
+        return ascii_list
 
     def _set_current_expression(self, expr: Expr):
         self.current_expr = expr
