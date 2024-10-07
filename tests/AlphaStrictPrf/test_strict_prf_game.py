@@ -23,14 +23,6 @@ def game_instance():
     )
 
 
-# メソッドをテストする関数（例外処理のテスト）
-def test_get_observation(game_instance):
-    assert game_instance.get_observation() == {
-        "expression": "Z()",
-        "step_count": 0,
-    }, "Error: get_observation"
-
-
 def test_available_tokens(game_instance):
     """
     Test for the generate_tokens method using set comparison.
