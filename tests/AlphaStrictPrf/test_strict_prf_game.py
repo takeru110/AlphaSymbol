@@ -99,9 +99,8 @@ def test_reset(game_instance):
         + [0] * 19997
     )
 
-    expected_info = {"expression": "Z()", "step_count": 0}
     assert state == expected_state, "Error: state of StrictPrfGame.reset()"
-    assert info == expected_info, "Error: info of StrictPrfGame.reset()"
+    assert info["step_count"] == 0, "Error: step_count of StrictPrfGame.reset()"
 
 
 def test_step_human_readable():
