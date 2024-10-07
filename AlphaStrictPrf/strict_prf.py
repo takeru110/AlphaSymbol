@@ -69,8 +69,13 @@ class Expr:
         raise NotImplementedError()
 
     def change(self, pos: Deque[int], expr: "Expr") -> None:
-        # Change the sub-expression at pos into expr
-        raise NotImplementedError()
+        """
+        指定された場所に基づいて、式の部分を新しい式に書き換える関数。
+
+        ## 引数
+        - `pos` (Deque[int]): 自然数列で、書き換える部分を示す。外側の式から内側の部分に向かって引数を指定する
+        - `expr` ("Expr"): 新しい式。指定された場所に置き換える新しいサブ式。
+        """
 
 
 class Z(Expr):
