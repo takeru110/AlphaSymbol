@@ -276,18 +276,17 @@ class C(Expr):
     def change(self, pos: Deque[int], expr: "Expr") -> None:
         if pos == Deque([]):
             return expr
-        else:
-            arg_id = pos.popleft()
-            assert (
-                arg_id >= 1
-            ), "Error: pos arg of C.change() is invalid. Positive int is needed."
-            if arg_id == 1:
-                return C(self.func.change(pos, expr), *self.args)
-            elif arg_id >= 2:
-                self.args[arg_id - 2] = self.args[arg_id - 2].change(pos, expr)
-                return C(self.func, *self.args)
 
-        return expr
+        arg_id = pos.popleft()
+        if arg_id == 1:
+            return C(self.func.change(pos, expr), *self.args)
+        elif arg_id >= 2:
+            self.args[arg_id - 2] = self.args[arg_id - 2].change(pos, expr)
+            return C(self.func, *self.args)
+        else:
+            raise ValueError(
+                "Error: pos arg of C.change() is invalid. Positive int is needed."
+            )
 
 
 class R(Expr):
