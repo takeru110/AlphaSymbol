@@ -1,4 +1,5 @@
 import logging
+from collections import deque
 
 from AlphaStrictPrf.strict_prf import C, P, R, S, Z
 
@@ -180,3 +181,11 @@ def test_eq():
     expr_set1 = {C(S(), Z()), R(S(), C(P(3, 1), S(), S())), Z()}
     expr_set2 = {R(S(), C(P(3, 1), S(), S())), Z(), C(S(), Z())}
     assert expr_set1 == expr_set2, "Error: Expr set equality"
+
+
+def test_change():
+    expr = C(R(Z(), P(2, 1)), C(P(1, 1), S()))
+    pos = deque([2, 1])
+    expr = expr.change(pos, R(Z(), P(2, 1)))
+    expected_expr = C(R(Z(), P(2, 1)), C(R(Z(), P(2, 1)), S()))
+    assert expr == expected_expr, "Error: Expr.change()"

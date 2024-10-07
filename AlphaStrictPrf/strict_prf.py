@@ -68,6 +68,10 @@ class Expr:
         """
         raise NotImplementedError()
 
+    def change(self, pos: Deque[int], expr: "Expr") -> None:
+        # Change the sub-expression at pos into expr
+        raise NotImplementedError()
+
 
 class Z(Expr):
     def __init__(self, *args: any):
@@ -101,6 +105,10 @@ class Z(Expr):
     def positions(self):
         return [deque([])]
 
+    def change(self, pos: Deque[int], expr: "Expr") -> None:
+        assert pos == Deque([]), "Error: invalid pos arg in Z.change()."
+        return expr
+
 
 class S(Expr):
     def __init__(self, *args):
@@ -133,6 +141,10 @@ class S(Expr):
 
     def positions(self):
         return [deque([])]
+
+    def change(self, pos: Deque[int], expr: "Expr") -> None:
+        assert pos == Deque([]), "Error: invalid pos arg in S.change()."
+        return expr
 
 
 class P(Expr):
@@ -173,11 +185,15 @@ class P(Expr):
     def positions(self):
         return [deque([])]
 
+    def change(self, pos: Deque[int], expr: "Expr") -> None:
+        assert pos == Deque([]), "Error: invalid pos arg in P.change()."
+        return expr
+
 
 class C(Expr):
     def __init__(self, func: Expr, *args: Expr):
         self.func = func
-        self.args = args
+        self.args = list(args)
 
     def _eq_impl(self, other):
         # func と args の全てが同じなら等しい
@@ -252,6 +268,22 @@ class C(Expr):
             positions.extend(arg_positions)
         return positions
 
+    def change(self, pos: Deque[int], expr: "Expr") -> None:
+        if pos == Deque([]):
+            return expr
+        else:
+            arg_id = pos.popleft()
+            assert (
+                arg_id >= 1
+            ), "Error: pos arg of C.change() is invalid. Positive int is needed."
+            if arg_id == 1:
+                return C(self.func.change(pos, expr), *self.args)
+            elif arg_id >= 2:
+                self.args[arg_id - 2] = self.args[arg_id - 2].change(pos, expr)
+                return C(self.func, *self.args)
+
+        return expr
+
 
 class R(Expr):
     def __init__(self, base: Expr, step: Expr):
@@ -322,3 +354,16 @@ class R(Expr):
             pos.appendleft(2)
         positions.extend(step_positions)
         return positions
+
+    def change(self, pos: Deque[int], expr: "Expr") -> None:
+        if pos == Deque([]):
+            return expr
+        arg_id = pos.popleft()
+        assert arg_id in {
+            1,
+            2,
+        }, "Error: invaid pos argument (not 1 or 2) at R.change()"
+        if arg_id == 1:
+            return self.base.change(pos, expr)
+        elif arg_id == 2:
+            return self.step.change(pos, expr)
