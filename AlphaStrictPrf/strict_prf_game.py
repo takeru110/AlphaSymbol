@@ -158,46 +158,55 @@ class StrictPrfGame:
         exp = action.expr
         if pos not in self.available_positions():
             return (
-                str(self.current_expr),
+                self.current_expr,
                 0 + length_score,
                 False,
                 truncated,
+                self._get_info(),
             )
 
         new_expr: Expr = self.current_expr.change(pos, exp)
-        if not new_expr.validate_semantic() or new_expr.arity() != 1:
+        if not new_expr.validate_semantic():
             return (
-                str(self.current_expr),
+                self.current_expr,
                 0.1 + length_score,
                 False,
                 truncated,
+                self._get_info(),
             )
         if new_expr.arity() != 1:
             return (
-                str(self.current_expr),
+                self.current_expr,
                 0.2 + length_score,
                 False,
                 truncated,
+                self._get_info(),
             )
+
+        # new expression is accepted as next expression
+        self.current_expr = new_expr
+        length_score = 0.9 ** len(str(self.current_expr))
+
         matching_elements = sum(
             1
             for t, e in zip(self.output_sequence, self.input_sequence)
-            if t == self.current_expr.evaluate(e)
+            if t == new_expr.evaluate(e)
         )
         if matching_elements == len(self.input_sequence):
             return (
-                str(new_expr),
+                new_expr,
                 1 + length_score,
                 True,
                 truncated,
+                self._get_info(),
             )
 
         self.step_count += 1
         correctness_score = 0.3 * matching_elements / len(self.input_sequence)
         return (
-            str(new_expr),
+            new_expr,
             0.3 + correctness_score + length_score,
             False,
             truncated,
-            self.get_info(),
+            self._get_info(),
         )
