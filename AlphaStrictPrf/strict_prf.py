@@ -293,10 +293,12 @@ class C(Expr):
 
         arg_id = pos.popleft()
         if arg_id == 1:
-            return C(self.func.change(pos, expr), *self.args)
+            copy_args = (arg.copy() for arg in self.args)
+            return C(self.func.change(pos, expr), *copy_args)
         elif arg_id >= 2:
-            self.args[arg_id - 2] = self.args[arg_id - 2].change(pos, expr)
-            return C(self.func, *self.args)
+            copy_args = [arg.copy() for arg in self.args]
+            copy_args[arg_id - 2] = copy_args[arg_id - 2].change(pos, expr)
+            return C(self.func.copy(), *copy_args)
         else:
             raise ValueError(
                 "Error: pos arg of C.change() is invalid. Positive int is needed."
@@ -383,9 +385,9 @@ class R(Expr):
 
         arg_id = pos.popleft()
         if arg_id == 1:
-            return self.base.change(pos, expr)
+            return R(self.base.change(pos, expr), self.step.copy())
         elif arg_id == 2:
-            return self.step.change(pos, expr)
+            return R(self.base.copy(), self.step.change(pos, expr))
         else:
             raise ValueError(
                 "Error: invaid pos argument (not 1 or 2) at R.change()"
