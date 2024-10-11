@@ -222,9 +222,11 @@ def test_generate_state():
     game = StrictPrfGame(
         2, 2, 3, 100, input, output, n_obs=n_obs, init_expr=init_expr
     )
+    current_output = [2, 3, 4, 5, 6]
     expected_state = []
     expected_state.extend(input)
     expected_state.extend(output)
+    expected_state.extend(current_output)
     expected_state.extend([ord(x) for x in str(init_expr)])
     expected_state.extend([ord(" ")] * (n_obs - len(expected_state)))
     state = game.generate_state()

@@ -88,6 +88,15 @@ class StrictPrfGame:
         print(f"Step: {self.step_count}")
         print(f"Current Expression:\n{str(self.current_expr)}")
 
+    def current_output(self):
+        try:
+            output = [
+                self.current_expr.evaluate(i) for i in self.input_sequence
+            ]
+        except AssertionError:
+            output = [-1] * len(self.output_sequence)
+        return output
+
     def _get_info(self) -> Dict[str, Any]:
         """
         Returns the current observation.
@@ -95,12 +104,7 @@ class StrictPrfGame:
         Returns:
             observation (dict): The current observation.
         """
-        try:
-            output = [
-                self.current_expr.evaluate(i) for i in self.input_sequence
-            ]
-        except AssertionError:
-            output = [-1] * len(self.output_sequence)
+        output = self.current_output()
 
         info = {
             "expression": str(self.current_expr),
@@ -163,6 +167,9 @@ class StrictPrfGame:
         pos = action.position
         exp = action.expr
 
+        # new expression is accepted as next expression
+        self.current_expr: Expr = self.current_expr.change(pos, exp)
+
         # position is invalid
         if pos not in self.available_positions():
             return (
@@ -172,9 +179,6 @@ class StrictPrfGame:
                 truncated,
                 self._get_info(),
             )
-
-        # new expression is accepted as next expression
-        self.current_expr: Expr = self.current_expr.change(pos, exp)
 
         # Next expression is invalid semantically
         if not self.current_expr.validate_semantic():
@@ -254,7 +258,7 @@ class StrictPrfGame:
         """
         generate state which is used as input to DNN model
         """
-        ret = self.input_sequence + self.output_sequence
+        ret = self.input_sequence + self.output_sequence + self.current_output()
         assert (
             len(ret) + len(str(self.current_expr)) <= self.n_obs
         ), "Error: self.current_expr is too long and larger than state window length."
