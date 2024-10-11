@@ -97,7 +97,7 @@ class StrictPrfGame:
         """
         output = [self.current_expr.evaluate(i) for i in self.input_sequence]
         info = {
-            "expression": self.current_expr.parenthesized_string(),
+            "expression": str(self.current_expr),
             "step_count": self.step_count,
             "input": self.input_sequence,
             "target": self.output_sequence,
@@ -152,13 +152,13 @@ class StrictPrfGame:
         self, action: Action
     ) -> tuple[str, float, bool, bool, dict[str, Any]]:
         self.step_count += 1
-        length_score = 0.9 ** len(self.current_expr.parenthesized_string())
+        length_score = 0.9 ** len(str(self.current_expr))
         truncated = self.step_count >= self.max_steps
         pos = action.position
         exp = action.expr
         if pos not in self.available_positions():
             return (
-                self.current_expr.parenthesized_string(),
+                str(self.current_expr),
                 0 + length_score,
                 False,
                 truncated,
@@ -167,14 +167,14 @@ class StrictPrfGame:
         new_expr: Expr = self.current_expr.change(pos, exp)
         if not new_expr.validate_semantic() or new_expr.arity() != 1:
             return (
-                self.current_expr.parenthesized_string(),
+                str(self.current_expr),
                 0.1 + length_score,
                 False,
                 truncated,
             )
         if new_expr.arity() != 1:
             return (
-                self.current_expr.parenthesized_string(),
+                str(self.current_expr),
                 0.2 + length_score,
                 False,
                 truncated,
@@ -186,7 +186,7 @@ class StrictPrfGame:
         )
         if matching_elements == len(self.input_sequence):
             return (
-                new_expr.parenthesized_string(),
+                str(new_expr),
                 1 + length_score,
                 True,
                 truncated,
@@ -195,7 +195,7 @@ class StrictPrfGame:
         self.step_count += 1
         correctness_score = 0.3 * matching_elements / len(self.input_sequence)
         return (
-            new_expr.parenthesized_string(),
+            str(new_expr),
             0.3 + correctness_score + length_score,
             False,
             truncated,
