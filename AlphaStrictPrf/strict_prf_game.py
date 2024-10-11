@@ -1,9 +1,18 @@
+import random
 from collections import deque, namedtuple
 from typing import Any, Dict, List, Optional
 
 from AlphaStrictPrf.strict_prf import C, Expr, P, R, S, Z
 
 Action = namedtuple("Action", ["position", "expr"])
+
+
+class ActType:
+    def __init__(self, p, c, d):
+        self.n = c**d * (3 + int(1 / 2 * p * (p + 1)) + c)
+
+    def sample(self):
+        return random.randint(0, self.n)
 
 
 class StrictPrfGame:
@@ -21,30 +30,51 @@ class StrictPrfGame:
         max_steps: int = 100,
         input_sequence: Optional[List[int]] = None,
         output_sequence: Optional[List[int]] = None,
+        n_obs: int = 20000,
+        init_expr: Expr = Z(),
     ):
         self.max_p_arity = max_p_arity
         self.expr_depth = expr_depth
         self.max_c_args = max_c_args
         self.max_steps = max_steps
 
-        self.input_sequence = input_sequence if input_sequence else [0, 1, 2]
-        self.output_sequence = output_sequence if output_sequence else [0, 1, 2]
+        self.input_sequence: list[int] = (
+            input_sequence if input_sequence else [0, 1, 2]
+        )
+        self.output_sequence: list[int] = (
+            output_sequence if output_sequence else [0, 1, 2]
+        )
+        self.init_expr = init_expr
 
-        self.current_expr = Z()
+        self.current_expr: Expr = Z()
+        self.action_space = ActType(
+            self.max_p_arity, self.max_c_args, self.expr_depth
+        )
 
         # Generate possible tokens based on game parameters
         self.tokens = self.available_tokens()
+        self.n_obs = (
+            n_obs  # like a size of display which will be input of DQN model
+        )
 
     def reset(self):
         """
         Resets the environment to an initial state and returns an initial observation.
         """
-        self.current_expr = Z()
+        self.current_expr: Expr = self.init_expr
         self.step_count = 0
         self.done = False
 
-        observation = self.get_observation()
-        return observation
+        info = self._get_info()
+        state = self._string_to_state(info["expression"])
+        return state, info
+
+    def _string_to_state(self, st: str):
+        # string to state
+        ascii_list = [ord(char) for char in st]
+        ascii_list = ascii_list[: self.n_obs]
+        ascii_list.extend([0] * (self.n_obs - len(ascii_list)))
+        return ascii_list
 
     def _set_current_expression(self, expr: Expr):
         self.current_expr = expr
@@ -58,18 +88,22 @@ class StrictPrfGame:
         print(f"Step: {self.step_count}")
         print(f"Current Expression:\n{str(self.current_expr)}")
 
-    def get_observation(self) -> Dict[str, Any]:
+    def _get_info(self) -> Dict[str, Any]:
         """
         Returns the current observation.
 
         Returns:
             observation (dict): The current observation.
         """
-        observation = {
+        output = [self.current_expr.evaluate(i) for i in self.input_sequence]
+        info = {
             "expression": str(self.current_expr),
             "step_count": self.step_count,
+            "input": self.input_sequence,
+            "target": self.output_sequence,
+            "output": output,
         }
-        return observation
+        return info
 
     def available_tokens(self) -> List[Expr]:
         """
@@ -113,3 +147,57 @@ class StrictPrfGame:
         positions = self.available_positions()
         tokens = self.available_tokens()
         return [Action(pos, token) for pos in positions for token in tokens]
+
+    def step_human_readable(
+        self, action: Action
+    ) -> tuple[str, float, bool, bool, dict[str, Any]]:
+        self.step_count += 1
+        length_score = 0.9 ** len(str(self.current_expr))
+        truncated = self.step_count >= self.max_steps
+        pos = action.position
+        exp = action.expr
+        if pos not in self.available_positions():
+            return (
+                str(self.current_expr),
+                0 + length_score,
+                False,
+                truncated,
+            )
+
+        new_expr: Expr = self.current_expr.change(pos, exp)
+        if not new_expr.validate_semantic() or new_expr.arity() != 1:
+            return (
+                str(self.current_expr),
+                0.1 + length_score,
+                False,
+                truncated,
+            )
+        if new_expr.arity() != 1:
+            return (
+                str(self.current_expr),
+                0.2 + length_score,
+                False,
+                truncated,
+            )
+        matching_elements = sum(
+            1
+            for t, e in zip(self.output_sequence, self.input_sequence)
+            if t == self.current_expr.evaluate(e)
+        )
+        if matching_elements == len(self.input_sequence):
+            return (
+                str(new_expr),
+                1 + length_score,
+                True,
+                truncated,
+            )
+
+        self.step_count += 1
+        correctness_score = 0.3 * matching_elements / len(self.input_sequence)
+        return (
+            str(new_expr),
+            0.3 + correctness_score + length_score,
+            False,
+            truncated,
+            self.get_info(),
+        )
