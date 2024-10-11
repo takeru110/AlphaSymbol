@@ -244,7 +244,7 @@ class StrictPrfGame:
         quotient, remainder = divmod(num, self.action_space.n_post_expr)
 
         # placeの計算: quotientを(max_c_args + 1)進数のリストに変換
-        place = []
+        place = deque([])
         base = self.max_c_args + 1
         while quotient > 0:
             place.append(quotient % base)

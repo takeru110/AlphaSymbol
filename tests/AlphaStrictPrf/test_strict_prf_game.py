@@ -246,7 +246,7 @@ def test_step():
     )
     game.reset()
     game.action_space.n
-    state, _, _, _, info = game.step(10)
+    state, _, _, _, info = game.step(10)  # R(Z, Z)
     logging.debug(info["expression"])
     state, _, _, _, info = game.step(25)
     logging.debug(info["expression"])
