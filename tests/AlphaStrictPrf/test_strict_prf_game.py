@@ -96,7 +96,7 @@ def test_reset(game_instance):
     state, info = game_instance.reset()
     expected_state = (
         [90, 40, 41]  # ascii of "Z()"
-        + [0] * 19997
+        + [0] * 997
     )
 
     assert state == expected_state, "Error: state of StrictPrfGame.reset()"
