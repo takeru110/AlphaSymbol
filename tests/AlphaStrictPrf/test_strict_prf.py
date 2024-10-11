@@ -204,6 +204,6 @@ def test_copy():
     assert S().copy() == S(), "Error: S().copy"
     assert P(3, 1).copy() == P(3, 1), "Error: P(1, 2).copy"
     assert C(S(), Z()).copy() == C(S(), Z()), "Error: C(S(), Z()).copy"
-    assert R(C(1, 1), P(3, 1)).copy() == R(
-        C(1, 1), P(3, 1)
+    assert R(P(1, 1), P(3, 1)).copy() == R(
+        P(1, 1), P(3, 1)
     ), "Error: R(C(1, 1), P(3, 1).copy"

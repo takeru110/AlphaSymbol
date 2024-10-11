@@ -303,7 +303,8 @@ class C(Expr):
             )
 
     def copy(self):
-        return C(self.func, *self.args)
+        copy_args = (arg.copy() for arg in self.args)
+        return C(self.func.copy(), *copy_args)
 
 
 class R(Expr):
@@ -391,4 +392,4 @@ class R(Expr):
             )
 
     def copy(self):
-        return R(self.base, self.step)
+        return R(self.base.copy(), self.step.copy())
