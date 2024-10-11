@@ -9,6 +9,9 @@ class Expr:
             return False
         return self._eq_impl(other)
 
+    def __str__(self):
+        return NotImplementedError()
+
     def _eq_impl(self, other):
         """派生クラスで実装する等価性の比較"""
         raise NotImplementedError()
@@ -27,10 +30,6 @@ class Expr:
 
     def tree_string(self, indent: int = 0) -> str:
         """語の木構造をインデント付きで出力する"""
-        raise NotImplementedError()
-
-    def parenthesized_string(self) -> str:
-        """語の木構造を括弧で表現して出力する"""
         raise NotImplementedError()
 
     def complexity(self) -> float:
@@ -94,7 +93,7 @@ class Z(Expr):
     def tree_string(self, indent: int = 0) -> str:
         return " " * indent + "Z"
 
-    def parenthesized_string(self) -> str:
+    def __str__(self) -> str:
         return "Z()"
 
     def complexity(self) -> float:
@@ -131,7 +130,7 @@ class S(Expr):
     def tree_string(self, indent: int = 0) -> None:
         return " " * indent + "S"
 
-    def parenthesized_string(self) -> str:
+    def __str__(self) -> str:
         return "S()"
 
     def complexity(self) -> float:
@@ -174,7 +173,7 @@ class P(Expr):
     def tree_string(self, indent: int = 0) -> None:
         return " " * indent + f"P^{self.n}_{self.i}"
 
-    def parenthesized_string(self) -> str:
+    def __str__(self) -> str:
         return f"P({self.n}, {self.i})"
 
     def complexity(self) -> float:
@@ -218,9 +217,9 @@ class C(Expr):
             buffer = buffer + "\n" + arg.tree_string(indent + 2)
         return buffer
 
-    def parenthesized_string(self) -> str:
-        args_str = ", ".join(arg.parenthesized_string() for arg in self.args)
-        return f"C({self.func.parenthesized_string()}, {args_str})"
+    def __str__(self) -> str:
+        args_str = ", ".join(str(arg) for arg in self.args)
+        return f"C({str(self.func)}, {args_str})"
 
     def complexity(self) -> float:
         return 1.0
@@ -316,8 +315,8 @@ class R(Expr):
         buffer += self.step.tree_string(indent + 2)
         return buffer
 
-    def parenthesized_string(self) -> str:
-        buffer = f"R({self.base.parenthesized_string()}, {self.step.parenthesized_string()})"
+    def __str__(self) -> str:
+        buffer = f"R({str(self.base)}, {str(self.step)})"
         return buffer
 
     def complexity(self) -> float:

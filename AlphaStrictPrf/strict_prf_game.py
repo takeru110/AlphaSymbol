@@ -86,9 +86,7 @@ class StrictPrfGame:
         This method prints the current expression.
         """
         print(f"Step: {self.step_count}")
-        print(
-            f"Current Expression:\n{self.current_expr.parenthesized_string()}"
-        )
+        print(f"Current Expression:\n{str(self.current_expr)}")
 
     def _get_info(self) -> Dict[str, Any]:
         """

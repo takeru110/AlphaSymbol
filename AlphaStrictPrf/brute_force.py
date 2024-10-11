@@ -116,14 +116,14 @@ all_possible_expressions = generate_expressions(
 print(f"Generated {len(all_possible_expressions)} expressions.")
 with open(os.path.join(output_dir, "possible.csv"), "w") as file:
     for item in all_possible_expressions:
-        file.write(f"{item.parenthesized_string()}\n")
+        file.write(f"{str(item)}\n")
 
 # Step 2: Filter out invalid expressions according to validate_semantic()
 valid_expressions = filter_valid_expressions(all_possible_expressions)
 print(f"Filtered down to {len(valid_expressions)} valid expressions.")
 with open(os.path.join(output_dir, "valid.csv"), "w") as file:
     for item in valid_expressions:
-        file.write(f"{item.parenthesized_string()}\n")
+        file.write(f"{str(item)}\n")
 
 # Step 3: Filter expressions that match the input/output test case
 matching_expressions = filter_by_test_case(
@@ -132,8 +132,8 @@ matching_expressions = filter_by_test_case(
 print(f"Found {len(matching_expressions)} matching expressions.")
 with open(os.path.join(output_dir, "matching.csv"), "w") as file:
     for item in matching_expressions:
-        file.write(f"{item.parenthesized_string()}\n")
+        file.write(f"{str(item)}\n")
 
 # Output the matching expressions
 for expr in matching_expressions:
-    print(expr.parenthesized_string())
+    print(str(expr))
