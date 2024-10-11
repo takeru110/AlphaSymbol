@@ -194,6 +194,22 @@ def test_str():
 def test_change():
     expr = C(R(Z(), P(2, 1)), C(P(1, 1), S()))
     pos = deque([2, 1])
-    expr = expr.change(pos, R(Z(), P(2, 1)))
+    new_expr = expr.change(pos, R(Z(), P(2, 1)))
     expected_expr = C(R(Z(), P(2, 1)), C(R(Z(), P(2, 1)), S()))
-    assert expr == expected_expr, "Error: Expr.change()"
+    assert new_expr == expected_expr, "Error: Expr.change()"
+    # check non-destructive
+    expr_copy = expr.copy()
+    for pos in expr.positions():
+        expr_copy.change(pos, Z())
+        assert expr_copy == expr, "Error: Expr.change()"
+        assert id(expr_copy) != id(expr), "Error: Expr.change()"
+
+
+def test_copy():
+    assert Z().copy() == Z(), "Error: Z().copy"
+    assert S().copy() == S(), "Error: S().copy"
+    assert P(3, 1).copy() == P(3, 1), "Error: P(1, 2).copy"
+    assert C(S(), Z()).copy() == C(S(), Z()), "Error: C(S(), Z()).copy"
+    assert R(P(1, 1), P(3, 1)).copy() == R(
+        P(1, 1), P(3, 1)
+    ), "Error: R(C(1, 1), P(3, 1).copy"

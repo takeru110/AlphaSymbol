@@ -76,6 +76,12 @@ class Expr:
         - `expr` ("Expr"): 新しい式。指定された場所に置き換える新しいサブ式。
         """
 
+    def copy(self) -> "Expr":
+        """
+        属性が全く等しいコピーを作成する
+        """
+        raise NotImplementedError()
+
 
 class Z(Expr):
     def __init__(self, *args: any):
@@ -113,6 +119,9 @@ class Z(Expr):
         assert pos == Deque([]), "Error: invalid pos arg in Z.change()."
         return expr
 
+    def copy(self):
+        return Z()
+
 
 class S(Expr):
     def __init__(self, *args):
@@ -149,6 +158,9 @@ class S(Expr):
     def change(self, pos: Deque[int], expr: "Expr") -> None:
         assert pos == Deque([]), "Error: invalid pos arg in S.change()."
         return expr
+
+    def copy(self):
+        return S()
 
 
 class P(Expr):
@@ -192,6 +204,9 @@ class P(Expr):
     def change(self, pos: Deque[int], expr: "Expr") -> None:
         assert pos == Deque([]), "Error: invalid pos arg in P.change()."
         return expr
+
+    def copy(self):
+        return P(self.n, self.i)
 
 
 class C(Expr):
@@ -278,14 +293,20 @@ class C(Expr):
 
         arg_id = pos.popleft()
         if arg_id == 1:
-            return C(self.func.change(pos, expr), *self.args)
+            copy_args = (arg.copy() for arg in self.args)
+            return C(self.func.change(pos, expr), *copy_args)
         elif arg_id >= 2:
-            self.args[arg_id - 2] = self.args[arg_id - 2].change(pos, expr)
-            return C(self.func, *self.args)
+            copy_args = [arg.copy() for arg in self.args]
+            copy_args[arg_id - 2] = copy_args[arg_id - 2].change(pos, expr)
+            return C(self.func.copy(), *copy_args)
         else:
             raise ValueError(
                 "Error: pos arg of C.change() is invalid. Positive int is needed."
             )
+
+    def copy(self):
+        copy_args = (arg.copy() for arg in self.args)
+        return C(self.func.copy(), *copy_args)
 
 
 class R(Expr):
@@ -361,12 +382,16 @@ class R(Expr):
     def change(self, pos: Deque[int], expr: "Expr") -> None:
         if pos == Deque([]):
             return expr
+
         arg_id = pos.popleft()
         if arg_id == 1:
-            return self.base.change(pos, expr)
+            return R(self.base.change(pos, expr), self.step.copy())
         elif arg_id == 2:
-            return self.step.change(pos, expr)
+            return R(self.base.copy(), self.step.change(pos, expr))
         else:
             raise ValueError(
                 "Error: invaid pos argument (not 1 or 2) at R.change()"
             )
+
+    def copy(self):
+        return R(self.base.copy(), self.step.copy())
