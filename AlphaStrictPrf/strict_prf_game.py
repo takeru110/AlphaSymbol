@@ -242,6 +242,9 @@ class StrictPrfGame:
         return Action(place, expr)
 
     def generate_state(self) -> List[int]:
+        """
+        generate state which is used as input to DNN model
+        """
         ret = self.input_sequence + self.output_sequence
         assert (
             len(ret) + len(str(self.current_expr)) <= self.n_obs
@@ -249,3 +252,20 @@ class StrictPrfGame:
         st = "".join(str(self.current_expr)).ljust(self.n_obs - len(ret))
         ret.extend([ord(x) for x in st])
         return ret
+
+    def step(self, input: int):
+        """
+        step function for DNN model
+        Returns:
+            state: Express current state for DNN
+            reward: Reward for RL
+            terminated: Current state is goal
+            truncated: Terminated do too many attempts.
+            info: other information
+        """
+        action = self.int2action(input)
+        expr, reward, terminated, truncated, info = self.step_human_readable(
+            action
+        )
+        state = self.generate_state()
+        return state, reward, terminated, truncated, info

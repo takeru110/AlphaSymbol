@@ -1,3 +1,4 @@
+import logging
 from collections import deque
 
 import pytest
@@ -204,3 +205,32 @@ def test_generate_state():
     expected_state.extend([ord(" ")] * (n_obs - len(expected_state)))
     state = game.generate_state()
     assert expected_state == state, "Error. Expr.generate_state()"
+
+
+def test_step():
+    game = StrictPrfGame(
+        max_p_arity=3,
+        expr_depth=4,
+        max_c_args=2,
+        max_steps=10,
+        input_sequence=[1, 2, 3, 4, 5, 6],
+        output_sequence=[4, 5, 6, 7, 8, 9],
+        n_obs=50,
+        init_expr=Z(),
+    )
+    game.reset()
+    game.action_space.n
+    state, _, _, _, info = game.step(10)
+    logging.debug(info["expression"])
+    state, _, _, _, info = game.step(25)
+    logging.debug(info["expression"])
+    state, _, _, _, info = game.step(8)
+    logging.debug(info["expression"])
+    state, _, _, _, info = game.step(30)
+    logging.debug(info["expression"])
+    state, _, _, _, info = game.step(12)
+    logging.debug(info["expression"])
+    state, _, _, _, info = game.step(78)
+    logging.debug(info["expression"])
+    state, _, _, _, info = game.step(89)
+    logging.debug(info["expression"])
