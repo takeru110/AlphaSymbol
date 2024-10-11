@@ -202,6 +202,7 @@ def test_change():
     for pos in expr.positions():
         expr_copy.change(pos, Z())
         assert expr_copy == expr, "Error: Expr.change()"
+        assert id(expr_copy) != id(expr), "Error: Expr.change()"
 
 
 def test_copy():
