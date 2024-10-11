@@ -197,3 +197,13 @@ def test_change():
     expr = expr.change(pos, R(Z(), P(2, 1)))
     expected_expr = C(R(Z(), P(2, 1)), C(R(Z(), P(2, 1)), S()))
     assert expr == expected_expr, "Error: Expr.change()"
+
+
+def test_copy():
+    assert Z().copy() == Z(), "Error: Z().copy"
+    assert S().copy() == S(), "Error: S().copy"
+    assert P(3, 1).copy() == P(3, 1), "Error: P(1, 2).copy"
+    assert C(S(), Z()).copy() == C(S(), Z()), "Error: C(S(), Z()).copy"
+    assert R(C(1, 1), P(3, 1)).copy() == R(
+        C(1, 1), P(3, 1)
+    ), "Error: R(C(1, 1), P(3, 1).copy"
