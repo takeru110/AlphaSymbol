@@ -182,7 +182,11 @@ class StrictPrfGame:
                 truncated,
                 self._get_info(),
             )
-        self.current_expr = new_expr  # change expression
+
+        # new expression is accepted as next expression
+        self.current_expr = new_expr
+        length_score = 0.9 ** len(str(self.current_expr))
+
         matching_elements = sum(
             1
             for t, e in zip(self.output_sequence, self.input_sequence)
