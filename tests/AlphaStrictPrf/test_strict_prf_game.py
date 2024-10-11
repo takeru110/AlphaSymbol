@@ -164,3 +164,22 @@ def test_step_human_readable():
             pass
         case _:
             AssertionError("Error: StrictPrfGame.step_human_readable()")
+
+
+def test_int2action():
+    # When generating semantically invalid expression
+    input = [1, 2, 3]
+    output = [2, 3, 4]
+    game = StrictPrfGame(
+        2, 2, 3, 100, input, output, n_obs=100, init_expr=C(P(1, 1), S())
+    )
+    assert game.int2action(0) == Action([], Z())
+    assert game.int2action(1) == Action([], S())
+    assert game.int2action(4) == Action([], P(2, 2))
+    assert game.int2action(6) == Action([], C(Z(), Z(), Z()))
+
+    assert game.int2action(45 + 0) == Action([1, 1], Z())
+    assert game.int2action(45 + 1) == Action([1, 1], S())
+
+    assert game.int2action(90 + 4) == Action([2, 2], P(2, 2))
+    assert game.int2action(90 + 6) == Action([2, 2], C(Z(), Z(), Z()))
