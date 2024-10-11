@@ -105,40 +105,58 @@ def test_reset(game_instance):
 
 def test_step_human_readable():
     # When generating semantically invalid expression
-    input = [1, 2, 3]
-    output = [2, 3, 4]
     game1 = StrictPrfGame(
-        2, 2, 2, 100, input, output, n_obs=100, init_expr=C(P(1, 1), S())
+        max_p_arity=2,
+        expr_depth=2,
+        max_c_args=2,
+        max_steps=100,
+        input_sequence=[1, 2, 3],
+        output_sequence=[2, 3, 4],
+        n_obs=100,
+        init_expr=C(P(1, 1), S()),
     )
     game1.reset()
     action1 = Action(deque([1]), Z())
     ret = game1.step_human_readable(action1)
     ret_str = (str(ret[0]), *ret[1:])
     match ret_str:
-        case ("C(P(1, 1), S())", _, False, False, _):
+        case ("C(Z(), S())", _, False, False, _):
             pass
         case _:
             pytest.fail("Error: StrictPrfGame.step_human_readable()")
 
     # When generating arity != 1
-    input = [1, 2, 3]
-    output = [1, 2, 3]
-    game2 = StrictPrfGame(2, 2, 2, 100, input, output, n_obs=100)
+    game2 = StrictPrfGame(
+        max_p_arity=2,
+        expr_depth=2,
+        max_c_args=2,
+        max_steps=100,
+        input_sequence=[1, 2, 3],
+        output_sequence=[1, 2, 3],
+        n_obs=100,
+        init_expr=Z(),
+    )
     game2.reset()
     action1 = Action(deque([]), P(2, 1))
 
     ret = game2.step_human_readable(action1)
     ret_str = (str(ret[0]), *ret[1:])
     match ret_str:
-        case ("Z()", _, False, False, _):
+        case ("P(2, 1)", _, False, False, _):
             pass
         case _:
             pytest.fail("Error: StrictPrfGame.step_human_readable()")
 
     # When agent steped too much
-    input = [1, 2, 3]
-    output = [4, 5, 6]
-    game3 = StrictPrfGame(2, 2, 2, 3, input, output, n_obs=10)
+    game3 = StrictPrfGame(
+        max_p_arity=2,
+        expr_depth=2,
+        max_c_args=2,
+        max_steps=3,
+        input_sequence=[1, 2, 3],
+        output_sequence=[4, 5, 6],
+        n_obs=10,
+    )
     game3.reset()
     action1 = Action(deque([]), P(2, 1))
     action2 = Action(deque([]), Z())
@@ -155,9 +173,15 @@ def test_step_human_readable():
             pytest.fail("Error: StrictPrfGame.step_human_readable()")
 
     # When generate correct answer
-    input = [1, 2, 3]
-    output = [1, 2, 3]
-    game4 = StrictPrfGame(2, 2, 2, 100, input, output, n_obs=100)
+    game4 = StrictPrfGame(
+        max_p_arity=2,
+        expr_depth=2,
+        max_c_args=2,
+        max_steps=100,
+        input_sequence=[1, 2, 3],
+        output_sequence=[1, 2, 3],
+        n_obs=100,
+    )
     game4.reset()
     action1 = Action(deque([]), P(1, 1))
 
