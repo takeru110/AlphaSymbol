@@ -73,20 +73,20 @@ def test_available_actions(game_instance):
     expected_actions = [
         Action(deque([]), Z()),
         Action(deque([]), S()),
-        Action(deque([]), R(Z(), Z())),
         Action(deque([]), P(1, 1)),
         Action(deque([]), P(2, 1)),
         Action(deque([]), P(2, 2)),
         Action(deque([]), C(Z(), Z())),
         Action(deque([]), C(Z(), Z(), Z())),
+        Action(deque([]), R(Z(), Z())),
     ]
-    processed_expected_actions = [
+    processed_expected_actions = set(
         Action(tuple(action.position), action.expr)
         for action in expected_actions
-    ]
-    processed_actions = [
+    )
+    processed_actions = set(
         Action(tuple(action.position), action.expr) for action in actions
-    ]
+    )
     assert (
         processed_actions == processed_expected_actions
     ), "Error: available_actions"
@@ -187,3 +187,20 @@ def test_int2action():
 
     assert game.int2action(90 + 4) == Action([2, 2], P(2, 2))
     assert game.int2action(90 + 6) == Action([2, 2], C(Z(), Z(), Z()))
+
+
+def test_generate_state():
+    input = [1, 2, 3, 4, 5]
+    output = [2, 3, 4, 5, 6]
+    init_expr = C(P(1, 1), S())
+    n_obs = 30
+    game = StrictPrfGame(
+        2, 2, 3, 100, input, output, n_obs=n_obs, init_expr=init_expr
+    )
+    expected_state = []
+    expected_state.extend(input)
+    expected_state.extend(output)
+    expected_state.extend([ord(x) for x in str(init_expr)])
+    expected_state.extend([ord(" ")] * (n_obs - len(expected_state)))
+    state = game.generate_state()
+    assert expected_state == state, "Error. Expr.generate_state()"

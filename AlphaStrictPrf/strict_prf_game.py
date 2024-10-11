@@ -31,7 +31,7 @@ class StrictPrfGame:
         max_steps: int = 100,
         input_sequence: Optional[List[int]] = None,
         output_sequence: Optional[List[int]] = None,
-        n_obs: int = 20000,
+        n_obs: int = 1000,
         init_expr: Expr = Z(),
     ):
         self.max_p_arity = max_p_arity
@@ -47,16 +47,15 @@ class StrictPrfGame:
         )
         self.init_expr = init_expr
 
-        self.current_expr: Expr = Z()
+        self.current_expr: Expr = init_expr
         self.action_space = ActType(
             self.max_p_arity, self.max_c_args, self.expr_depth
         )
 
         # Generate possible tokens based on game parameters
         self.tokens = self.available_tokens()
-        self.n_obs = (
-            n_obs  # like a size of display which will be input of DQN model
-        )
+        # like a size of display which will be input of DQN model
+        self.n_obs = n_obs
 
     def reset(self):
         """
@@ -241,3 +240,12 @@ class StrictPrfGame:
         # exprの計算: remainderが対応するexprに対応
         expr = self.available_tokens()[remainder]
         return Action(place, expr)
+
+    def generate_state(self) -> List[int]:
+        ret = self.input_sequence + self.output_sequence
+        assert (
+            len(ret) + len(str(self.current_expr)) <= self.n_obs
+        ), "Error: self.current_expr is too long and larger than state window length."
+        st = "".join(str(self.current_expr)).ljust(self.n_obs - len(ret))
+        ret.extend([ord(x) for x in st])
+        return ret
