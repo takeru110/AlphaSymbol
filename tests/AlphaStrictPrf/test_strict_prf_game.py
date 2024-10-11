@@ -111,59 +111,63 @@ def test_step_human_readable():
         2, 2, 2, 100, input, output, n_obs=100, init_expr=C(P(1, 1), S())
     )
     game1.reset()
-    action1 = Action([1], Z())
+    action1 = Action(deque([1]), Z())
     ret = game1.step_human_readable(action1)
-    match ret:
-        case ("C(P(1, 1), S()", _, False, False, _):
+    ret_str = (str(ret[0]), *ret[1:])
+    match ret_str:
+        case ("C(P(1, 1), S())", _, False, False, _):
             pass
         case _:
-            AssertionError("Error: StrictPrfGame.step_human_readable()")
+            pytest.fail("Error: StrictPrfGame.step_human_readable()")
 
     # When generating arity != 1
     input = [1, 2, 3]
     output = [1, 2, 3]
     game2 = StrictPrfGame(2, 2, 2, 100, input, output, n_obs=100)
     game2.reset()
-    action1 = Action([], P(2, 1))
+    action1 = Action(deque([]), P(2, 1))
 
     ret = game2.step_human_readable(action1)
-    match ret:
-        case ("P(1, 1)", _, False, False, _):
+    ret_str = (str(ret[0]), *ret[1:])
+    match ret_str:
+        case ("Z()", _, False, False, _):
             pass
         case _:
-            AssertionError("Error: StrictPrfGame.step_human_readable()")
+            pytest.fail("Error: StrictPrfGame.step_human_readable()")
 
     # When agent steped too much
     input = [1, 2, 3]
     output = [4, 5, 6]
     game3 = StrictPrfGame(2, 2, 2, 3, input, output, n_obs=10)
     game3.reset()
-    action1 = Action([], P(2, 1))
-    action2 = Action([], Z())
-    action3 = Action([], P(1, 1))
+    action1 = Action(deque([]), P(2, 1))
+    action2 = Action(deque([]), Z())
+    action3 = Action(deque([]), P(1, 1))
     game3.step_human_readable(action1)
     game3.step_human_readable(action2)
     ret = game3.step_human_readable(action3)
+    ret_str = (str(ret[0]), *ret[1:])
 
-    match ret:
+    match ret_str:
         case ("P(1, 1)", _, False, True, _):
             pass
         case _:
-            AssertionError("Error: StrictPrfGame.step_human_readable()")
+            pytest.fail("Error: StrictPrfGame.step_human_readable()")
 
     # When generate correct answer
     input = [1, 2, 3]
     output = [1, 2, 3]
     game4 = StrictPrfGame(2, 2, 2, 100, input, output, n_obs=100)
     game4.reset()
-    action1 = Action([], P(1, 1))
+    action1 = Action(deque([]), P(1, 1))
 
     ret = game4.step_human_readable(action1)
-    match ret:
+    ret_str = (str(ret[0]), *ret[1:])
+    match ret_str:
         case ("P(1, 1)", _, True, False, _):
             pass
         case _:
-            AssertionError("Error: StrictPrfGame.step_human_readable()")
+            pytest.fail("Error: StrictPrfGame.step_human_readable()")
 
 
 def test_int2action():
