@@ -32,9 +32,7 @@ def test_Z():
     assert (
         z_func.arity() is None
     ), f"Error: Z arity should be 0 but now {z_func.arity()}."
-    assert (
-        z_func.parenthesized_string() == "Z()"
-    ), "Error: Z parenthesized wrongly."
+    assert str(z_func) == "Z()", "Error: Z.__str__() wrongly."
     assert z_func.tree_string() == "Z", "Error: Z tree is wrong."
     assert z_func.complexity() == 1.0, "Error: Complesity of Z is wrong"
 
@@ -52,9 +50,7 @@ def test_S():
     assert (
         s_func.arity() == 1
     ), f"Error: S arity should be 1 but {s_func.arity()}."
-    assert (
-        s_func.parenthesized_string() == "S()"
-    ), "Error: S parenthesized wrongly."
+    assert str(s_func) == "S()", "Error: S.__str__() wrongly."
     assert s_func.tree_string() == "S", "Error: S tree is wrong."
     assert s_func.complexity() == 1.0, "Error: Complesity of S is wrong"
 
@@ -87,8 +83,8 @@ def test_C():
         c_func_always_one.tree_string() == "C^2\n  S\n  Z"
     ), "C tree is wrong."
     assert (
-        c_func_always_one.parenthesized_string() == "C(S(), Z())"
-    ), "Error: C is parenthesized wrongly"
+        str(c_func_always_one) == "C(S(), Z())"
+    ), "Error: C.__str__() is wrongly"
     assert (
         c_func_always_one.complexity() == 1.0
     ), "Error: C Complexity is wrong."
@@ -101,9 +97,7 @@ def test_C():
     assert add_two.evaluate(17) == 19, "Error: C evaluation is wrong"
     assert add_two.arity() == 1, "Error: C arity is wrong."
     assert add_two.tree_string() == "C^2\n  S\n  S", "C tree is wrong."
-    assert (
-        add_two.parenthesized_string() == "C(S(), S())"
-    ), "Error: C is parenthesized wrongly"
+    assert str(add_two) == "C(S(), S())", "Error: C.__str__() is wrongly"
     assert add_two.complexity() == 1.0, "Error: C Complexity is wrong."
 
     csss_semantic_invalid = C(S(), S(), S())
@@ -131,8 +125,8 @@ def test_R():
         add.tree_string() == "R\n  P^1_1\n  C^2\n    S\n    P^3_2"
     ), "Error: R tree is wrong"
     assert (
-        add.parenthesized_string() == "R(P(1, 1), C(S(), P(3, 2)))"
-    ), "Error: R parenthesis is wrong"
+        str(add) == "R(P(1, 1), C(S(), P(3, 2)))"
+    ), "Error: R.__str__() is wrong"
     assert add.complexity() == 1.0, "Error: add complexity is wrong."
 
     when0_then1_else0 = C(R(S(), P(3, 3)), P(1, 1), Z())
@@ -181,6 +175,20 @@ def test_eq():
     expr_set1 = {C(S(), Z()), R(S(), C(P(3, 1), S(), S())), Z()}
     expr_set2 = {R(S(), C(P(3, 1), S(), S())), Z(), C(S(), Z())}
     assert expr_set1 == expr_set2, "Error: Expr set equality"
+
+
+def test_str():
+    expr1 = C(S(), Z())
+    expr2 = R(S(), C(P(3, 1), S(), S()))
+    expr3 = R(P(1, 1), C(S(), P(3, 2)))
+
+    str_expr1 = "C(S(), Z())"
+    str_expr2 = "R(S(), C(P(3, 1), S(), S()))"
+    str_expr3 = "R(P(1, 1), C(S(), P(3, 2)))"
+
+    assert str(expr1) == str_expr1, "Error: Expr.__str__()"
+    assert str(expr2) == str_expr2, "Error: Expr.__str__()"
+    assert str(expr3) == str_expr3, "Error: Expr.__str__()"
 
 
 def test_change():
