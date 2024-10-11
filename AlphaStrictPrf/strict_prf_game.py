@@ -56,9 +56,7 @@ class StrictPrfGame:
         This method prints the current expression.
         """
         print(f"Step: {self.step_count}")
-        print(
-            f"Current Expression:\n{self.current_expr.parenthesized_string()}"
-        )
+        print(f"Current Expression:\n{str(self.current_expr)}")
 
     def get_observation(self) -> Dict[str, Any]:
         """
@@ -68,7 +66,7 @@ class StrictPrfGame:
             observation (dict): The current observation.
         """
         observation = {
-            "expression": self.current_expr.parenthesized_string(),
+            "expression": str(self.current_expr),
             "step_count": self.step_count,
         }
         return observation
