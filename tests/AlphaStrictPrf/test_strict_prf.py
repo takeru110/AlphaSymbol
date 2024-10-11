@@ -1,4 +1,5 @@
 import logging
+from collections import deque
 
 from AlphaStrictPrf.strict_prf import C, P, R, S, Z
 
@@ -188,3 +189,11 @@ def test_str():
     assert str(expr1) == str_expr1, "Error: Expr.__str__()"
     assert str(expr2) == str_expr2, "Error: Expr.__str__()"
     assert str(expr3) == str_expr3, "Error: Expr.__str__()"
+
+
+def test_change():
+    expr = C(R(Z(), P(2, 1)), C(P(1, 1), S()))
+    pos = deque([2, 1])
+    expr = expr.change(pos, R(Z(), P(2, 1)))
+    expected_expr = C(R(Z(), P(2, 1)), C(R(Z(), P(2, 1)), S()))
+    assert expr == expected_expr, "Error: Expr.change()"
