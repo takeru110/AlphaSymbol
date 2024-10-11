@@ -95,7 +95,13 @@ class StrictPrfGame:
         Returns:
             observation (dict): The current observation.
         """
-        output = [self.current_expr.evaluate(i) for i in self.input_sequence]
+        try:
+            output = [
+                self.current_expr.evaluate(i) for i in self.input_sequence
+            ]
+        except AssertionError:
+            output = [-1] * len(self.output_sequence)
+
         info = {
             "expression": str(self.current_expr),
             "step_count": self.step_count,
@@ -156,6 +162,8 @@ class StrictPrfGame:
         truncated = self.step_count >= self.max_steps
         pos = action.position
         exp = action.expr
+
+        # position is invalid
         if pos not in self.available_positions():
             return (
                 self.current_expr,
@@ -165,8 +173,11 @@ class StrictPrfGame:
                 self._get_info(),
             )
 
-        new_expr: Expr = self.current_expr.change(pos, exp)
-        if not new_expr.validate_semantic():
+        # new expression is accepted as next expression
+        self.current_expr: Expr = self.current_expr.change(pos, exp)
+
+        # Next expression is invalid semantically
+        if not self.current_expr.validate_semantic():
             return (
                 self.current_expr,
                 0.1 + length_score,
@@ -174,7 +185,7 @@ class StrictPrfGame:
                 truncated,
                 self._get_info(),
             )
-        if new_expr.arity() != 1:
+        if self.current_expr.arity() != 1:
             return (
                 self.current_expr,
                 0.2 + length_score,
@@ -183,18 +194,16 @@ class StrictPrfGame:
                 self._get_info(),
             )
 
-        # new expression is accepted as next expression
-        self.current_expr = new_expr
         length_score = 0.9 ** len(str(self.current_expr))
 
         matching_elements = sum(
             1
             for t, e in zip(self.output_sequence, self.input_sequence)
-            if t == new_expr.evaluate(e)
+            if t == self.current_expr.evaluate(e)
         )
         if matching_elements == len(self.input_sequence):
             return (
-                new_expr,
+                self.current_expr,
                 1 + length_score,
                 True,
                 truncated,
@@ -204,7 +213,7 @@ class StrictPrfGame:
         self.step_count += 1
         correctness_score = 0.3 * matching_elements / len(self.input_sequence)
         return (
-            new_expr,
+            self.current_expr,
             0.3 + correctness_score + length_score,
             False,
             truncated,
