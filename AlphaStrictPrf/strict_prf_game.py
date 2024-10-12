@@ -250,6 +250,7 @@ class StrictPrfGame:
             place.append(quotient % base)
             quotient //= base
 
+        place.reverse()
         # exprの計算: remainderが対応するexprに対応
         expr = self.available_tokens()[remainder]
         return Action(place, expr)
@@ -270,11 +271,11 @@ class StrictPrfGame:
         """
         step function for DNN model
         Returns:
-            state: Express current state for DNN
-            reward: Reward for RL
-            terminated: Current state is goal
-            truncated: Terminated do too many attempts.
-            info: other information
+        - state: Express current state for DNN
+        - reward: Reward for RL
+        - terminated: Current state is goal
+        - truncated: Terminated do too many attempts.
+        - info: other information
         """
         action = self.int2action(input)
         expr, reward, terminated, truncated, info = self.step_human_readable(

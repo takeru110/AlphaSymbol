@@ -1,4 +1,3 @@
-import logging
 from collections import deque
 
 import pytest
@@ -202,16 +201,16 @@ def test_int2action():
     game = StrictPrfGame(
         2, 2, 3, 100, input, output, n_obs=100, init_expr=C(P(1, 1), S())
     )
-    assert game.int2action(0) == Action([], Z())
-    assert game.int2action(1) == Action([], S())
-    assert game.int2action(4) == Action([], P(2, 2))
-    assert game.int2action(6) == Action([], C(Z(), Z(), Z()))
+    assert game.int2action(0) == Action(deque([]), Z())
+    assert game.int2action(1) == Action(deque([]), S())
+    assert game.int2action(4) == Action(deque([]), P(2, 2))
+    assert game.int2action(6) == Action(deque([]), C(Z(), Z(), Z()))
 
-    assert game.int2action(45 + 0) == Action([1, 1], Z())
-    assert game.int2action(45 + 1) == Action([1, 1], S())
+    assert game.int2action(45 + 0) == Action(deque([1, 1]), Z())
+    assert game.int2action(45 + 1) == Action(deque([1, 1]), S())
 
-    assert game.int2action(90 + 4) == Action([2, 2], P(2, 2))
-    assert game.int2action(90 + 6) == Action([2, 2], C(Z(), Z(), Z()))
+    assert game.int2action(90 + 4) == Action(deque([2, 2]), P(2, 2))
+    assert game.int2action(90 + 6) == Action(deque([2, 2]), C(Z(), Z(), Z()))
 
 
 def test_generate_state():
@@ -245,18 +244,138 @@ def test_step():
         init_expr=Z(),
     )
     game.reset()
+    # Step 1: Take a step with input 10 and check the result
+    state, reward, terminated, truncated, info = game.step(10)
+
+    # Assert conditions for the step
+    assert len(state) == game.n_obs, "State length is incorrect"
+    assert isinstance(reward, float), "Reward should be a float"
+    assert isinstance(terminated, bool), "Terminated should be a boolean"
+    assert isinstance(truncated, bool), "Truncated should be a boolean"
+    assert "expression" in info, "Info should contain 'expression'"
+    assert not terminated, "Terminated should be False at this point"
+    assert not truncated, "Truncated should be False at this point"
+
+    # Step 2: Take another step and verify state changes accordingly
+    state, reward, terminated, truncated, info = game.step(25)
+
+    # Assert conditions after second step
+    assert (
+        len(state) == game.n_obs
+    ), "State length is incorrect after second step"
+    assert isinstance(
+        reward, float
+    ), "Reward should be a float after second step"
+    assert not terminated, "Terminated should still be False"
+    assert not truncated, "Truncated should still be False"
+
+    # Further steps to check changes in the game
+    for step_input in [8, 30, 12, 78, 89]:
+        state, reward, terminated, truncated, info = game.step(step_input)
+        assert (
+            len(state) == game.n_obs
+        ), f"State length is incorrect after step {step_input}"
+        assert isinstance(
+            reward, float
+        ), f"Reward should be a float after step {step_input}"
+        assert isinstance(
+            terminated, bool
+        ), f"Terminated should be a boolean after step {step_input}"
+        assert isinstance(
+            truncated, bool
+        ), f"Truncated should be a boolean after step {step_input}"
+        assert (
+            "expression" in info
+        ), f"Info should contain 'expression' after step {step_input}"
+
+
+def test_step_flow():
+    game = StrictPrfGame(
+        max_p_arity=3,
+        expr_depth=4,
+        max_c_args=2,
+        max_steps=10,
+        input_sequence=[1, 2, 3, 4, 5, 6],
+        output_sequence=[4, 5, 6, 7, 8, 9],
+        n_obs=50,
+        init_expr=Z(),
+    )
+    game.reset()
     game.action_space.n
-    state, _, _, _, info = game.step(10)  # R(Z, Z)
-    logging.debug(info["expression"])
-    state, _, _, _, info = game.step(25)
-    logging.debug(info["expression"])
-    state, _, _, _, info = game.step(8)
-    logging.debug(info["expression"])
-    state, _, _, _, info = game.step(30)
-    logging.debug(info["expression"])
-    state, _, _, _, info = game.step(12)
-    logging.debug(info["expression"])
-    state, _, _, _, info = game.step(78)
-    logging.debug(info["expression"])
-    state, _, _, _, info = game.step(89)
-    logging.debug(info["expression"])
+
+    state, _, terminated, truncated, info = game.step(10)  # [] R(Z(), Z())
+    assert (
+        str(info["expression"]) == "R(Z(), Z())"
+    ), "Error: return value state of SrictPrfGame.step()"
+    assert (
+        terminated == False
+    ), "Error: return value terminated of StrictPrfGame.step()"
+    assert (
+        truncated == False
+    ), "Error: return value truncated of StrictPrfGame.step()"
+
+    state, _, terminated, truncated, info = game.step(25)  # [2] P(2, 1)
+    assert (
+        str(info["expression"]) == "R(Z(), P(2, 1))"
+    ), "Error: return value state of SrictPrfGame.step()"
+    assert (
+        terminated == False
+    ), "Error: return value terminated of StrictPrfGame.step()"
+    assert (
+        truncated == False
+    ), "Error: return value truncated of StrictPrfGame.step()"
+
+    state, _, terminated, truncated, info = game.step(8)  # [] C(Z(), Z())
+    assert (
+        str(info["expression"]) == "C(Z(), Z())"
+    ), "Error: return value state of SrictPrfGame.step()"
+    assert (
+        terminated == False
+    ), "Error: return value terminated of StrictPrfGame.step()"
+    assert (
+        truncated == False
+    ), "Error: return value truncated of StrictPrfGame.step()"
+
+    state, _, terminated, truncated, info = game.step(30)  # [2] C(Z(), Z())
+    assert (
+        str(info["expression"]) == "C(Z(), C(Z(), Z()))"
+    ), "Error: return value state of SrictPrfGame.step()"
+    assert (
+        terminated == False
+    ), "Error: return value terminated of StrictPrfGame.step()"
+    assert (
+        truncated == False
+    ), "Error: return value truncated of StrictPrfGame.step()"
+
+    state, _, terminated, truncated, info = game.step(12)  # [1] S()
+    assert (
+        str(info["expression"]) == "C(S(), C(Z(), Z()))"
+    ), "Error: return value state of SrictPrfGame.step()"
+    assert (
+        terminated == False
+    ), "Error: return value terminated of StrictPrfGame.step()"
+    assert (
+        truncated == False
+    ), "Error: return value truncated of StrictPrfGame.step()"
+
+    state, _, terminated, truncated, info = game.step(78)  # [2, 1] S()
+    assert (
+        str(info["expression"]) == "C(S(), C(S(), Z()))"
+    ), "Error: return value state of SrictPrfGame.step()"
+    assert (
+        terminated == False
+    ), "Error: return value terminated of StrictPrfGame.step()"
+    assert (
+        truncated == False
+    ), "Error: return value truncated of StrictPrfGame.step()"
+
+    state, _, terminated, truncated, info = game.step(89)  # [2, 2] S()
+    assert (
+        str(info["expression"]) == "C(S(), C(S(), S()))"
+    ), "Error: return value state of SrictPrfGame.step()"
+    assert (
+        terminated == True
+    ), "Error: return value terminated of StrictPrfGame.step()"
+    assert (
+        truncated == False
+    ), "Error: return value truncated of StrictPrfGame.step()"
