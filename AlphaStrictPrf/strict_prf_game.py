@@ -10,6 +10,7 @@ Action = namedtuple("Action", ["position", "expr"])
 class ActType:
     def __init__(self, p, c, d):
         self.n = c**d * (3 + int(1 / 2 * p * (p + 1)) + c)
+        self.n_post_expr = 3 + int(1 / 2 * p * (p + 1)) + c
 
     def sample(self):
         return random.randint(0, self.n)
@@ -30,7 +31,7 @@ class StrictPrfGame:
         max_steps: int = 100,
         input_sequence: Optional[List[int]] = None,
         output_sequence: Optional[List[int]] = None,
-        n_obs: int = 20000,
+        n_obs: int = 1000,
         init_expr: Expr = Z(),
     ):
         self.max_p_arity = max_p_arity
@@ -46,16 +47,15 @@ class StrictPrfGame:
         )
         self.init_expr = init_expr
 
-        self.current_expr: Expr = Z()
+        self.current_expr: Expr = init_expr
         self.action_space = ActType(
             self.max_p_arity, self.max_c_args, self.expr_depth
         )
 
         # Generate possible tokens based on game parameters
         self.tokens = self.available_tokens()
-        self.n_obs = (
-            n_obs  # like a size of display which will be input of DQN model
-        )
+        # like a size of display which will be input of DQN model
+        self.n_obs = n_obs
 
     def reset(self):
         """
@@ -88,6 +88,15 @@ class StrictPrfGame:
         print(f"Step: {self.step_count}")
         print(f"Current Expression:\n{str(self.current_expr)}")
 
+    def current_output(self):
+        try:
+            output = [
+                self.current_expr.evaluate(i) for i in self.input_sequence
+            ]
+        except AssertionError:
+            output = [-1] * len(self.output_sequence)
+        return output
+
     def _get_info(self) -> Dict[str, Any]:
         """
         Returns the current observation.
@@ -95,12 +104,7 @@ class StrictPrfGame:
         Returns:
             observation (dict): The current observation.
         """
-        try:
-            output = [
-                self.current_expr.evaluate(i) for i in self.input_sequence
-            ]
-        except AssertionError:
-            output = [-1] * len(self.output_sequence)
+        output = self.current_output()
 
         info = {
             "expression": str(self.current_expr),
@@ -121,7 +125,6 @@ class StrictPrfGame:
         tokens = [
             Z(),
             S(),
-            R(Z(), Z()),
         ]  # Z(), S(), R(Z(), Z()) をデフォルトで追加
 
         # P(n, i) の生成
@@ -138,6 +141,7 @@ class StrictPrfGame:
                 C(Z(), *args)
             )  # C(Z(), Z(), ...) のように Expr 型を生成
 
+        tokens.append(R(Z(), Z()))
         return tokens
 
     def available_positions(self) -> List[deque[int]]:
@@ -163,6 +167,9 @@ class StrictPrfGame:
         pos = action.position
         exp = action.expr
 
+        # new expression is accepted as next expression
+        self.current_expr: Expr = self.current_expr.change(pos, exp)
+
         # position is invalid
         if pos not in self.available_positions():
             return (
@@ -172,9 +179,6 @@ class StrictPrfGame:
                 truncated,
                 self._get_info(),
             )
-
-        # new expression is accepted as next expression
-        self.current_expr: Expr = self.current_expr.change(pos, exp)
 
         # Next expression is invalid semantically
         if not self.current_expr.validate_semantic():
@@ -219,3 +223,63 @@ class StrictPrfGame:
             truncated,
             self._get_info(),
         )
+
+    def int2action(self, num: int) -> Action:
+        """Convert int which expresses action into Action
+
+        このメソッドは引数としてint型を受け、Action型(自然数のリストplaceとExpr型変数exprの組)を返す。
+        int型をself.action_space.n_post_exprで割ったとき、商がplaceを決め、あまりがexprを決める。
+
+        placeはこの商をmax_c_args + 1進数で表したときの各桁の数値をリストにしたものである。
+        exprは、仕様書に書いてある書き換え先変数の値 Z(), S(), P(1, 1), P(2, 1), P(2, 2), P(3, 1), P(3, 2),...,C(Z(), Z()), C(Z(), Z(), Z()), ..., R(Z(), Z())
+        をこの順に0, 1, ...,self.action_space.n_post_expr - 1, という値を対応させ、余りに対応する式がexprである。
+
+        Args
+            int: 行動を表す自然数
+        Returns:
+            Action: 行動を表すAction型
+        """
+
+        # まず、numをself.action_space.n_post_exprで割る
+        quotient, remainder = divmod(num, self.action_space.n_post_expr)
+
+        # placeの計算: quotientを(max_c_args + 1)進数のリストに変換
+        place = deque([])
+        base = self.max_c_args + 1
+        while quotient > 0:
+            place.append(quotient % base)
+            quotient //= base
+
+        place.reverse()
+        # exprの計算: remainderが対応するexprに対応
+        expr = self.available_tokens()[remainder]
+        return Action(place, expr)
+
+    def generate_state(self) -> List[int]:
+        """
+        generate state which is used as input to DNN model
+        """
+        ret = self.input_sequence + self.output_sequence + self.current_output()
+        assert (
+            len(ret) + len(str(self.current_expr)) <= self.n_obs
+        ), "Error: self.current_expr is too long and larger than state window length."
+        st = "".join(str(self.current_expr)).ljust(self.n_obs - len(ret))
+        ret.extend([ord(x) for x in st])
+        return ret
+
+    def step(self, input: int):
+        """
+        step function for DNN model
+        Returns:
+        - state: Express current state for DNN
+        - reward: Reward for RL
+        - terminated: Current state is goal
+        - truncated: Terminated do too many attempts.
+        - info: other information
+        """
+        action = self.int2action(input)
+        expr, reward, terminated, truncated, info = self.step_human_readable(
+            action
+        )
+        state = self.generate_state()
+        return state, reward, terminated, truncated, info
