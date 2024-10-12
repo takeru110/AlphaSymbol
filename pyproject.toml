@@ -12,3 +12,5 @@ indent-style = "space"
 norecursedirs = ["alpha-zero-general"]
 pythonpath = "."
 testpaths = ["tests",]
+log_cli = true
+log_level = "DEBUG"
