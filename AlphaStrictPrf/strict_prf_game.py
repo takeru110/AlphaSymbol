@@ -167,9 +167,6 @@ class StrictPrfGame:
         pos = action.position
         exp = action.expr
 
-        # new expression is accepted as next expression
-        self.current_expr: Expr = self.current_expr.change(pos, exp)
-
         # position is invalid
         if pos not in self.available_positions():
             return (
@@ -179,6 +176,9 @@ class StrictPrfGame:
                 truncated,
                 self._get_info(),
             )
+
+        # new expression is accepted as next expression
+        self.current_expr: Expr = self.current_expr.change(pos, exp)
 
         # Next expression is invalid semantically
         if not self.current_expr.validate_semantic():
