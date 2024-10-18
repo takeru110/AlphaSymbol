@@ -151,7 +151,7 @@ class TestStepHumanReadable:
             P(2, 1), S()
         )  # Current expression changed
         assert result[:4] == (
-            game.current_expr.change(1, action.expr),  # New expression
+            C(P(2, 1), S()),  # New expression
             0.1 + 0.9 ** len(str(game.current_expr)),  # Expected score
             False,  # Done flag
             False,  # Truncated flag (step count < max_steps)
@@ -234,7 +234,7 @@ class TestStepHumanReadable:
         expected_score += 0.9 ** len(str(game.current_expr))  # Add length score
 
         assert result[:4] == (
-            game.current_expr.change(1, action.expr),  # New expression
+            C(S(), C(S(), Z())),  # New expression
             expected_score,  # Partial correctness score
             False,  # Done flag
             False,  # Truncated flag (step count < max_steps)
