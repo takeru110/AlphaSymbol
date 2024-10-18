@@ -164,7 +164,7 @@ class StrictPrfGame:
     ) -> tuple[str, float, bool, bool, dict[str, Any]]:
         logging.debug("Starting step_human_readable method")
         self.step_count += 1
-        length_score = 0.9 ** len(str(self.current_expr))
+        length_score = 0.9 ** len(str(self.current_expr))  # in 0 < x < 1
         truncated = self.step_count >= self.max_steps
         pos = action.position
         exp = action.expr
@@ -182,6 +182,7 @@ class StrictPrfGame:
 
         # new expression is accepted as next expression
         self.current_expr: Expr = self.current_expr.change(pos, exp)
+        length_score = 0.9 ** len(str(self.current_expr))  # in 0 < x < 1
 
         # Next expression is invalid semantically
         if not self.current_expr.validate_semantic():
@@ -221,6 +222,7 @@ class StrictPrfGame:
             )
 
         self.step_count += 1
+        # 0 to 0.3
         correctness_score = 0.3 * matching_elements / len(self.input_sequence)
         logging.debug("Correctness score: {correctness_score}")
         return (
