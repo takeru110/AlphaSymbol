@@ -197,12 +197,15 @@ def test_change():
     new_expr = expr.change(pos, R(Z(), P(2, 1)))
     expected_expr = C(R(Z(), P(2, 1)), C(R(Z(), P(2, 1)), S()))
     assert new_expr == expected_expr, "Error: Expr.change()"
+    assert pos == deque([2, 1]), "Error: Expr.change() is destructive now"
     # check non-destructive
     expr_copy = expr.copy()
     for pos in expr.positions():
+        pre_pos = pos.copy()
         expr_copy.change(pos, Z())
         assert expr_copy == expr, "Error: Expr.change()"
         assert id(expr_copy) != id(expr), "Error: Expr.change()"
+        assert pos == pre_pos, "Error: Expr.change() is destructive now"
 
 
 def test_copy():

@@ -75,6 +75,17 @@ class Expr:
         - `pos` (Deque[int]): 自然数列で、書き換える部分を示す。外側の式から内側の部分に向かって引数を指定する
         - `expr` ("Expr"): 新しい式。指定された場所に置き換える新しいサブ式。
         """
+        raise NotImplementedError()
+
+    def _change_recursion(self, pos: Deque[int], expr: "Expr") -> None:
+        """
+        changeメソッドの再帰的な実装
+
+        ## 引数
+        - `pos` (Deque[int]): 自然数列で、書き換える部分を示す。外側の式から内側の部分に向かって引数を指定する
+        - `expr` ("Expr"): 新しい式。指定された場所に置き換える新しいサブ式。
+        """
+        raise NotImplementedError()
 
     def copy(self) -> "Expr":
         """
@@ -119,6 +130,10 @@ class Z(Expr):
         assert pos == Deque([]), "Error: invalid pos arg in Z.change()."
         return expr
 
+    def _change_recursion(self, pos: Deque[int], expr: "Expr") -> None:
+        assert pos == Deque([]), "Error: invalid pos arg in Z.change()."
+        return expr
+
     def copy(self):
         return Z()
 
@@ -156,6 +171,10 @@ class S(Expr):
         return [deque([])]
 
     def change(self, pos: Deque[int], expr: "Expr") -> None:
+        assert pos == Deque([]), "Error: invalid pos arg in S.change()."
+        return expr
+
+    def _change_recursion(self, pos: Deque[int], expr: "Expr") -> None:
         assert pos == Deque([]), "Error: invalid pos arg in S.change()."
         return expr
 
@@ -202,6 +221,10 @@ class P(Expr):
         return [deque([])]
 
     def change(self, pos: Deque[int], expr: "Expr") -> None:
+        assert pos == deque([]), "Error: invalid pos arg in P.change()."
+        return expr
+
+    def _change_recursion(self, pos: Deque[int], expr: "Expr") -> None:
         assert pos == Deque([]), "Error: invalid pos arg in P.change()."
         return expr
 
@@ -288,20 +311,25 @@ class C(Expr):
         return positions
 
     def change(self, pos: Deque[int], expr: "Expr") -> None:
-        if pos == Deque([]):
+        return self._change_recursion(pos.copy(), expr)
+
+    def _change_recursion(self, pos: Deque[int], expr: "Expr") -> None:
+        if pos == deque([]):
             return expr
 
         arg_id = pos.popleft()
         if arg_id == 1:
             copy_args = (arg.copy() for arg in self.args)
-            return C(self.func.change(pos, expr), *copy_args)
+            return C(self.func._change_recursion(pos, expr), *copy_args)
         elif arg_id >= 2:
             copy_args = [arg.copy() for arg in self.args]
-            copy_args[arg_id - 2] = copy_args[arg_id - 2].change(pos, expr)
+            copy_args[arg_id - 2] = copy_args[arg_id - 2]._change_recursion(
+                pos, expr
+            )
             return C(self.func.copy(), *copy_args)
         else:
             raise ValueError(
-                "Error: pos arg of C.change() is invalid. Positive int is needed."
+                "Error: pos arg of C._change_recursion() is invalid. Positive int is needed."
             )
 
     def copy(self):
@@ -380,17 +408,20 @@ class R(Expr):
         return positions
 
     def change(self, pos: Deque[int], expr: "Expr") -> None:
+        return self._change_recursion(pos.copy(), expr)
+
+    def _change_recursion(self, pos: Deque[int], expr: "Expr") -> None:
         if pos == Deque([]):
             return expr
 
         arg_id = pos.popleft()
         if arg_id == 1:
-            return R(self.base.change(pos, expr), self.step.copy())
+            return R(self.base._change_recursion(pos, expr), self.step.copy())
         elif arg_id == 2:
-            return R(self.base.copy(), self.step.change(pos, expr))
+            return R(self.base.copy(), self.step._change_recursion(pos, expr))
         else:
             raise ValueError(
-                "Error: invaid pos argument (not 1 or 2) at R.change()"
+                "Error: invaid pos argument (not 1 or 2) at R._change_recursion()"
             )
 
     def copy(self):
