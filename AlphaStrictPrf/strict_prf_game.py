@@ -1,3 +1,4 @@
+import logging
 import random
 from collections import deque, namedtuple
 from typing import Any, Dict, List, Optional
@@ -161,6 +162,7 @@ class StrictPrfGame:
     def step_human_readable(
         self, action: Action
     ) -> tuple[str, float, bool, bool, dict[str, Any]]:
+        logging.debug("Starting step_human_readable method")
         self.step_count += 1
         length_score = 0.9 ** len(str(self.current_expr))
         truncated = self.step_count >= self.max_steps
@@ -169,6 +171,7 @@ class StrictPrfGame:
 
         # position is invalid
         if pos not in self.available_positions():
+            logging.debug("Invalid position detected")
             return (
                 self.current_expr,
                 0 + length_score,
@@ -182,6 +185,7 @@ class StrictPrfGame:
 
         # Next expression is invalid semantically
         if not self.current_expr.validate_semantic():
+            logging.debug("Semantic validation failed")
             return (
                 self.current_expr,
                 0.1 + length_score,
@@ -190,6 +194,7 @@ class StrictPrfGame:
                 self._get_info(),
             )
         if self.current_expr.arity() != 1:
+            logging.debug("Arity is not equal to 1")
             return (
                 self.current_expr,
                 0.2 + length_score,
@@ -206,6 +211,7 @@ class StrictPrfGame:
             if t == self.current_expr.evaluate(e)
         )
         if matching_elements == len(self.input_sequence):
+            logging.debug("All output elements matched")
             return (
                 self.current_expr,
                 1 + length_score,
@@ -216,6 +222,7 @@ class StrictPrfGame:
 
         self.step_count += 1
         correctness_score = 0.3 * matching_elements / len(self.input_sequence)
+        logging.debug("Correctness score: {correctness_score}")
         return (
             self.current_expr,
             0.3 + correctness_score + length_score,
