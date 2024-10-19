@@ -201,7 +201,7 @@ class P(Expr):
     def evaluate(self, *args: int) -> int:
         assert (
             len(args) == self.n
-        ), f"Error: the number of args of P.evaluate() should be {self.n + 1} but now {len(args)}"
+        ), f"Error: the number of args of P.evaluate() should be {self.n} but now {len(args)}"
         return args[self.i - 1]
 
     def tree_string(self, indent: int = 0) -> None:
@@ -218,7 +218,6 @@ class P(Expr):
         return self.n
 
     def validate_semantic(self, *args):
-        assert len(args) == self.n, "Error: P should have args of self.n."
         return True
 
     def positions(self):
