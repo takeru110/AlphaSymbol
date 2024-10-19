@@ -426,3 +426,25 @@ def test_step_flow():
     assert (
         truncated == False
     ), "Error: return value truncated of StrictPrfGame.step()"
+
+
+def test_current_output():
+    game = StrictPrfGame(
+        max_p_arity=3,
+        expr_depth=4,
+        max_c_args=2,
+        max_steps=10,
+        input_sequence=[1, 2, 3, 4, 5, 6],
+        output_sequence=[4, 5, 6, 7, 8, 9],
+        n_obs=50,
+        init_expr=R(R(Z(), Z()), S()),
+    )
+    game.reset()
+    assert game.current_output() == [
+        -1,
+        -1,
+        -1,
+        -1,
+        -1,
+        -1,
+    ], "Error: current_output()"
