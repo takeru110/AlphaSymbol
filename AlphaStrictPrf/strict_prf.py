@@ -352,13 +352,18 @@ class R(Expr):
     def _hash_impl(self):
         return hash((self.base, self.step))
 
-    def evaluate(self, n: int, *args: int) -> int:
+    def evaluate(self, *args: int) -> int:
+        assert (
+            len(args) >= 1
+        ), "Error: the number of args of R.evaluate() should be >= 1."
+        n = args[0]
+        post_args = args[1:]
         if n == 0:
-            return self.base.evaluate(*args)
+            return self.base.evaluate(*post_args)
         else:
             step_back = R(self.base, self.step)
             return self.step.evaluate(
-                n - 1, step_back.evaluate(n - 1, *args), *args
+                n - 1, step_back.evaluate(n - 1, *post_args), *post_args
             )
 
     def tree_string(self, indent: int = 0) -> str:
