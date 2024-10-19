@@ -90,6 +90,12 @@ class StrictPrfGame:
         print(f"Current Expression:\n{str(self.current_expr)}")
 
     def current_output(self):
+        """
+        Evaluates the output of the current expression on the input sequence.
+        Returns:
+            output (List[int]): The output of the current expression on the input sequence.
+                when the expression is invalid, returns [-1, -1, ...]
+        """
         try:
             output = [
                 self.current_expr.evaluate(i) for i in self.input_sequence
