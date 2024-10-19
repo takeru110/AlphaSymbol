@@ -210,16 +210,16 @@ def test_C_evaluate():
 
 
 def test_R_evaluate():
-    r = R(Z(), S())
+    r = R(C(S(), Z()), P(2, 1))
     assert (
-        r.evaluate(0) == 0
-    ), "R(Z(), S()).evaluate(0) should return base value 0"
+        r.evaluate(0) == 1
+    ), "R(C(S(), Z()), P(2, 1)).evaluate(0) should return base value 0"
     assert (
-        r.evaluate(1) == 1
-    ), "R(Z(), S()).evaluate(1) should return step value 1"
+        r.evaluate(1) == 0
+    ), "R(C(S(), Z()), P(2, 1)) should return step value 1"
     assert (
-        r.evaluate(2) == 2
-    ), "R(Z(), S()).evaluate(2) should return step value 2"
+        r.evaluate(2) == 1
+    ), "R(C(S(), Z()), P(2, 1)) should return step value 2"
 
 
 def test_R_evaluate_complex_1():
