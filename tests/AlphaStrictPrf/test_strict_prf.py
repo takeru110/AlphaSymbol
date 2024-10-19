@@ -341,11 +341,11 @@ def test_Expr_positions():
     positions = func.positions()
     expected_positions = [
         [],
-        [0],
         [1],
         [2],
-        [2, 1],
-        [2, 2],
+        [3],
+        [3, 1],
+        [3, 2],
     ]
     pos_comp = set(tuple(sublist) for sublist in positions)
     exp_pos_comp = set(tuple(sublist) for sublist in expected_positions)
@@ -357,8 +357,8 @@ def test_positions():
     positions = expr.positions()
     assert positions == [
         deque([]),
-        deque([0]),
         deque([1]),
+        deque([2]),
     ], "Position list mismatch"
 
 
