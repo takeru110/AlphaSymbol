@@ -79,6 +79,7 @@ def test_Z_copy():
     z1 = Z()
     z2 = z1.copy()
     assert z1 == z2, "Copy of Z should be equal to the original"
+
     assert (
         z1 is not z2
     ), "Copy of Z should not be the same object as the original"
@@ -197,6 +198,13 @@ def test_S_evaluate():
 def test_P_evaluate():
     p = P(3, 2)
     assert p.evaluate(1, 2, 3) == 2, "P(3,2) should return the second argument"
+
+
+def test_invalid_P_evaluate():
+    p_func = P(3, 2)
+    logging.debug("P(3, 2)")
+    with pytest.raises(AssertionError):
+        p_func.evaluate(10, 20)
 
 
 def test_C_evaluate():

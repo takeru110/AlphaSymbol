@@ -103,95 +103,142 @@ def test_reset(game_instance):
     assert info["step_count"] == 0, "Error: step_count of StrictPrfGame.reset()"
 
 
-def test_step_human_readable():
-    # When generating semantically invalid expression
-    game1 = StrictPrfGame(
-        max_p_arity=2,
-        expr_depth=2,
-        max_c_args=2,
-        max_steps=100,
-        input_sequence=[1, 2, 3],
-        output_sequence=[2, 3, 4],
-        n_obs=100,
-        init_expr=C(P(1, 1), S()),
-    )
-    game1.reset()
-    action1 = Action(deque([1]), Z())
-    ret = game1.step_human_readable(action1)
-    ret_str = (str(ret[0]), *ret[1:])
-    match ret_str:
-        case ("C(Z(), S())", _, False, False, _):
-            pass
-        case _:
-            pytest.fail("Error: StrictPrfGame.step_human_readable()")
+class TestStepHumanReadable:
+    def test_invalid_position(self):
+        # Test case for when the position is invalid
+        game = StrictPrfGame(
+            max_p_arity=2,
+            expr_depth=2,
+            max_c_args=2,
+            max_steps=100,
+            input_sequence=[1, 2, 3],
+            output_sequence=[2, 3, 4],
+            n_obs=100,
+            init_expr=C(P(1, 1), S()),
+        )
+        game.reset()
+        action = Action(
+            deque([1, 2]), Z()
+        )  # Position not in available_positions
 
-    # When generating arity != 1
-    game2 = StrictPrfGame(
-        max_p_arity=2,
-        expr_depth=2,
-        max_c_args=2,
-        max_steps=100,
-        input_sequence=[1, 2, 3],
-        output_sequence=[1, 2, 3],
-        n_obs=100,
-        init_expr=Z(),
-    )
-    game2.reset()
-    action1 = Action(deque([]), P(2, 1))
+        result = game.step_human_readable(action)
 
-    ret = game2.step_human_readable(action1)
-    ret_str = (str(ret[0]), *ret[1:])
-    match ret_str:
-        case ("P(2, 1)", _, False, False, _):
-            pass
-        case _:
-            pytest.fail("Error: StrictPrfGame.step_human_readable()")
+        assert result[:4] == (
+            game.current_expr,  # Should return the current expression unchanged
+            0 + 0.9 ** len(str(game.current_expr)),  # Expected score
+            False,
+            False,
+        )
 
-    # When agent steped too much
-    game3 = StrictPrfGame(
-        max_p_arity=2,
-        expr_depth=2,
-        max_c_args=2,
-        max_steps=3,
-        input_sequence=[1, 2, 3],
-        output_sequence=[4, 5, 6],
-        n_obs=10,
-    )
-    game3.reset()
-    action1 = Action(deque([]), P(2, 1))
-    action2 = Action(deque([]), Z())
-    action3 = Action(deque([]), P(1, 1))
-    game3.step_human_readable(action1)
-    game3.step_human_readable(action2)
-    ret = game3.step_human_readable(action3)
-    ret_str = (str(ret[0]), *ret[1:])
+    def test_semantically_invalid_expr(self):
+        # Test case for when the new expression is semantically invalid
+        game = StrictPrfGame(
+            max_p_arity=2,
+            expr_depth=2,
+            max_c_args=2,
+            max_steps=100,
+            input_sequence=[1, 2, 3],
+            output_sequence=[2, 3, 4],
+            n_obs=100,
+            init_expr=C(P(1, 1), S()),
+        )
+        game.reset()
+        action = Action(deque([1]), P(2, 1))
 
-    match ret_str:
-        case ("P(1, 1)", _, False, True, _):
-            pass
-        case _:
-            pytest.fail("Error: StrictPrfGame.step_human_readable()")
+        result = game.step_human_readable(action)
 
-    # When generate correct answer
-    game4 = StrictPrfGame(
-        max_p_arity=2,
-        expr_depth=2,
-        max_c_args=2,
-        max_steps=100,
-        input_sequence=[1, 2, 3],
-        output_sequence=[1, 2, 3],
-        n_obs=100,
-    )
-    game4.reset()
-    action1 = Action(deque([]), P(1, 1))
+        assert game.current_expr == C(
+            P(2, 1), S()
+        )  # Current expression changed
+        assert result[:4] == (
+            C(P(2, 1), S()),  # New expression
+            0.1 + 0.9 ** len(str(game.current_expr)),  # Expected score
+            False,  # Done flag
+            False,  # Truncated flag (step count < max_steps)
+        )
 
-    ret = game4.step_human_readable(action1)
-    ret_str = (str(ret[0]), *ret[1:])
-    match ret_str:
-        case ("P(1, 1)", _, True, False, _):
-            pass
-        case _:
-            pytest.fail("Error: StrictPrfGame.step_human_readable()")
+    def test_non_unary_expr(self):
+        # Test case for when the new expression is not unary (arity != 1)
+        game = StrictPrfGame(
+            max_p_arity=2,
+            expr_depth=2,
+            max_c_args=2,
+            max_steps=100,
+            input_sequence=[1, 2, 3],
+            output_sequence=[2, 3, 4],
+            n_obs=100,
+            init_expr=C(P(1, 1), S()),
+        )
+        game.reset()
+        action = Action(deque([2]), P(2, 1))
+
+        result = game.step_human_readable(action)
+        assert game.current_expr == C(
+            P(1, 1), P(2, 1)
+        )  # Current expression changed
+
+        assert result[:4] == (
+            game.current_expr,  # Should return the current expression changed
+            0.2 + 0.9 ** len(str(game.current_expr)),  # Expected score
+            False,  # Done flag
+            False,  # Truncated flag (step count < max_steps)
+        )
+
+    def test_correct_expression(self):
+        # Test case for when the new expression evaluates correctly
+        game = StrictPrfGame(
+            max_p_arity=2,
+            expr_depth=2,
+            max_c_args=2,
+            max_steps=100,
+            input_sequence=[1, 2, 3],
+            output_sequence=[2, 3, 4],
+            n_obs=100,
+            init_expr=C(P(1, 1), S()),
+        )
+        game.reset()
+        action = Action(deque([]), S())
+
+        result = game.step_human_readable(action)
+
+        assert result[:4] == (
+            S(),
+            1
+            + 0.9
+            ** len(str(game.current_expr)),  # Full score for correct output
+            True,  # Done flag (perfect match)
+            False,  # Truncated flag (step count < max_steps)
+        )
+
+    def test_partial_correctness(self):
+        game = StrictPrfGame(
+            max_p_arity=2,
+            expr_depth=2,
+            max_c_args=2,
+            max_steps=100,
+            input_sequence=[1, 2, 3],
+            output_sequence=[2, 3, 4],
+            n_obs=100,
+            init_expr=C(P(1, 1), S()),
+        )
+        game.reset()
+        # Test case for partial correctness
+        action = Action(deque([]), C(S(), C(S(), Z())))
+
+        result = game.step_human_readable(action)
+
+        matching_elements = 1
+        expected_score = 0.3 + (
+            0.3 * matching_elements / len(game.input_sequence)
+        )
+        expected_score += 0.9 ** len(str(game.current_expr))  # Add length score
+
+        assert result[:4] == (
+            C(S(), C(S(), Z())),  # New expression
+            expected_score,  # Partial correctness score
+            False,  # Done flag
+            False,  # Truncated flag (step count < max_steps)
+        )
 
 
 def test_int2action():
