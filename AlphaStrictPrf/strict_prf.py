@@ -148,8 +148,11 @@ class S(Expr):
     def _hash_impl(self):
         return hash("S")
 
-    def evaluate(self, arg: int) -> int:
-        return arg + 1
+    def evaluate(self, *args: int) -> int:
+        assert (
+            len(args) == 1
+        ), "Error: the number of args of S.evaluate() should be 1."
+        return args[0] + 1
 
     def tree_string(self, indent: int = 0) -> None:
         return " " * indent + "S"
@@ -214,7 +217,8 @@ class P(Expr):
         assert self.validate_semantic(), "Error: Invalid semantically"
         return self.n
 
-    def validate_semantic(self):
+    def validate_semantic(self, *args):
+        assert len(args) == self.n, "Error: P should have args of self.n."
         return True
 
     def positions(self):
