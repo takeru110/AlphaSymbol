@@ -1,6 +1,8 @@
 import logging
 from collections import deque
 
+import pytest
+
 from AlphaStrictPrf.strict_prf import C, P, R, S, Z
 
 logging.basicConfig(level=logging.DEBUG)
@@ -53,6 +55,20 @@ def test_S():
     assert str(s_func) == "S()", "Error: S.__str__() wrongly."
     assert s_func.tree_string() == "S", "Error: S tree is wrong."
     assert s_func.complexity() == 1.0, "Error: Complesity of S is wrong"
+
+
+def test_invalid_R_evaluate():
+    rss_invalid_arity = R(S(), S())
+    logging.debug("Test Sample: R(S(), S())")
+    with pytest.raises(AssertionError):
+        rss_invalid_arity.evaluate(1)
+
+
+def test_invalid_P_evaluate():
+    p_func = P(3, 2)
+    logging.debug("P(3, 2)")
+    with pytest.raises(AssertionError):
+        p_func.evaluate(10, 20)
 
 
 def test_P():
