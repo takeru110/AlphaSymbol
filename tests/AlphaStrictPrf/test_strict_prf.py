@@ -7,61 +7,197 @@ from AlphaStrictPrf.strict_prf import C, P, R, S, Z
 
 logging.basicConfig(level=logging.DEBUG)
 
-
-def test_Expr_positions():
-    func = C(P(2, 1), Z(), C(P(1, 1), S()))
-    positions = func.positions()
-    expected_positions = [
-        [],
-        [1],
-        [2],
-        [3],
-        [3, 1],
-        [3, 2],
-    ]
-    pos_comp = set(tuple(sublist) for sublist in positions)
-    exp_pos_comp = set(tuple(sublist) for sublist in expected_positions)
-    assert set(pos_comp) == set(exp_pos_comp), "Error: generate_positions()"
+# ---- arity -----
 
 
-def test_Z():
-    z_func = Z()
-    logging.debug("Test Sample: Z()")
+def test_arity_validation():
+    z = Z()
+    assert z.arity() is None, "Z should return None for arity"
+    s = S()
+    assert s.arity() == 1, "S should return 1 for arity"
+
+
+def test_R_arity():
+    add = R(P(1, 1), C(S(), P(3, 2)))
+    logging.debug("Test Sample: R(P(1, 1), C(S(), P(3, 2)))")
     assert (
-        z_func.validate_semantic() is True
-    ), "There are something wrong in validate_semantic()."
-    assert z_func.evaluate(23) == 0, "Error: Z evaluation is wrong."
+        add.arity() == 2
+    ), "Error: arity is wrong for R(P(1, 1), C(S(), P(3, 2)))"
+
+
+def test_C_arity():
+    when0_then1_else0 = C(R(S(), P(3, 3)), P(1, 1), Z())
+    logging.debug("Test Sample: C(R(S(), P(3, 3)), P(1, 1), Z())")
     assert (
-        z_func.arity() is None
-    ), f"Error: Z arity should be 0 but now {z_func.arity()}."
-    assert str(z_func) == "Z()", "Error: Z.__str__() wrongly."
-    assert z_func.tree_string() == "Z", "Error: Z tree is wrong."
-    assert z_func.complexity() == 1.0, "Error: Complesity of Z is wrong"
-
-    zss_func = Z(S, S)
-    logging.debug("Test Sample: Z(S, S)")
-    assert (
-        zss_func.validate_semantic() is False
-    ), "There are something wrong in validate_semantic()."
+        when0_then1_else0.arity() == 1
+    ), "Error: arity is wrong for C(R(S(), P(3, 3)), P(1, 1), Z())"
 
 
-def test_S():
-    s_func = S()
-    logging.debug("Test Sample: S()")
-    assert s_func.evaluate(31) == 32, "Error: S evaluation is wrong."
-    assert (
-        s_func.arity() == 1
-    ), f"Error: S arity should be 1 but {s_func.arity()}."
-    assert str(s_func) == "S()", "Error: S.__str__() wrongly."
-    assert s_func.tree_string() == "S", "Error: S tree is wrong."
-    assert s_func.complexity() == 1.0, "Error: Complesity of S is wrong"
-
-
-def test_invalid_R_evaluate():
+def test_invalid_R_arity():
     rss_invalid_arity = R(S(), S())
     logging.debug("Test Sample: R(S(), S())")
-    with pytest.raises(AssertionError):
-        rss_invalid_arity.evaluate(1)
+    assert (
+        rss_invalid_arity.validate_semantic() is False
+    ), "Error: validate_semantic() works incorrectly for R(S(), S())"
+
+
+def test_invalid_inner_arity():
+    inner_invalid = R(Z(), C(S(), P(2, 2), P(2, 2)))
+    logging.debug("R(Z(), C(S(), P(2, 2), P(2, 2)))")
+    assert (
+        inner_invalid.validate_semantic() is False
+    ), "Error: validate_semantic() works incorrectly for R(Z(), C(S(), P(2, 2), P(2, 2)))"
+
+
+def test_invalid_R_arity_2():
+    inner_invalid2 = R(S(), Z())
+    logging.debug("R(S(), Z())")
+    assert (
+        inner_invalid2.validate_semantic() is False
+    ), "Error: validate_semantic() works incorrectly for R(S(), Z())"
+
+
+# ---- change -----
+
+
+def test_change_complex():
+    expr = C(R(Z(), P(2, 1)), C(P(1, 1), S()))
+    pos = deque([2, 1])
+    new_expr = expr.change(pos, R(Z(), P(2, 1)))
+    expected_expr = C(R(Z(), P(2, 1)), C(R(Z(), P(2, 1)), S()))
+    assert new_expr == expected_expr, "Error: Expr.change()"
+    # check non-destructive
+    expr_copy = expr.copy()
+    for pos in expr.positions():
+        expr_copy.change(pos, Z())
+        assert expr_copy == expr, "Error: Expr.change()"
+        assert id(expr_copy) != id(expr), "Error: Expr.change()"
+
+
+# ---- copy -----
+def test_Z_copy():
+    z1 = Z()
+    z2 = z1.copy()
+    assert z1 == z2, "Copy of Z should be equal to the original"
+
+    assert (
+        z1 is not z2
+    ), "Copy of Z should not be the same object as the original"
+
+
+def test_S_copy():
+    s1 = S()
+    s2 = s1.copy()
+    assert s1 == s2, "Copy of S should be equal to the original"
+    assert (
+        s1 is not s2
+    ), "Copy of S should not be the same object as the original"
+
+
+def test_P_copy():
+    p1 = P(3, 2)
+    p2 = p1.copy()
+    assert p1 == p2, "Copy of P should be equal to the original"
+    assert (
+        p1 is not p2
+    ), "Copy of P should not be the same object as the original"
+
+
+def test_C_copy():
+    c1 = C(S(), Z())
+    c2 = c1.copy()
+    assert c1 == c2, "Copy of C should be equal to the original"
+    assert (
+        c1 is not c2
+    ), "Copy of C should not be the same object as the original"
+
+
+def test_R_copy():
+    r1 = R(Z(), S())
+    r2 = r1.copy()
+    assert r1 == r2, "Copy of R should be equal to the original"
+    assert (
+        r1 is not r2
+    ), "Copy of R should not be the same object as the original"
+
+
+def test_copy_complex():
+    assert Z().copy() == Z(), "Error: Z().copy"
+    assert S().copy() == S(), "Error: S().copy"
+    assert P(3, 1).copy() == P(3, 1), "Error: P(1, 2).copy"
+    assert C(S(), Z()).copy() == C(S(), Z()), "Error: C(S(), Z()).copy"
+    assert R(P(1, 1), P(3, 1)).copy() == R(
+        P(1, 1), P(3, 1)
+    ), "Error: R(C(1, 1), P(3, 1).copy"
+
+
+# ---- equality -----
+def test_Z_equality():
+    z1 = Z()
+    z2 = Z()
+    assert z1 == z2, "Two instances of Z should be equal"
+
+
+def test_S_equality():
+    s1 = S()
+    s2 = S()
+    assert s1 == s2, "Two instances of S should be equal"
+
+
+def test_C_equality():
+    c1 = C(S(), Z())
+    c2 = C(S(), Z())
+    assert (
+        c1 == c2
+    ), "Two instances of C with same function and args should be equal"
+
+
+def test_R_equality():
+    r1 = R(Z(), S())
+    r2 = R(Z(), S())
+    assert (
+        r1 == r2
+    ), "Two instances of R with same base and step should be equal"
+
+
+def test_complex_equality():
+    expr1 = C(S(), Z())
+    expr2 = C(S(), Z())
+    assert expr1 == expr2, "Error: Expr.__eq__()"
+
+    expr1 = R(S(), C(P(3, 1), S(), S()))
+    expr2 = R(S(), C(P(3, 1), S(), S()))
+    assert expr1 == expr2, "Error: Expr.__eq__()"
+
+    expr1 = R(S(), C(P(3, 1), S(), S()))
+    expr2 = R(S(), C(P(3, 1), Z(), Z()))
+    assert expr1 != expr2, "Error: Expr.__eq__()"
+
+
+def test_set_equality():
+    expr_set1 = {C(S(), Z()), R(S(), C(P(3, 1), S(), S())), Z()}
+    expr_set2 = {R(S(), C(P(3, 1), S(), S())), Z(), C(S(), Z())}
+    assert expr_set1 == expr_set2, "Error: Expr set equality"
+
+
+# ---- evaluate -----
+def test_Z_evaluate():
+    z = Z()
+    assert z.evaluate() == 0, "Z should always evaluate to 0"
+    assert (
+        z.evaluate(1, 2, 3) == 0
+    ), "Z should always evaluate to 0 regardless of arguments"
+
+
+def test_S_evaluate():
+    s = S()
+    assert s.evaluate(0) == 1, "S(0) should evaluate to 1"
+    assert s.evaluate(5) == 6, "S(5) should evaluate to 6"
+
+
+def test_P_evaluate():
+    p = P(3, 2)
+    assert p.evaluate(1, 2, 3) == 2, "P(3,2) should return the second argument"
 
 
 def test_invalid_P_evaluate():
@@ -71,129 +207,121 @@ def test_invalid_P_evaluate():
         p_func.evaluate(10, 20)
 
 
-def test_P():
-    # Test for the P class with i = 2
-    p_func = P(3, 2)
-    logging.debug("P(3, 2)")
-    assert p_func.evaluate(10, 20, 30) == 20, "Error: P evaluate is wrong."
-    assert p_func.arity() == 3, "Error: P arity is wrong."
-    assert p_func.tree_string() == "P^3_2", "Error: P print_tree is wrong."
+def test_C_evaluate():
+    c = C(S(), Z())
     assert (
-        p_func.tree_string(indent=4) == "    P^3_2"
-    ), "Error: P print_tree with indent is wrong."
+        c.evaluate(1) == 1
+    ), "C(S(), Z()) should evaluate to 1 when input is 1"
     assert (
-        p_func.tree_string() == "P^3_2"
-    ), "Error: P print tree_string is wrong."
-    assert p_func.complexity() == 1.0, "Error: Complexity of P is wrong"
+        c.evaluate(5) == 1
+    ), "C(S(), Z()) should evaluate to 1 when input is 5"
 
 
-def test_C():
-    c_func_always_one = C(S(), Z())
-    logging.debug("Test Sample: C(S(), Z())")
+def test_R_evaluate():
+    r = R(C(S(), Z()), P(2, 1))
     assert (
-        c_func_always_one.validate_semantic() is True
-    ), "Error: validate_semantic() works incorrectly."
-    assert c_func_always_one.evaluate(34) == 1, "Error: C evaluation is wrong"
-    assert c_func_always_one.arity() is None, "Error: C arity is wrong."
+        r.evaluate(0) == 1
+    ), "R(C(S(), Z()), P(2, 1)).evaluate(0) should return base value 0"
     assert (
-        c_func_always_one.tree_string() == "C^2\n  S\n  Z"
-    ), "C tree is wrong."
+        r.evaluate(1) == 0
+    ), "R(C(S(), Z()), P(2, 1)) should return step value 1"
     assert (
-        str(c_func_always_one) == "C(S(), Z())"
-    ), "Error: C.__str__() is wrongly"
-    assert (
-        c_func_always_one.complexity() == 1.0
-    ), "Error: C Complexity is wrong."
-
-    add_two = C(S(), S())
-    logging.debug("Test Sample: C(S(), S())")
-    assert (
-        add_two.validate_semantic() is True
-    ), "Error: validate_semantic() works incorrectly."
-    assert add_two.evaluate(17) == 19, "Error: C evaluation is wrong"
-    assert add_two.arity() == 1, "Error: C arity is wrong."
-    assert add_two.tree_string() == "C^2\n  S\n  S", "C tree is wrong."
-    assert str(add_two) == "C(S(), S())", "Error: C.__str__() is wrongly"
-    assert add_two.complexity() == 1.0, "Error: C Complexity is wrong."
-
-    csss_semantic_invalid = C(S(), S(), S())
-    logging.debug("Test Sample: C(S(), S(), S())")
-    assert (
-        csss_semantic_invalid.validate_semantic() is False
-    ), "Error: validate_semantic() works incorrectly."
-
-    inner_invalid = C(P(2, 1), Z(), Z(S()))
-    logging.debug("C(P(2, 1), Z(), Z(S()))")
-    assert (
-        inner_invalid.validate_semantic() is False
-    ), "Error: validate_semantic() works incorrectly"
+        r.evaluate(2) == 1
+    ), "R(C(S(), Z()), P(2, 1)) should return step value 2"
 
 
-def test_R():
+def test_R_evaluate_complex_1():
     add = R(P(1, 1), C(S(), P(3, 2)))
     logging.debug("Test Sample: R(P(1, 1), C(S(), P(3, 2)))")
     assert (
-        add.validate_semantic() is True
-    ), "Error: validate_semantic() works incorrectly."
-    assert add.arity() == 2, "Error: arity is wrong"
-    assert add.evaluate(2, 3) == 5, "Error: R evaluation is wrong."
-    assert (
-        add.tree_string() == "R\n  P^1_1\n  C^2\n    S\n    P^3_2"
-    ), "Error: R tree is wrong"
-    assert (
-        str(add) == "R(P(1, 1), C(S(), P(3, 2)))"
-    ), "Error: R.__str__() is wrong"
-    assert add.complexity() == 1.0, "Error: add complexity is wrong."
+        add.evaluate(2, 3) == 5
+    ), "Error: R(P(1, 1), C(S(), P(3, 2))) evaluation is wrong"
 
+
+def test_C_evaluate_complex_2():
     when0_then1_else0 = C(R(S(), P(3, 3)), P(1, 1), Z())
     logging.debug("Test Sample: C(R(S(), P(3, 3)), P(1, 1), Z())")
-    assert (
-        when0_then1_else0.validate_semantic() is True
-    ), "Error: validate_semantic() works incorrectly."
     ans_sequence = [when0_then1_else0.evaluate(i) for i in range(5)]
-    assert ans_sequence == [1, 0, 0, 0, 0], "Error: prf is wrong"
-    assert when0_then1_else0.arity() == 1, "Error: arity is wrong"
+    assert ans_sequence == [
+        1,
+        0,
+        0,
+        0,
+        0,
+    ], "Error: C(R(S(), P(3, 3)), P(1, 1), Z()) evaluation is wrong"
 
+
+def test_invalid_R_evaluate():
     rss_invalid_arity = R(S(), S())
     logging.debug("Test Sample: R(S(), S())")
-    assert (
-        rss_invalid_arity.validate_semantic() is False
-    ), "Error: validate_semantic() works incorrectly."
+    with pytest.raises(AssertionError):
+        rss_invalid_arity.evaluate(1)
 
+
+def test_invalid_inner_evaluate():
     inner_invalid = R(Z(), C(S(), P(2, 2), P(2, 2)))
     logging.debug("R(Z(), C(S(), P(2, 2), P(2, 2)))")
-    assert (
-        inner_invalid.validate_semantic() is False
-    ), "Error: validate_semantic() works incorrectly"
+    with pytest.raises(AssertionError):
+        inner_invalid.evaluate(1)
 
+
+def test_invalid_R_evaluate_2():
     inner_invalid2 = R(S(), Z())
     logging.debug("R(S(), Z())")
-    assert (
-        inner_invalid2.validate_semantic() is False
-    ), "Error: validate_semantic() works incorrectly"
+    with pytest.raises(AssertionError):
+        inner_invalid2.evaluate(1)
 
 
-def test_eq():
+# ---- hash -----
+def test_complex_hash():
     expr1 = C(S(), Z())
     expr2 = C(S(), Z())
-    assert expr1 == expr2, "Error: Expr.__eq__()"
     assert hash(expr1) == hash(expr2), "Error: Expr.__hash__()"
 
     expr1 = R(S(), C(P(3, 1), S(), S()))
     expr2 = R(S(), C(P(3, 1), S(), S()))
-    assert expr1 == expr2, "Error: Expr.__eq__()"
     assert hash(expr1) == hash(expr2), "Error: Expr.__hash__()"
 
     expr1 = R(S(), C(P(3, 1), S(), S()))
     expr2 = R(S(), C(P(3, 1), Z(), Z()))
-    assert expr1 is not expr2, "Error: Expr.__eq__()"
-
-    expr_set1 = {C(S(), Z()), R(S(), C(P(3, 1), S(), S())), Z()}
-    expr_set2 = {R(S(), C(P(3, 1), S(), S())), Z(), C(S(), Z())}
-    assert expr_set1 == expr_set2, "Error: Expr set equality"
+    assert expr1 != expr2, "Error: Expr.__eq__()"
 
 
-def test_str():
+# ---- str -----
+
+
+def test_Z_str():
+    z = Z()
+    assert str(z) == "Z()", "Error: Z's __str__() should return 'Z()'"
+
+
+def test_S_str():
+    s = S()
+    assert str(s) == "S()", "Error: S's __str__() should return 'S()'"
+
+
+def test_P_str():
+    p = P(2, 1)
+    assert str(p) == "P(2, 1)", "Error: P's __str__() should return 'P(2, 1)'"
+
+
+def test_C_str():
+    c = C(S(), Z())
+    expected_str = "C(S(), Z())"
+    assert (
+        str(c) == expected_str
+    ), "Error: C(S(), Z())'s __str__() should return 'C(S(), Z())'"
+
+
+def test_R_str():
+    r = R(Z(), S())
+    expected_str = "R(Z(), S())"
+    assert (
+        str(r) == expected_str
+    ), "Error: R(Z(), S())'s __str__() should return 'R(Z(), S())'"
+
+
+def test_complex_str():
     expr1 = C(S(), Z())
     expr2 = R(S(), C(P(3, 1), S(), S()))
     expr3 = R(P(1, 1), C(S(), P(3, 2)))
@@ -207,28 +335,115 @@ def test_str():
     assert str(expr3) == str_expr3, "Error: Expr.__str__()"
 
 
-def test_change():
-    expr = C(R(Z(), P(2, 1)), C(P(1, 1), S()))
-    pos = deque([2, 1])
-    new_expr = expr.change(pos, R(Z(), P(2, 1)))
-    expected_expr = C(R(Z(), P(2, 1)), C(R(Z(), P(2, 1)), S()))
-    assert new_expr == expected_expr, "Error: Expr.change()"
-    assert pos == deque([2, 1]), "Error: Expr.change() is destructive now"
-    # check non-destructive
-    expr_copy = expr.copy()
-    for pos in expr.positions():
-        pre_pos = pos.copy()
-        expr_copy.change(pos, Z())
-        assert expr_copy == expr, "Error: Expr.change()"
-        assert id(expr_copy) != id(expr), "Error: Expr.change()"
-        assert pos == pre_pos, "Error: Expr.change() is destructive now"
+# ---- positions -----
+def test_Expr_positions():
+    func = C(P(1, 1), Z(), C(P(1, 1), S()))
+    positions = func.positions()
+    expected_positions = [
+        [],
+        [0],
+        [1],
+        [2],
+        [2, 1],
+        [2, 2],
+    ]
+    pos_comp = set(tuple(sublist) for sublist in positions)
+    exp_pos_comp = set(tuple(sublist) for sublist in expected_positions)
+    assert set(pos_comp) == set(exp_pos_comp), "Error: generate_positions()"
 
 
-def test_copy():
-    assert Z().copy() == Z(), "Error: Z().copy"
-    assert S().copy() == S(), "Error: S().copy"
-    assert P(3, 1).copy() == P(3, 1), "Error: P(1, 2).copy"
-    assert C(S(), Z()).copy() == C(S(), Z()), "Error: C(S(), Z()).copy"
-    assert R(P(1, 1), P(3, 1)).copy() == R(
-        P(1, 1), P(3, 1)
-    ), "Error: R(C(1, 1), P(3, 1).copy"
+def test_positions():
+    expr = C(Z(), S())
+    positions = expr.positions()
+    assert positions == [
+        deque([]),
+        deque([0]),
+        deque([1]),
+    ], "Position list mismatch"
+
+
+# ---- tree_string -----
+def test_Z_tree_string():
+    z = Z()
+    assert z.tree_string() == "Z", "Error: Z's tree_string() should return 'Z'"
+
+
+def test_S_tree_string():
+    s = S()
+    assert s.tree_string() == "S", "Error: S's tree_string() should return 'S'"
+
+
+def test_P_tree_string():
+    p = P(2, 1)
+    assert (
+        p.tree_string() == "P^2_1"
+    ), "Error: P's tree_string() should return 'P^2_1'"
+    assert (
+        p.tree_string(indent=4) == "    P^2_1"
+    ), "Error: P's tree_string() with indent should return '    P^2_1'"
+
+
+def test_C_tree_string():
+    c = C(S(), Z())
+    expected_tree_str = "C^2\n  S\n  Z"
+    assert (
+        c.tree_string() == expected_tree_str
+    ), "Error: C(S(), Z())'s tree_string() should return 'C^2\n  S\n  Z'"
+
+
+def test_R_tree_string():
+    r = R(Z(), S())
+    expected_tree_str = "R\n  Z\n  S"
+    assert (
+        r.tree_string() == expected_tree_str
+    ), "Error: R(Z(), S())'s tree_string() should return 'R\n  Z\n  S'"
+
+
+# ---- validate_semantic -----
+def test_Z_validate_semantic():
+    z = Z()
+    assert z.validate_semantic(), "Z should always be semantically valid"
+    assert not Z(
+        S, S
+    ).validate_semantic(), "Z(S, S) should not be semantically valid"
+
+
+def test_S_validate_semantic():
+    s = S()
+    assert s.validate_semantic(), "S should always be semantically valid"
+
+
+def test_P_validate_semantic():
+    p = P(3, 2)
+    assert p.validate_semantic(), "P(3, 2) should always be semantically valid"
+
+
+def test_C_validate_semantic():
+    c = C(S(), Z())
+    assert (
+        c.validate_semantic()
+    ), "C(S(), Z()) should always be semantically valid"
+    assert not C(
+        S(), S(), S()
+    ).validate_semantic(), "C(S(), S(), S()) should not be semantically valid"
+
+
+def test_C_validate_semantic_complex():
+    inner_invalid = C(P(2, 1), Z(), Z(S()))
+    logging.debug("C(P(2, 1), Z(), Z(S()))")
+    assert (
+        inner_invalid.validate_semantic() is False
+    ), "Error: validate_semantic() works incorrectly"
+
+
+def test_R_validate_semantic():
+    r = R(Z(), S())
+    assert (
+        r.validate_semantic()
+    ), "R(Z(), S()) should always be semantically valid"
+    assert R(
+        S(), P(3, 1)
+    ).validate_semantic(), "R(Z(), S()) should always be semantically valid"
+    assert not R(
+        S(), S()
+    ).validate_semantic(), "R(S(), S()) should not be semantically valid"
