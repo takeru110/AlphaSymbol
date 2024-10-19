@@ -240,6 +240,25 @@ class TestStepHumanReadable:
             False,  # Truncated flag (step count < max_steps)
         )
 
+    def test_trucated(self):
+        game = StrictPrfGame(
+            max_p_arity=2,
+            expr_depth=2,
+            max_c_args=2,
+            max_steps=10,
+            input_sequence=[1, 2, 3],
+            output_sequence=[2, 3, 4],
+            n_obs=100,
+            init_expr=C(P(1, 1), S()),
+        )
+        game.reset()
+        truncated_li = []
+        for i in range(10):
+            action = Action(deque([]), S())
+            result = game.step_human_readable(action)
+            truncated_li.append(result[3])
+        assert truncated_li == [False] * 9 + [True], "Error: truncated"
+
 
 def test_int2action():
     # When generating semantically invalid expression
