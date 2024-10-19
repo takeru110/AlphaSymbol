@@ -14,7 +14,7 @@ class ActType:
         self.n_post_expr = 3 + int(1 / 2 * p * (p + 1)) + c
 
     def sample(self):
-        return random.randint(0, self.n)
+        return random.randint(0, self.n - 1)
 
 
 class StrictPrfGame:
