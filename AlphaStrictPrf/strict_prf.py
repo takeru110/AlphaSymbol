@@ -96,7 +96,7 @@ class Expr:
 
 class Z(Expr):
     def __init__(self, *args: any):
-        self.num_args = len(args)
+        assert len(args) == 0, "The number of args of Z should be 0."
 
     def _eq_impl(self, other):
         return True  # Z() は常に等しい
@@ -121,7 +121,7 @@ class Z(Expr):
         return None
 
     def validate_semantic(self):
-        return self.num_args == 0
+        return True
 
     def positions(self):
         return [deque([])]
@@ -387,7 +387,7 @@ class R(Expr):
         # arity is None when expr is const like Z, S(Z), S(S(Z)), S(S(S(Z))), ...
         if self.step.arity() is None:
             return False
-        if (self.base.arity() is None and self.step.arity() >= 2) or (
+        if (self.base.arity() is None and self.step.arity() < 2) or (
             self.base.arity() is not None
             and self.base.arity() + 2 != self.step.arity()
         ):
