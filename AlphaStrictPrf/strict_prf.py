@@ -25,7 +25,7 @@ class Expr:
         raise NotImplementedError()
 
     def evaluate(self, *args: int) -> int:
-        """PRFを自然数関数に変換して入力に対する値を評価する"""
+        """PRFが意味する自然数関数に変換して入力に対する値を評価する"""
         raise NotImplementedError()
 
     def tree_string(self, indent: int = 0) -> str:
@@ -95,6 +95,13 @@ class Expr:
 
 
 class Z(Expr):
+    """
+    0に対応するPRFの式
+    __init__(): 引数を取らない。引数を取ったらエラー
+    arity(): None (意味する関数は任意の数の引数を取るという意味)
+    evaluate(): 任意の数の引数で常に0を返す。
+    """
+
     def __init__(self, *args: any):
         assert len(args) == 0, "The number of args of Z should be 0."
 
@@ -139,6 +146,13 @@ class Z(Expr):
 
 
 class S(Expr):
+    """
+    後者関数(+1)に対応するPRFの式
+    __init__(): 引数を取るとError
+    arity(): 1
+    evaluate(): 引数に1を足して返す。1つ以外の引数でError
+    """
+
     def __init__(self, *args):
         assert len(args) == 0, "The number of args of S should be 0."
 
@@ -186,6 +200,13 @@ class S(Expr):
 
 
 class P(Expr):
+    """
+    射影関数に対応するPRFの式
+    __init__(n, i): n<iでエラー
+    arity: n
+    evaluate(): i番目の引数の値を返す。引数の数がnでないときError.
+    """
+
     def __init__(self, n: int, i: int):
         self.n = n
         self.i = i
@@ -236,6 +257,16 @@ class P(Expr):
 
 
 class C(Expr):
+    """
+    関数合成に対応したPRFの式
+    __init__(func, args): 引数が2以上でないとError.
+    validate_semantic():
+    - argsの長さがfuncのarityと一致しないとFalse。(つまりfunc=Z()もFalse)
+    - argsの要素でZ()を除くもの全てのarityが一致しないとFalse
+    arity: argsの要素のarity()。validate()を満たさないとError
+    evaluate(): 関数合成を行ったfunc(args)を返す。
+    """
+
     def __init__(self, func: Expr, *args: Expr):
         self.func = func
         assert len(self.args) > 0, "Error: Args of C should be >= 1"
@@ -342,6 +373,15 @@ class C(Expr):
 
 
 class R(Expr):
+    """
+    原始再帰に対応したPRFの式
+    __init__(base, step): 引数が2でないとTypeError
+    evaluate(): 原始再帰を行った結果を返す。引数の数がおかしかったらError
+    validate_semantic():
+    - step.ariy() == NoneでFalse
+    - (base, step) == (None, >=2) or (n, n+2) (nは自然数) でないならFalse
+    """
+
     def __init__(self, base: Expr, step: Expr):
         self.base = base
         self.step = step
