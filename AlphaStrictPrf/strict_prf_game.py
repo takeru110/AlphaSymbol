@@ -227,7 +227,6 @@ class StrictPrfGame:
                 self._get_info(),
             )
 
-        self.step_count += 1
         # 0 to 0.3
         correctness_score = 0.3 * matching_elements / len(self.input_sequence)
         logging.debug("Correctness score: {correctness_score}")
@@ -297,4 +296,6 @@ class StrictPrfGame:
             action
         )
         state = self.generate_state()
+        info["position"] = action.position
+        info["substitute"] = str(action.expr)
         return state, reward, terminated, truncated, info
