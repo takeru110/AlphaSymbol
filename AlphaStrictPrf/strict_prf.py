@@ -238,7 +238,7 @@ class P(Expr):
 class C(Expr):
     def __init__(self, func: Expr, *args: Expr):
         self.func = func
-        assert len(self.args) != 0, "Error: Args of C should be >= 1"
+        assert len(self.args) > 0, "Error: Args of C should be >= 1"
         self.args = list(args)
 
     def _eq_impl(self, other):
