@@ -14,3 +14,4 @@ pythonpath = "."
 testpaths = ["tests",]
 log_cli = true
 log_level = "DEBUG"
+addopts = "-vv"
