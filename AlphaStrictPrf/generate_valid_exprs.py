@@ -28,9 +28,7 @@ def generate_expressions(
 
     # Add projection functions for the input arity
     for n in range(1, max_p_arity + 1):
-        expressions_by_arity.setdefault(n, []).extend(
-            P(n, i) for i in range(1, n + 1)
-        )
+        expressions_by_arity.setdefault(n, []).extend(P(n, i) for i in range(1, n + 1))
 
     if depth > 1:
         smaller_expressions_by_arity = generate_expressions(
@@ -38,45 +36,53 @@ def generate_expressions(
         )
 
         # Generate composite functions C with different number of arguments
-        for num_args in range(1, max_c_args):
+        for func_arity, func_exprs in smaller_expressions_by_arity.items():
             # Expressions used for args
-            for args_arity, exprs in smaller_expressions_by_arity.items():
-                valid_funcs = smaller_expressions_by_arity.get(num_args, [])
-                if args_arity is None:
-                    args = (Z() for _ in range(num_args))
-                    new_c_exprs = [C(func, *args) for func in valid_funcs]
-                else:
-                    new_c_exprs = [
-                        C(func, *args)
-                        for args in combinations(exprs, num_args)
-                        for func in valid_funcs
-                    ]
-                expressions_by_arity.setdefault(args_arity, []).extend(
-                    new_c_exprs
-                )
+            if func_arity is None:
+                continue
+            for args_arity, args_exprs in smaller_expressions_by_arity.items():
+                """
+                
+                CはNoneの関数も含んでいいことを反映しなけれない
+                
+                """
+                args_exprs_not_none = [expr for expr in args_exprs if expr is not None]
+                new_c_exprs = [
+                    C(func_expr, *args)
+                    for args in combinations(args_exprs_not_none, args_arity)
+                    for func_expr in func_exprs
+                ]
+                expressions_by_arity.setdefault(args_arity, []).extend(new_c_exprs)
 
         # Generate recursive functions R(Expr1, Expr2)
-        for arity1, exprs1 in smaller_expressions_by_arity.items():
-            if arity1 is None:
-                for arity2, exprs2 in smaller_expressions_by_arity.items():
-                    if arity2 is not None and arity2 <= 2:
+        for base_arity, base_exprs in smaller_expressions_by_arity.items():
+            if base_arity is None:
+                # If base has None arity, allow steps with arity >= 2
+                for (
+                    step_arity,
+                    step_exprs,
+                ) in smaller_expressions_by_arity.items():
+                    if step_arity is not None and step_arity >= 2:
                         new_r_exprs = [
-                            R(expr1, expr2)
-                            for expr1 in exprs1
-                            for expr2 in exprs2
+                            R(base_expr, step_expr)
+                            for base_expr in base_exprs
+                            for step_expr in step_exprs
                         ]
-                        expressions_by_arity.setdefault(arity2 - 1, []).extend(
+                        expressions_by_arity.setdefault(step_arity - 1, []).extend(
                             new_r_exprs
                         )
             else:
-                arity2 = arity1 + 2
-                exprs2 = smaller_expressions_by_arity.get(arity2, [])
-                new_r_exprs = [
-                    R(expr1, expr2) for expr1 in exprs1 for expr2 in exprs2
-                ]
-                expressions_by_arity.setdefault(arity1 + 1, []).extend(
-                    new_r_exprs
-                )
+                # If base has a defined arity, step must have arity = base_arity + 2
+                step_arity = base_arity + 2
+                if step_arity in smaller_expressions_by_arity:
+                    new_r_exprs = [
+                        R(base_expr, step_expr)
+                        for base_expr in base_exprs
+                        for step_expr in smaller_expressions_by_arity[step_arity]
+                    ]
+                    expressions_by_arity.setdefault(base_arity + 1, []).extend(
+                        new_r_exprs
+                    )
 
     return expressions_by_arity
 
