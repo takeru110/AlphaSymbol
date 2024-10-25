@@ -296,4 +296,6 @@ class StrictPrfGame:
             action
         )
         state = self.generate_state()
+        info["position"] = action.position
+        info["substitute"] = str(action.expr)
         return state, reward, terminated, truncated, info
