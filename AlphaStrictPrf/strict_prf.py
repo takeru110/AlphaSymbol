@@ -25,7 +25,7 @@ class Expr:
         raise NotImplementedError()
 
     def evaluate(self, *args: int) -> int:
-        """PRFを自然数関数に変換して入力に対する値を評価する"""
+        """PRFが意味する自然数関数に変換して入力に対する値を評価する"""
         raise NotImplementedError()
 
     def tree_string(self, indent: int = 0) -> str:
@@ -97,7 +97,7 @@ class Expr:
 class Z(Expr):
     """
     0に対応するPRFの式
-    __init__(): 任意に引数を取れる
+    __init__(): 引数を取らない。引数を取ったらエラー
     arity(): None (意味する関数は任意の数の引数を取るという意味)
     evaluate(): 任意の数の引数で常に0を返す。
     """
@@ -263,7 +263,7 @@ class C(Expr):
     validate_semantic():
     - argsの長さがfuncのarityと一致しないとFalse。(つまりfunc=Z()もFalse)
     - argsの要素でZ()を除くもの全てのarityが一致しないとFalse
-    arity: argsの要素のarity()。validate()を満たさないとFalse
+    arity: argsの要素のarity()。validate()を満たさないとError
     evaluate(): 関数合成を行ったfunc(args)を返す。
     """
 
@@ -378,8 +378,8 @@ class R(Expr):
     __init__(base, step): 引数が2でないとTypeError
     evaluate(): 原始再帰を行った結果を返す。引数の数がおかしかったらError
     validate_semantic():
-    - step.ariy() == NoneでError
-    -
+    - step.ariy() == NoneでFalse
+    - (base, step) == (None, >=2) or (n, n+2) (nは自然数) でないならFalse
     """
 
     def __init__(self, base: Expr, step: Expr):
