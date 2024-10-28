@@ -163,9 +163,7 @@ class S(Expr):
         return hash("S")
 
     def evaluate(self, *args: int) -> int:
-        assert (
-            len(args) == 1
-        ), "Error: the number of args of S.evaluate() should be 1."
+        assert len(args) == 1, "Error: the number of args of S.evaluate() should be 1."
         return args[0] + 1
 
     def tree_string(self, indent: int = 0) -> None:
@@ -269,6 +267,7 @@ class C(Expr):
 
     def __init__(self, func: Expr, *args: Expr):
         self.func = func
+        self.args = args
         assert len(self.args) > 0, "Error: Args of C should be >= 1"
         self.args = list(args)
 
@@ -358,9 +357,7 @@ class C(Expr):
             return C(self.func._change_recursion(pos, expr), *copy_args)
         elif arg_id >= 2:
             copy_args = [arg.copy() for arg in self.args]
-            copy_args[arg_id - 2] = copy_args[arg_id - 2]._change_recursion(
-                pos, expr
-            )
+            copy_args[arg_id - 2] = copy_args[arg_id - 2]._change_recursion(pos, expr)
             return C(self.func.copy(), *copy_args)
         else:
             raise ValueError(
@@ -429,8 +426,7 @@ class R(Expr):
         if self.step.arity() is None:
             return False
         if (self.base.arity() is None and self.step.arity() < 2) or (
-            self.base.arity() is not None
-            and self.base.arity() + 2 != self.step.arity()
+            self.base.arity() is not None and self.base.arity() + 2 != self.step.arity()
         ):
             # the arity of the args of R operator are wrong.
             return False
