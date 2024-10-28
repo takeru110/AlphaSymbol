@@ -1,15 +1,20 @@
-from itertools import combinations
-from typing import Dict, List
+from itertools import product
+from typing import List
 
-import pandas as pd
-from strict_prf import C, Expr, P, R, S, Z
+from AlphaStrictPrf.strict_prf import C, Expr, P, S, Z
+
+
+def expr_list_to_str(exprs):
+    if isinstance(exprs, Expr):
+        return str(exprs)
+    return [expr_list_to_str(expr) for expr in exprs]
 
 
 def generate_valid_exprs(
-    depth: int,
+    max_depth: int,
     max_p_arity: int,
     max_c_args: int,
-) -> Dict[int, List[Expr]]:
+) -> List[List[Expr]]:
     """
     Generate all possible PRF expressions up to a given depth.
 
@@ -20,90 +25,46 @@ def generate_valid_exprs(
     Returns:
     - Dict[int, List[Expr]]: Dictionary of generated PRF expressions grouped by their arity.
     """
+    if max_depth == 0:
+        return [[]]
 
-    # Base case: depth == 1, return the simplest expressions (Z, S, P)
-    expressions_by_arity = {
-        None: [Z()],
-        1: [S()],
-    }  # Base zero and successor functions
+    if max_depth == 1:
+        depth1_exprs = [[Z()], [S(), P(1, 1)]]
 
-    # Add projection functions for the input arity
-    for n in range(1, max_p_arity + 1):
-        expressions_by_arity.setdefault(n, []).extend(P(n, i) for i in range(1, n + 1))
+        for arity in range(2, max_p_arity + 1):
+            li_same_arity = [P(arity, i) for i in range(1, arity + 1)]
+            depth1_exprs.append(li_same_arity)
+        return [[], depth1_exprs]
 
-    if depth > 1:
-        smaller_expressions_by_arity = generate_expressions(
-            depth - 1, max_p_arity, max_c_args
-        )
+    pre_exprs = generate_valid_exprs(max_depth - 1, max_p_arity, max_c_args)
+    pre_max_d_exprs = pre_exprs[max_depth - 1]
 
-        # Generate composite functions C with different number of arguments
-        for func_arity, func_exprs in smaller_expressions_by_arity.items():
-            # Expressions used for args
-            if func_arity is None:
-                continue
-            for args_arity, args_exprs in smaller_expressions_by_arity.items():
-                """
-                
-                CはNoneの関数も含んでいいことを反映しなけれない
-                
-                """
-                args_exprs_not_none = [expr for expr in args_exprs if expr is not None]
-                new_c_exprs = [
-                    C(func_expr, *args)
-                    for args in combinations(args_exprs_not_none, args_arity)
-                    for func_expr in func_exprs
-                ]
-                expressions_by_arity.setdefault(args_arity, []).extend(new_c_exprs)
+    ret = []
+    ret.extend(pre_max_d_exprs)
+    ret.append([])
 
-        # Generate recursive functions R(Expr1, Expr2)
-        for base_arity, base_exprs in smaller_expressions_by_arity.items():
-            if base_arity is None:
-                # If base has None arity, allow steps with arity >= 2
-                for (
-                    step_arity,
-                    step_exprs,
-                ) in smaller_expressions_by_arity.items():
-                    if step_arity is not None and step_arity >= 2:
-                        new_r_exprs = [
-                            R(base_expr, step_expr)
-                            for base_expr in base_exprs
-                            for step_expr in step_exprs
-                        ]
-                        expressions_by_arity.setdefault(step_arity - 1, []).extend(
-                            new_r_exprs
-                        )
-            else:
-                # If base has a defined arity, step must have arity = base_arity + 2
-                step_arity = base_arity + 2
-                if step_arity in smaller_expressions_by_arity:
-                    new_r_exprs = [
-                        R(base_expr, step_expr)
-                        for base_expr in base_exprs
-                        for step_expr in smaller_expressions_by_arity[step_arity]
-                    ]
-                    expressions_by_arity.setdefault(base_arity + 1, []).extend(
-                        new_r_exprs
-                    )
+    max_d_exprs = []
+    # pattern of C(depth is n-1, *)
+    for base_arity, base_funcs in enumerate(pre_max_d_exprs):
+        if base_arity == 0:
+            continue
 
-    return expressions_by_arity
+        args_candidates_by_arity = [[] for _ in range(max_p_arity + 1)]
+        for depth in range(len(pre_exprs)):
+            for arity in range(len(pre_exprs[depth])):
+                args_candidates_by_arity[arity].extend(pre_exprs[depth][arity])
 
+        # scanning by args arity (== output arity)
+        for args_arity, same_arity_exprs in enumerate(args_candidates_by_arity):
+            for args in product(same_arity_exprs, repeat=base_arity):
+                for base in base_funcs:
+                    continue
 
-# Example usage
-expressions = generate_expressions(depth=3, max_p_arity=3, max_c_args=3)
+            same_arity_depth = [
+                C(base, *args)
+                for base in base_funcs
+                for args in product(same_arity_exprs, repeat=base_arity)
+            ]
+            ret[max_depth].append(same_arity_depth)
 
-expr_li = []
-for arity, exprs in expressions.items():
-    print(f"Arity {arity}: {len(exprs)} expressions")
-    for expr in exprs:
-        expr_li.append(
-            {
-                "Arity": arity,
-                "Expressions": str(expr),
-            }
-        )
-
-
-df = pd.DataFrame(expr_li)
-df.to_csv("valid_expressions.csv", index=False)
-
-print("Done")
+    return [[], depth1_exprs]
