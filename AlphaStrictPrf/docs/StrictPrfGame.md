@@ -40,7 +40,7 @@ StrictPrfGameとは、形式的な文法StrictPrf(以後Prfと略す)を書き�
 ```
 MAX_P_ARITY = 2
 EXPR_DEPTH = 2
-MAX_C_ARGS = 2
+MAX_C_ARGS = 3
 ```
 現在のユーザの語が`C(Z(), R(S(), P(1, 1)), S())`のときにできる操作を考えてみる。
 
