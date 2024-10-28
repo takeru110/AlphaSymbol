@@ -33,12 +33,11 @@ def test_available_tokens(game_instance):
     expected_tokens = {
         Z(),  # Z()
         S(),  # S()
-        R(Z(), Z()),  # R(Z(), Z())
         P(1, 1),  # P(1, 1)
         P(2, 1),  # P(2, 1)
         P(2, 2),  # P(2, 2)
         C(Z(), Z()),  # C(Z(), Z())
-        C(Z(), Z(), Z()),
+        R(Z(), Z()),  # R(Z(), Z())
     }
 
     # Convert the available tokens list to a set
@@ -77,19 +76,15 @@ def test_available_actions(game_instance):
         Action(deque([]), P(2, 1)),
         Action(deque([]), P(2, 2)),
         Action(deque([]), C(Z(), Z())),
-        Action(deque([]), C(Z(), Z(), Z())),
         Action(deque([]), R(Z(), Z())),
     ]
     processed_expected_actions = set(
-        Action(tuple(action.position), action.expr)
-        for action in expected_actions
+        Action(tuple(action.position), action.expr) for action in expected_actions
     )
     processed_actions = set(
         Action(tuple(action.position), action.expr) for action in actions
     )
-    assert (
-        processed_actions == processed_expected_actions
-    ), "Error: available_actions"
+    assert processed_actions == processed_expected_actions, "Error: available_actions"
 
 
 def test_reset(game_instance):
@@ -117,9 +112,7 @@ class TestStepHumanReadable:
             init_expr=C(P(1, 1), S()),
         )
         game.reset()
-        action = Action(
-            deque([1, 2]), Z()
-        )  # Position not in available_positions
+        action = Action(deque([1, 2]), Z())  # Position not in available_positions
 
         result = game.step_human_readable(action)
 
@@ -147,9 +140,7 @@ class TestStepHumanReadable:
 
         result = game.step_human_readable(action)
 
-        assert game.current_expr == C(
-            P(2, 1), S()
-        )  # Current expression changed
+        assert game.current_expr == C(P(2, 1), S())  # Current expression changed
         assert result[:4] == (
             C(P(2, 1), S()),  # New expression
             0.1 + 0.9 ** len(str(game.current_expr)),  # Expected score
@@ -173,9 +164,7 @@ class TestStepHumanReadable:
         action = Action(deque([2]), P(2, 1))
 
         result = game.step_human_readable(action)
-        assert game.current_expr == C(
-            P(1, 1), P(2, 1)
-        )  # Current expression changed
+        assert game.current_expr == C(P(1, 1), P(2, 1))  # Current expression changed
 
         assert result[:4] == (
             game.current_expr,  # Should return the current expression changed
@@ -203,9 +192,7 @@ class TestStepHumanReadable:
 
         assert result[:4] == (
             S(),
-            1
-            + 0.9
-            ** len(str(game.current_expr)),  # Full score for correct output
+            1 + 0.9 ** len(str(game.current_expr)),  # Full score for correct output
             True,  # Done flag (perfect match)
             False,  # Truncated flag (step count < max_steps)
         )
@@ -228,9 +215,7 @@ class TestStepHumanReadable:
         result = game.step_human_readable(action)
 
         matching_elements = 1
-        expected_score = 0.3 + (
-            0.3 * matching_elements / len(game.input_sequence)
-        )
+        expected_score = 0.3 + (0.3 * matching_elements / len(game.input_sequence))
         expected_score += 0.9 ** len(str(game.current_expr))  # Add length score
 
         assert result[:4] == (
@@ -265,7 +250,7 @@ def test_int2action():
     input = [1, 2, 3]
     output = [2, 3, 4]
     game = StrictPrfGame(
-        2, 2, 3, 100, input, output, n_obs=100, init_expr=C(P(1, 1), S())
+        2, 2, 4, 100, input, output, n_obs=100, init_expr=C(P(1, 1), S())
     )
     assert game.int2action(0) == Action(deque([]), Z())
     assert game.int2action(1) == Action(deque([]), S())
@@ -284,9 +269,7 @@ def test_generate_state():
     output = [2, 3, 4, 5, 6]
     init_expr = C(P(1, 1), S())
     n_obs = 30
-    game = StrictPrfGame(
-        2, 2, 3, 100, input, output, n_obs=n_obs, init_expr=init_expr
-    )
+    game = StrictPrfGame(2, 2, 3, 100, input, output, n_obs=n_obs, init_expr=init_expr)
     current_output = [2, 3, 4, 5, 6]
     expected_state = []
     expected_state.extend(input)
@@ -326,12 +309,8 @@ def test_step():
     state, reward, terminated, truncated, info = game.step(25)
 
     # Assert conditions after second step
-    assert (
-        len(state) == game.n_obs
-    ), "State length is incorrect after second step"
-    assert isinstance(
-        reward, float
-    ), "Reward should be a float after second step"
+    assert len(state) == game.n_obs, "State length is incorrect after second step"
+    assert isinstance(reward, float), "Reward should be a float after second step"
     assert not terminated, "Terminated should still be False"
     assert not truncated, "Truncated should still be False"
 
@@ -359,7 +338,7 @@ def test_step_flow():
     game = StrictPrfGame(
         max_p_arity=3,
         expr_depth=4,
-        max_c_args=2,
+        max_c_args=3,
         max_steps=10,
         input_sequence=[1, 2, 3, 4, 5, 6],
         output_sequence=[4, 5, 6, 7, 8, 9],
@@ -373,78 +352,50 @@ def test_step_flow():
     assert (
         str(info["expression"]) == "R(Z(), Z())"
     ), "Error: return value state of SrictPrfGame.step()"
-    assert (
-        terminated == False
-    ), "Error: return value terminated of StrictPrfGame.step()"
-    assert (
-        truncated == False
-    ), "Error: return value truncated of StrictPrfGame.step()"
+    assert terminated == False, "Error: return value terminated of StrictPrfGame.step()"
+    assert truncated == False, "Error: return value truncated of StrictPrfGame.step()"
 
     state, _, terminated, truncated, info = game.step(25)  # [2] P(2, 1)
     assert (
         str(info["expression"]) == "R(Z(), P(2, 1))"
     ), "Error: return value state of SrictPrfGame.step()"
-    assert (
-        terminated == False
-    ), "Error: return value terminated of StrictPrfGame.step()"
-    assert (
-        truncated == False
-    ), "Error: return value truncated of StrictPrfGame.step()"
+    assert terminated == False, "Error: return value terminated of StrictPrfGame.step()"
+    assert truncated == False, "Error: return value truncated of StrictPrfGame.step()"
 
     state, _, terminated, truncated, info = game.step(8)  # [] C(Z(), Z())
     assert (
         str(info["expression"]) == "C(Z(), Z())"
     ), "Error: return value state of SrictPrfGame.step()"
-    assert (
-        terminated == False
-    ), "Error: return value terminated of StrictPrfGame.step()"
-    assert (
-        truncated == False
-    ), "Error: return value truncated of StrictPrfGame.step()"
+    assert terminated == False, "Error: return value terminated of StrictPrfGame.step()"
+    assert truncated == False, "Error: return value truncated of StrictPrfGame.step()"
 
     state, _, terminated, truncated, info = game.step(30)  # [2] C(Z(), Z())
     assert (
         str(info["expression"]) == "C(Z(), C(Z(), Z()))"
     ), "Error: return value state of SrictPrfGame.step()"
-    assert (
-        terminated == False
-    ), "Error: return value terminated of StrictPrfGame.step()"
-    assert (
-        truncated == False
-    ), "Error: return value truncated of StrictPrfGame.step()"
+    assert terminated == False, "Error: return value terminated of StrictPrfGame.step()"
+    assert truncated == False, "Error: return value truncated of StrictPrfGame.step()"
 
     state, _, terminated, truncated, info = game.step(12)  # [1] S()
     assert (
         str(info["expression"]) == "C(S(), C(Z(), Z()))"
     ), "Error: return value state of SrictPrfGame.step()"
-    assert (
-        terminated == False
-    ), "Error: return value terminated of StrictPrfGame.step()"
-    assert (
-        truncated == False
-    ), "Error: return value truncated of StrictPrfGame.step()"
+    assert terminated == False, "Error: return value terminated of StrictPrfGame.step()"
+    assert truncated == False, "Error: return value truncated of StrictPrfGame.step()"
 
     state, _, terminated, truncated, info = game.step(78)  # [2, 1] S()
     assert (
         str(info["expression"]) == "C(S(), C(S(), Z()))"
     ), "Error: return value state of SrictPrfGame.step()"
-    assert (
-        terminated == False
-    ), "Error: return value terminated of StrictPrfGame.step()"
-    assert (
-        truncated == False
-    ), "Error: return value truncated of StrictPrfGame.step()"
+    assert terminated == False, "Error: return value terminated of StrictPrfGame.step()"
+    assert truncated == False, "Error: return value truncated of StrictPrfGame.step()"
 
     state, _, terminated, truncated, info = game.step(89)  # [2, 2] S()
     assert (
         str(info["expression"]) == "C(S(), C(S(), S()))"
     ), "Error: return value state of SrictPrfGame.step()"
-    assert (
-        terminated == True
-    ), "Error: return value terminated of StrictPrfGame.step()"
-    assert (
-        truncated == False
-    ), "Error: return value truncated of StrictPrfGame.step()"
+    assert terminated == True, "Error: return value terminated of StrictPrfGame.step()"
+    assert truncated == False, "Error: return value truncated of StrictPrfGame.step()"
 
 
 def test_current_output():

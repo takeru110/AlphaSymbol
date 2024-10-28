@@ -10,8 +10,8 @@ Action = namedtuple("Action", ["position", "expr"])
 
 class ActType:
     def __init__(self, p, c, d):
-        self.n = c**d * (3 + int(1 / 2 * p * (p + 1)) + c)
-        self.n_post_expr = 3 + int(1 / 2 * p * (p + 1)) + c
+        self.n = c**d * (3 + int(1 / 2 * p * (p + 1)) + c - 1)
+        self.n_post_expr = 3 + int(1 / 2 * p * (p + 1)) + c - 1
 
     def sample(self):
         return random.randint(0, self.n - 1)
@@ -40,18 +40,14 @@ class StrictPrfGame:
         self.max_c_args = max_c_args
         self.max_steps = max_steps
 
-        self.input_sequence: list[int] = (
-            input_sequence if input_sequence else [0, 1, 2]
-        )
+        self.input_sequence: list[int] = input_sequence if input_sequence else [0, 1, 2]
         self.output_sequence: list[int] = (
             output_sequence if output_sequence else [0, 1, 2]
         )
         self.init_expr = init_expr
 
         self.current_expr: Expr = init_expr
-        self.action_space = ActType(
-            self.max_p_arity, self.max_c_args, self.expr_depth
-        )
+        self.action_space = ActType(self.max_p_arity, self.max_c_args, self.expr_depth)
 
         # Generate possible tokens based on game parameters
         self.tokens = self.available_tokens()
@@ -97,9 +93,7 @@ class StrictPrfGame:
                 when the expression is invalid, returns [-1, -1, ...]
         """
         try:
-            output = [
-                self.current_expr.evaluate(i) for i in self.input_sequence
-            ]
+            output = [self.current_expr.evaluate(i) for i in self.input_sequence]
         except AssertionError:
             output = [-1] * len(self.output_sequence)
         return output
@@ -140,13 +134,11 @@ class StrictPrfGame:
                 tokens.append(P(n, i))  # P(n, i) は Expr 型のインスタンス
 
         # C(Expr1, Expr2, ..., Exprn) の生成
-        for c_args in range(1, self.max_c_args + 1):
+        for c_args in range(2, self.max_c_args + 1):
             args = [
                 Z() for _ in range(c_args)
             ]  # C関数の引数としてすべてZ()を初期値にする
-            tokens.append(
-                C(Z(), *args)
-            )  # C(Z(), Z(), ...) のように Expr 型を生成
+            tokens.append(C(*args))  # C(Z(), Z(), ...) のように Expr 型を生成
 
         tokens.append(R(Z(), Z()))
         return tokens
@@ -244,7 +236,7 @@ class StrictPrfGame:
         このメソッドは引数としてint型を受け、Action型(自然数のリストplaceとExpr型変数exprの組)を返す。
         int型をself.action_space.n_post_exprで割ったとき、商がplaceを決め、あまりがexprを決める。
 
-        placeはこの商をmax_c_args + 1進数で表したときの各桁の数値をリストにしたものである。
+        placeはこの商をmax_c_args進数で表したときの各桁の数値をリストにしたものである。
         exprは、仕様書に書いてある書き換え先変数の値 Z(), S(), P(1, 1), P(2, 1), P(2, 2), P(3, 1), P(3, 2),...,C(Z(), Z()), C(Z(), Z(), Z()), ..., R(Z(), Z())
         をこの順に0, 1, ...,self.action_space.n_post_expr - 1, という値を対応させ、余りに対応する式がexprである。
 
@@ -257,9 +249,9 @@ class StrictPrfGame:
         # まず、numをself.action_space.n_post_exprで割る
         quotient, remainder = divmod(num, self.action_space.n_post_expr)
 
-        # placeの計算: quotientを(max_c_args + 1)進数のリストに変換
+        # placeの計算: quotientを(max_c_args)進数のリストに変換
         place = deque([])
-        base = self.max_c_args + 1
+        base = self.max_c_args
         while quotient > 0:
             place.append(quotient % base)
             quotient //= base
@@ -292,9 +284,7 @@ class StrictPrfGame:
         - info: other information
         """
         action = self.int2action(input)
-        expr, reward, terminated, truncated, info = self.step_human_readable(
-            action
-        )
+        expr, reward, terminated, truncated, info = self.step_human_readable(action)
         state = self.generate_state()
         info["position"] = action.position
         info["substitute"] = str(action.expr)
