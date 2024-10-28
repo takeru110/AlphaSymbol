@@ -5,7 +5,7 @@ import pandas as pd
 from strict_prf import C, Expr, P, R, S, Z
 
 
-def generate_expressions(
+def generate_valid_exprs(
     depth: int,
     max_p_arity: int,
     max_c_args: int,
@@ -20,6 +20,7 @@ def generate_expressions(
     Returns:
     - Dict[int, List[Expr]]: Dictionary of generated PRF expressions grouped by their arity.
     """
+
     # Base case: depth == 1, return the simplest expressions (Z, S, P)
     expressions_by_arity = {
         None: [Z()],
