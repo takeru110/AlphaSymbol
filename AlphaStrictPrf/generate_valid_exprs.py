@@ -1,5 +1,7 @@
 from itertools import product
-from typing import List
+from typing import Any, List
+
+import pandas as pd
 
 from AlphaStrictPrf.strict_prf import C, Expr, P, R, S, Z
 
@@ -19,11 +21,13 @@ def generate_valid_exprs(
     Generate all possible PRF expressions up to a given depth.
 
     Args:
-    - depth (int): The depth of recursion for generating expressions.
+    - max_depth (int): The depth of recursion for generating expressions.
+    - max_p_arity: (int): Maximum number of arity of P.
     - max_c_args (int): Maximum number of arguments allowed for C.
 
     Returns:
-    - Dict[int, List[Expr]]: Dictionary of generated PRF expressions grouped by their arity.
+    - List[List[List[Expr]]]: Dictionary of generated PRF expressions grouped by their arity and depth.
+        ret[depth][arity] is a list of PRF expressions of depth `depth` and arity `arity`.
     """
     if max_depth == 0:
         return [[]]
@@ -133,6 +137,59 @@ def generate_valid_exprs(
     for i in range(max_p_arity + 1):
         max_d_exprs[i] = list(set(max_d_exprs[i]))
 
-    ret: List[List[Expr]] = pre_exprs.copy()
+    ret: List[List[List[Expr]]] = pre_exprs.copy()
     ret.append(max_d_exprs)
     return ret
+
+
+def generate_expression_table(
+    max_depth: int, max_p_arity: int, max_c_args: int, arity: int, inputs: List[Any]
+) -> pd.DataFrame:
+    """
+    This function generats DataFrame of semantically-valid SPF expressions and their status.
+    Args:
+    - max_depth (int): The depth of recursion for generating expressions.
+    - max_p_arity: (int): Maximum number of arity of P.
+    - max_c_args (int): Maximum number of arguments allowed for C.
+    - arity (int): Arity of the target expressions. This is needed for generating outputs from inputs
+    - inputs (List[Any]): List of inputs for generating outputs.
+    """
+    exprs_by_depth_and_arity = generate_valid_exprs(max_depth, max_p_arity, max_c_args)
+
+    data = []
+
+    for depth in range(len(exprs_by_depth_and_arity)):
+        if depth == 0:
+            continue
+        exprs = set(
+            exprs_by_depth_and_arity[depth][0] + exprs_by_depth_and_arity[depth][arity]
+        )
+        for expr in exprs:
+            # 各式について必要な情報を取得
+            is_valid = expr.validate_semantic()
+            outputs = [expr.evaluate(x) for x in inputs]  # 出力を計算
+
+            data.append(
+                {
+                    "SPF": str(expr),
+                    "valid": is_valid,
+                    "depth": depth,
+                    "inputs": inputs,
+                    "outputs": outputs,
+                }
+            )
+
+    # DataFrameを生成
+    df = pd.DataFrame(data)
+    return df
+
+
+if __name__ == "__main__":
+    # 使用例
+    df_expr_table = generate_expression_table(
+        max_depth=2, max_p_arity=2, max_c_args=2, arity=1, inputs=[1, 2, 3]
+    )
+    df_expr_table.to_csv(
+        "expression_table.csv", index=False, encoding="utf-8-sig"
+    )  # UTF-8でエンコードして保存
+    print("CSV file is generated: expression_table.csv")
