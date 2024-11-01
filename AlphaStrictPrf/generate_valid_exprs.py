@@ -190,6 +190,8 @@ if __name__ == "__main__":
         max_depth=2, max_p_arity=2, max_c_args=2, arity=1, inputs=[1, 2, 3]
     )
     df_expr_table.to_csv(
-        "expression_table.csv", index=False, encoding="utf-8-sig"
+        "./data/d2-p2-c2.csv",
+        index=False,
+        encoding="utf-8-sig",
     )  # UTF-8でエンコードして保存
     print("CSV file is generated: expression_table.csv")
