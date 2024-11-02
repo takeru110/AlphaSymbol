@@ -65,15 +65,34 @@ def append_if_unique(
 
 
 def append_c_pattern(
-    new_exprs,
-    visited,
-    bases,
-    bases_arity,
-    args,
-    args_arity,
-    const_args,
-    eq_domain,
-) -> tuple[list[Expr], list[set[tuple[Any]]]]:
+    new_exprs: list[list[Expr]],
+    visited: list[set[tuple[Any]]],
+    bases: list[Expr],
+    bases_arity: int,
+    args: list[Expr],
+    args_arity: int,
+    const_args: list[Expr],
+    eq_domain: list[int],
+) -> tuple[list[list[Expr]], list[set[tuple[Any]]]]:
+    """append C(base, *args)
+    Append PRF expressions of the form C(base, *arg) to new_exprs if the output is not in visited.
+    This function is used when args_arity > 0.
+
+    Args
+    - new_exprs (list[list[Expr]]): List of PRF expressions max_depth to be updated.
+        - new_exprs[Arity]
+    - visited (list[set[tuple[Any]]]): List of visited outputs.
+    - bases (list[Expr]): List of base functions.
+    - bases_arity (int): Arity of base functions.
+    - args (list[Expr]): List of arguments.
+    - args_arity (int): Arity of arguments.
+    - const_args (list[Expr]): List of constant arguments.
+    - eq_domain (list[int]): List of inputs to defining semantic equivalence of Exprs.
+
+    Return
+    - new_exprs (list[list[Expr]]): Updated list of PRF expressions.
+    - visited (list[set[tuple[Any]]]): Updated list of visited outputs.
+    """
     assert args_arity >= 1, "args_arity must be greater than or equal to 1"
     for base, args in product(
         bases, product(args + const_args, repeat=bases_arity)
@@ -90,24 +109,41 @@ def append_c_pattern(
 
 
 def append_c_pattern_const_args(
-    new_exprs,
-    visited,
-    bases,
-    bases_arity,
-    args,
-    args_arity,
-    const_args,
-    eq_domain,
-) -> tuple[list[Expr], list[set[tuple[Any]]]]:
+    new_exprs: list[list[Expr]],
+    visited: list[set[tuple[Any]]],
+    bases: list[Expr],
+    bases_arity: int,
+    args: list[Expr],
+    const_args: list[Expr],
+    eq_domain: list[int],
+) -> tuple[list[list[Expr]], list[set[tuple[Any]]]]:
+    """append C(base, *args)
+    Append PRF expressions of the form C(base, *arg) to new_exprs if the output is not in visited.
+    this function is for the case of args' arity == 0.
+
+    Args
+    - new_exprs (list[list[Expr]]): List of PRF expressions of max depth to be updated.
+        - new_exprs[Arity]
+    - visited (list[set[tuple[Any]]]): List of visited outputs.
+    - bases (list[Expr]): List of base functions.
+    - bases_arity (int): Arity of base functions.
+    - args (list[Expr]): List of arguments.
+    - const_args (list[int]): List of constant arguments.
+    - eq_domain (list[int]): List of inputs to defining semantic equivalence of Exprs.
+
+    Return
+    - new_exprs (list[list[Expr]]): Updated list of PRF expressions.
+    - visited (list[set[tuple[Any]]]): Updated list of visited outputs.
+    """
     for base, args in product(
         bases, product(args + const_args, repeat=bases_arity)
     ):
         for value_arity in range(1, max_p_arity + 1):
-            new_exprs[args_arity], visited = append_if_unique(
+            new_exprs[0], visited = append_if_unique(
                 C(base, *args),
                 value_arity,
                 eq_domain,
-                new_exprs[args_arity],
+                new_exprs[0],
                 visited,
             )
     return new_exprs, visited
@@ -118,8 +154,8 @@ def generate_exprs_unique_output(
     max_p_arity: int,
     max_c_args: int,
     eq_domain: list[int],
-    visited: List[set[Any]],
-) -> tuple[List[List[List[Expr]]], List[set[Any]]]:
+    visited: list[set[Any]],
+) -> tuple[list[list[list[Expr]]], list[set[Any]]]:
     """
     Generate all possible PRF expressions up to a given depth.
 
@@ -167,7 +203,7 @@ def generate_exprs_unique_output(
         max_depth - 1, max_p_arity, max_c_args, eq_domain, visited
     )
 
-    ret_exprs: List[List[List[Expr]]] = pre_exprs.copy()
+    ret_exprs: list[list[list[Expr]]] = pre_exprs.copy()
     ret_exprs.append([[] for _ in range(max_p_arity + 1)])
     # max_d_exprs[arity] is a list of PRF expressions of depth `max_depth` and arity `arity` for return.
 
@@ -189,7 +225,6 @@ def generate_exprs_unique_output(
                     bases=base_funcs,
                     bases_arity=base_arity,
                     args=same_arity_exprs,
-                    args_arity=args_arity,
                     const_args=pre_max_by_arity[0],
                     eq_domain=eq_domain,
                 )
@@ -226,7 +261,6 @@ def generate_exprs_unique_output(
                     bases=base_funcs,
                     bases_arity=base_arity,
                     args=same_arity_exprs,
-                    args_arity=args_arity,
                     const_args=none_arity_exprs,
                     eq_domain=eq_domain,
                 )
@@ -321,7 +355,7 @@ def generate_expression_table(
     - inputs (List[Any]): List of inputs for generating outputs.
     """
     eq_domain = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
-    visited = [set() for _ in range(max_p_arity + 1)]
+    visited: list[set[tuple[Any]]] = [set() for _ in range(max_p_arity + 1)]
     exprs_by_depth_and_arity, visited = generate_exprs_unique_output(
         max_depth, max_p_arity, max_c_args, eq_domain, visited
     )
