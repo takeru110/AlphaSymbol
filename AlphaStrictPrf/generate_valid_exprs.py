@@ -1,6 +1,7 @@
 from itertools import product
 from typing import Any, List
 
+import numpy as np
 import pandas as pd
 
 from AlphaStrictPrf.strict_prf import C, Expr, P, R, S, Z
@@ -33,10 +34,10 @@ def generate_valid_exprs(
         return [[]]
 
     if max_depth == 1:
-        depth1_exprs = [[Z()], [S(), P(1, 1)]]
+        depth1_exprs: list[list[Expr]] = [[Z()], [S(), P(1, 1)]]
 
         for arity in range(2, max_p_arity + 1):
-            li_same_arity = [P(arity, i) for i in range(1, arity + 1)]
+            li_same_arity: list[Expr] = [P(arity, i) for i in range(1, arity + 1)]
             depth1_exprs.append(li_same_arity)
         return [[], depth1_exprs]
 
@@ -45,7 +46,7 @@ def generate_valid_exprs(
 
     max_d_exprs: List[List[Expr]] = [[] for _ in range(max_p_arity + 1)]
 
-    pre_max_by_arity = [[] for _ in range(max_p_arity + 1)]
+    pre_max_by_arity: list[list[Expr]] = [[] for _ in range(max_p_arity + 1)]
     for depth in range(len(pre_exprs)):
         for arity in range(len(pre_exprs[depth])):
             pre_max_by_arity[arity].extend(pre_exprs[depth][arity])
@@ -68,7 +69,7 @@ def generate_valid_exprs(
             max_d_exprs[args_arity].extend(same_arity_depth)
 
     # pattern of C(*, depth is n-1)
-    base_arity_list = [[] for _ in range(max_p_arity + 1)]
+    base_arity_list: list[list[Expr]] = [[] for _ in range(max_p_arity + 1)]
     for depth in range(len(pre_exprs)):
         for arity in range(len(pre_exprs[depth])):
             base_arity_list[arity].extend(pre_exprs[depth][arity])
@@ -140,6 +141,7 @@ def generate_valid_exprs(
     ret: List[List[List[Expr]]] = pre_exprs.copy()
     ret.append(max_d_exprs)
     return ret
+
 
 
 def generate_expression_table(

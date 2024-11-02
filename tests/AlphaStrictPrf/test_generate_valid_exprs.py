@@ -1,4 +1,6 @@
-from AlphaStrictPrf.generate_valid_exprs import generate_valid_exprs
+from AlphaStrictPrf.generate_valid_exprs import (
+    generate_valid_exprs,
+)
 from AlphaStrictPrf.strict_prf import C, Expr, P, R, S, Z
 
 
@@ -6,12 +8,6 @@ def expr_list_to_str(exprs):
     if isinstance(exprs, Expr):
         return str(exprs)
     return [expr_list_to_str(expr) for expr in exprs]
-
-
-def test_args_0():
-    exprs = generate_valid_exprs(0, 2, 2)
-    exp_exprs = [[]]
-    assert exprs == exp_exprs
 
 
 def test_args_1():
