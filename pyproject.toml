@@ -1,5 +1,5 @@
 [tool.ruff]
-target-version="py39"
+target-version="py312"
 line-length = 80
 indent-width = 4
 
