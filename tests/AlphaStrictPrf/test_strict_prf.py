@@ -37,24 +37,24 @@ def test_invalid_R_arity():
     rss_invalid_arity = R(S(), S())
     logging.debug("Test Sample: R(S(), S())")
     assert (
-        rss_invalid_arity.validate_semantic() is False
-    ), "Error: validate_semantic() works incorrectly for R(S(), S())"
+        rss_invalid_arity.is_valid() is False
+    ), "Error: is_valid() works incorrectly for R(S(), S())"
 
 
 def test_invalid_inner_arity():
     inner_invalid = R(Z(), C(S(), P(2, 2), P(2, 2)))
     logging.debug("R(Z(), C(S(), P(2, 2), P(2, 2)))")
     assert (
-        inner_invalid.validate_semantic() is False
-    ), "Error: validate_semantic() works incorrectly for R(Z(), C(S(), P(2, 2), P(2, 2)))"
+        inner_invalid.is_valid() is False
+    ), "Error: is_valid() works incorrectly for R(Z(), C(S(), P(2, 2), P(2, 2)))"
 
 
 def test_invalid_R_arity_2():
     inner_invalid2 = R(S(), Z())
     logging.debug("R(S(), Z())")
     assert (
-        inner_invalid2.validate_semantic() is False
-    ), "Error: validate_semantic() works incorrectly for R(S(), Z())"
+        inner_invalid2.is_valid() is False
+    ), "Error: is_valid() works incorrectly for R(S(), Z())"
 
 
 # ---- change -----
@@ -399,62 +399,52 @@ def test_R_tree_string():
     ), "Error: R(Z(), S())'s tree_string() should return 'R\n  Z\n  S'"
 
 
-# ---- validate_semantic -----
-def test_Z_validate_semantic():
+# ---- is_valid -----
+def test_Z_is_valid():
     z = Z()
-    assert z.validate_semantic(), "Z should always be semantically valid"
+    assert z.is_valid(), "Z should always be semantically valid"
 
 
-def test_S_validate_semantic():
+def test_S_is_valid():
     s = S()
-    assert s.validate_semantic(), "S should always be semantically valid"
+    assert s.is_valid(), "S should always be semantically valid"
 
 
-def test_P_validate_semantic():
+def test_P_is_valid():
     p = P(3, 2)
-    assert p.validate_semantic(), "P(3, 2) should always be semantically valid"
+    assert p.is_valid(), "P(3, 2) should always be semantically valid"
 
 
-def test_C_validate_semantic():
+def test_C_is_valid():
     c = C(S(), Z())
-    assert (
-        c.validate_semantic()
-    ), "C(S(), Z()) should always be semantically valid"
+    assert c.is_valid(), "C(S(), Z()) should always be semantically valid"
     assert not C(
         S(), S(), S()
-    ).validate_semantic(), "C(S(), S(), S()) should not be semantically valid"
+    ).is_valid(), "C(S(), S(), S()) should not be semantically valid"
 
 
-def test_C_validate_semantic_complex():
+def test_C_is_valid_complex():
     inner_invalid = C(P(2, 1), Z(), C(Z(), Z()))
     logging.debug("C(P(2, 1), Z(), P(2, 1))")
     assert (
-        inner_invalid.validate_semantic() is False
-    ), "Error: validate_semantic() works incorrectly"
+        inner_invalid.is_valid() is False
+    ), "Error: is_valid() works incorrectly"
 
 
-def test_R_validate_semantic():
+def test_R_is_valid():
     r = R(Z(), S())
-    assert (
-        not r.validate_semantic()
-    ), "R(Z(), S()) should always be semantically valid"
+    assert not r.is_valid(), "R(Z(), S()) should always be semantically valid"
 
     r = R(S(), P(3, 1))
-    assert (
-        r.validate_semantic()
-    ), "R(S(), P(3, 1)) should always be semantically valid"
+    assert r.is_valid(), "R(S(), P(3, 1)) should always be semantically valid"
 
     r = R(S(), S())
-    assert (
-        not r.validate_semantic()
-    ), "R(S(), S()) should not be semantically valid"
+    assert not r.is_valid(), "R(S(), S()) should not be semantically valid"
 
     r = R(Z(), P(3, 1))
-    assert (
-        r.validate_semantic()
-    ), "R(Z(), P(3, 1)) should always be semantically valid"
+    assert r.is_valid(), "R(Z(), P(3, 1)) should always be semantically valid"
 
     r = R(Z(), P(1, 1))
     assert (
-        not r.validate_semantic()
+        not r.is_valid()
     ), "R(Z(), P(1, 1)) should always be semantically valid"

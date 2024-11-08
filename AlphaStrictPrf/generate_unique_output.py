@@ -371,7 +371,7 @@ def generate_expression_table(
         )
         for expr in exprs:
             # 各式について必要な情報を取得
-            is_valid = expr.validate_semantic()
+            is_valid = expr.is_valid()
             outputs = [expr.evaluate(x) for x in inputs]  # 出力を計算
 
             data.append(
