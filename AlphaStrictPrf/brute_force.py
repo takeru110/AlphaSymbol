@@ -84,7 +84,7 @@ def generate_expressions(
 def filter_valid_expressions(expressions: List[Expr]):
     valid_expressions = []
     for expr in expressions:
-        if expr.validate_semantic():
+        if expr.is_valid():
             valid_expressions.append(expr)
     return valid_expressions
 
@@ -118,7 +118,7 @@ with open(os.path.join(output_dir, "possible.csv"), "w") as file:
     for item in all_possible_expressions:
         file.write(f"{str(item)}\n")
 
-# Step 2: Filter out invalid expressions according to validate_semantic()
+# Step 2: Filter out invalid expressions according to is_valid()
 valid_expressions = filter_valid_expressions(all_possible_expressions)
 print(f"Filtered down to {len(valid_expressions)} valid expressions.")
 with open(os.path.join(output_dir, "valid.csv"), "w") as file:

@@ -36,7 +36,7 @@ class Expr:
         """語の木構造の複雑さ。強化学習のスコアとして利用"""
         raise NotImplementedError()
 
-    def validate_semantic(self):
+    def is_valid(self):
         """自然数関数が定義できるかをチェックする
 
         自然数関数に直したとき、arityの数などで矛盾が生じないかを再帰的に確認する。
@@ -124,10 +124,10 @@ class Z(Expr):
         return 1.0
 
     def arity(self):
-        assert self.validate_semantic(), "Error: Invalid semantically"
+        assert self.is_valid(), "Error: Invalid semantically"
         return None
 
-    def validate_semantic(self):
+    def is_valid(self):
         return True
 
     def positions(self):
@@ -163,7 +163,9 @@ class S(Expr):
         return hash("S")
 
     def evaluate(self, *args: int) -> int:
-        assert len(args) == 1, "Error: the number of args of S.evaluate() should be 1."
+        assert (
+            len(args) == 1
+        ), "Error: the number of args of S.evaluate() should be 1."
         return args[0] + 1
 
     def tree_string(self, indent: int = 0) -> None:
@@ -176,10 +178,10 @@ class S(Expr):
         return 1.0
 
     def arity(self):
-        assert self.validate_semantic(), "Error: Invalid semantically"
+        assert self.is_valid(), "Error: Invalid semantically"
         return 1
 
-    def validate_semantic(self):
+    def is_valid(self):
         return True
 
     def positions(self):
@@ -233,10 +235,10 @@ class P(Expr):
         return 1.0
 
     def arity(self):
-        assert self.validate_semantic(), "Error: Invalid semantically"
+        assert self.is_valid(), "Error: Invalid semantically"
         return self.n
 
-    def validate_semantic(self, *args):
+    def is_valid(self, *args):
         return True
 
     def positions(self):
@@ -258,7 +260,7 @@ class C(Expr):
     """
     関数合成に対応したPRFの式
     __init__(func, args): 引数が2以上でないとError.
-    validate_semantic():
+    is_valid():
     - argsの長さがfuncのarityと一致しないとFalse。(つまりfunc=Z()もFalse)
     - argsの要素でZ()を除くもの全てのarityが一致しないとFalse
     arity: argsの要素のarity()。validate()を満たさないとError
@@ -296,7 +298,7 @@ class C(Expr):
     def complexity(self) -> float:
         return 1.0
 
-    def validate_semantic(self):
+    def is_valid(self):
         def all_elements_equal(li: List[int]) -> bool:
             if li == []:
                 return True
@@ -306,11 +308,11 @@ class C(Expr):
                         return False
                 return True
 
-        if self.func.validate_semantic() is False:
+        if self.func.is_valid() is False:
             return False
 
         for arg in self.args:
-            if arg.validate_semantic() is False:
+            if arg.is_valid() is False:
                 return False
 
         if self.func.arity() != len(self.args):
@@ -328,7 +330,7 @@ class C(Expr):
         return True
 
     def arity(self):
-        assert self.validate_semantic(), "Error: Invalid semantically"
+        assert self.is_valid(), "Error: Invalid semantically"
         return self.args[0].arity()
 
     def positions(self):
@@ -374,7 +376,7 @@ class R(Expr):
     原始再帰に対応したPRFの式
     __init__(base, step): 引数が2でないとTypeError
     evaluate(): 原始再帰を行った結果を返す。引数の数がおかしかったらError
-    validate_semantic():
+    is_valid():
     - step.ariy() == NoneでFalse
     - (base, step) == (None, >=2) or (n, n+2) (nは自然数) でないならFalse
     """
@@ -417,10 +419,10 @@ class R(Expr):
     def complexity(self) -> float:
         return 1.0
 
-    def validate_semantic(self):
-        if self.base.validate_semantic() is False:
+    def is_valid(self):
+        if self.base.is_valid() is False:
             return False
-        if self.step.validate_semantic() is False:
+        if self.step.is_valid() is False:
             return False
         # arity is None when expr is const like Z, S(Z), S(S(Z)), S(S(S(Z))), ...
         if self.step.arity() is None:
@@ -433,7 +435,7 @@ class R(Expr):
         return True
 
     def arity(self):
-        assert self.validate_semantic(), "Error: Invalid semantically"
+        assert self.is_valid(), "Error: Invalid semantically"
         return (
             self.base.arity() + 1
             if self.base.arity() is not None

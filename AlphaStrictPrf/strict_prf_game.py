@@ -183,7 +183,7 @@ class StrictPrfGame:
         length_score = 0.9 ** len(str(self.current_expr))  # in 0 < x < 1
 
         # Next expression is invalid semantically
-        if not self.current_expr.validate_semantic():
+        if not self.current_expr.is_valid():
             logging.debug("Semantic validation failed")
             return (
                 self.current_expr,
