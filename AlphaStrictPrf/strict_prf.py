@@ -1,5 +1,5 @@
 from collections import deque
-from typing import Deque, List
+from typing import Any, Deque, List
 
 
 class Expr:
@@ -67,7 +67,7 @@ class Expr:
         """
         raise NotImplementedError()
 
-    def change(self, pos: Deque[int], expr: "Expr") -> None:
+    def change(self, pos: Deque[int], expr: "Expr") -> "Expr":
         """
         指定された場所に基づいて、式の部分を新しい式に書き換える関数。
 
@@ -77,7 +77,7 @@ class Expr:
         """
         raise NotImplementedError()
 
-    def _change_recursion(self, pos: Deque[int], expr: "Expr") -> None:
+    def _change_recursion(self, pos: Deque[int], expr: "Expr") -> "Expr":
         """
         changeメソッドの再帰的な実装
 
@@ -102,7 +102,7 @@ class Z(Expr):
     evaluate(): 任意の数の引数で常に0を返す。
     """
 
-    def __init__(self, *args: any):
+    def __init__(self, *args: Any):
         assert len(args) == 0, "The number of args of Z should be 0."
 
     def _eq_impl(self, other):
@@ -133,11 +133,11 @@ class Z(Expr):
     def positions(self):
         return [deque([])]
 
-    def change(self, pos: Deque[int], expr: "Expr") -> None:
+    def change(self, pos: Deque[int], expr: "Expr") -> Expr:
         assert pos == Deque([]), "Error: invalid pos arg in Z.change()."
         return expr
 
-    def _change_recursion(self, pos: Deque[int], expr: "Expr") -> None:
+    def _change_recursion(self, pos: Deque[int], expr: "Expr") -> Expr:
         assert pos == Deque([]), "Error: invalid pos arg in Z.change()."
         return expr
 
@@ -168,7 +168,7 @@ class S(Expr):
         ), "Error: the number of args of S.evaluate() should be 1."
         return args[0] + 1
 
-    def tree_string(self, indent: int = 0) -> None:
+    def tree_string(self, indent: int = 0) -> str:
         return " " * indent + "S"
 
     def __str__(self) -> str:
@@ -187,11 +187,11 @@ class S(Expr):
     def positions(self):
         return [deque([])]
 
-    def change(self, pos: Deque[int], expr: "Expr") -> None:
+    def change(self, pos: Deque[int], expr: "Expr") -> Expr:
         assert pos == Deque([]), "Error: invalid pos arg in S.change()."
         return expr
 
-    def _change_recursion(self, pos: Deque[int], expr: "Expr") -> None:
+    def _change_recursion(self, pos: Deque[int], expr: "Expr") -> Expr:
         assert pos == Deque([]), "Error: invalid pos arg in S.change()."
         return expr
 
@@ -225,7 +225,7 @@ class P(Expr):
         ), f"Error: the number of args of P.evaluate() should be {self.n} but now {len(args)}"
         return args[self.i - 1]
 
-    def tree_string(self, indent: int = 0) -> None:
+    def tree_string(self, indent: int = 0) -> str:
         return " " * indent + f"P^{self.n}_{self.i}"
 
     def __str__(self) -> str:
@@ -244,11 +244,11 @@ class P(Expr):
     def positions(self):
         return [deque([])]
 
-    def change(self, pos: Deque[int], expr: "Expr") -> None:
+    def change(self, pos: Deque[int], expr: "Expr") -> Expr:
         assert pos == deque([]), "Error: invalid pos arg in P.change()."
         return expr
 
-    def _change_recursion(self, pos: Deque[int], expr: "Expr") -> None:
+    def _change_recursion(self, pos: Deque[int], expr: "Expr") -> Expr:
         assert pos == Deque([]), "Error: invalid pos arg in P.change()."
         return expr
 
@@ -269,9 +269,8 @@ class C(Expr):
 
     def __init__(self, func: Expr, *args: Expr):
         self.func = func
-        self.args = args
+        self.args: tuple[Expr, ...] = args
         assert len(self.args) > 0, "Error: Args of C should be >= 1"
-        self.args = list(args)
 
     def _eq_impl(self, other):
         # func と args の全てが同じなら等しい
@@ -284,7 +283,7 @@ class C(Expr):
         results_args: List[int] = [arg.evaluate(*args) for arg in self.args]
         return self.func.evaluate(*results_args)
 
-    def tree_string(self, indent: int = 0) -> None:
+    def tree_string(self, indent: int = 0) -> str:
         buffer = " " * indent + f"C^{1 + len(self.args)}\n"
         buffer = buffer + self.func.tree_string(indent + 2)
         for arg in self.args:
@@ -346,20 +345,22 @@ class C(Expr):
             positions.extend(arg_positions)
         return positions
 
-    def change(self, pos: Deque[int], expr: "Expr") -> None:
+    def change(self, pos: Deque[int], expr: "Expr") -> Expr:
         return self._change_recursion(pos.copy(), expr)
 
-    def _change_recursion(self, pos: Deque[int], expr: "Expr") -> None:
+    def _change_recursion(self, pos: Deque[int], expr: "Expr") -> Expr:
         if pos == deque([]):
             return expr
 
         arg_id = pos.popleft()
         if arg_id == 1:
-            copy_args = (arg.copy() for arg in self.args)
+            copy_args = [arg.copy() for arg in self.args]
             return C(self.func._change_recursion(pos, expr), *copy_args)
         elif arg_id >= 2:
             copy_args = [arg.copy() for arg in self.args]
-            copy_args[arg_id - 2] = copy_args[arg_id - 2]._change_recursion(pos, expr)
+            copy_args[arg_id - 2] = copy_args[arg_id - 2]._change_recursion(
+                pos, expr
+            )
             return C(self.func.copy(), *copy_args)
         else:
             raise ValueError(
@@ -428,7 +429,8 @@ class R(Expr):
         if self.step.arity() is None:
             return False
         if (self.base.arity() is None and self.step.arity() < 2) or (
-            self.base.arity() is not None and self.base.arity() + 2 != self.step.arity()
+            self.base.arity() is not None
+            and self.base.arity() + 2 != self.step.arity()
         ):
             # the arity of the args of R operator are wrong.
             return False
@@ -443,7 +445,7 @@ class R(Expr):
         )
 
     def positions(self) -> List[deque[int]]:
-        positions = [deque([])]
+        positions: list[deque[int]] = [deque([])]
         base_positions = self.base.positions()
         for pos in base_positions:
             pos.appendleft(1)
@@ -454,10 +456,10 @@ class R(Expr):
         positions.extend(step_positions)
         return positions
 
-    def change(self, pos: Deque[int], expr: "Expr") -> None:
+    def change(self, pos: Deque[int], expr: "Expr") -> Expr:
         return self._change_recursion(pos.copy(), expr)
 
-    def _change_recursion(self, pos: Deque[int], expr: "Expr") -> None:
+    def _change_recursion(self, pos: Deque[int], expr: "Expr") -> Expr:
         if pos == Deque([]):
             return expr
 
