@@ -32,7 +32,6 @@ class Expr:
         """語の木構造をインデント付きで出力する"""
         raise NotImplementedError()
 
-
     def is_valid(self):
         """自然数関数が定義できるかをチェックする
 
@@ -457,3 +456,13 @@ class R(Expr):
 
     def copy(self):
         return R(self.base.copy(), self.step.copy())
+
+
+def expr_to_str_rec(lst):
+    """
+    change all Exprs in nested list to str
+    """
+    if isinstance(lst, list):
+        return [expr_to_str_rec(sub) for sub in lst]
+    else:
+        return str(lst)
