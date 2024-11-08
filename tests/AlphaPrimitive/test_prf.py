@@ -7,7 +7,6 @@ def test_Z():
     # assert z_func.arity() == 0, "Error: Z arity is wrong."
     assert str(z_func) == "Z", "Error: Z parenthesized wrongly."
     assert z_func.tree_string() == "Z", "Error: Z tree is wrong."
-    assert z_func.complexity() == 1.0, "Error: Complesity of Z is wrong"
 
 
 def test_S():
@@ -16,7 +15,6 @@ def test_S():
     # assert s_func.arity() == 1, "Error: S arity is wrong."
     assert str(s_func) == "S", "Error: S parenthesized wrongly."
     assert s_func.tree_string() == "S", "Error: S tree is wrong."
-    assert s_func.complexity() == 1.0, "Error: Complesity of S is wrong"
 
 
 def test_P():
@@ -42,7 +40,6 @@ def test_P():
     assert (
         p_func.tree_string() == "P2"
     ), "Error: P print_parenthesized is wrong."
-    assert p_func.complexity() == 1.0, "Error: Complexity of P is wrong"
 
 
 def test_C():
@@ -53,16 +50,12 @@ def test_C():
     assert (
         str(c_func_always_one) == "C2(S, Z)"
     ), "Error: C is parenthesized wrongly"
-    assert (
-        c_func_always_one.complexity() == 1.0
-    ), "Error: C Complexity is wrong."
 
     add_two = C(S(), S())
     assert add_two.evaluate(17) == 19, "Error: C evaluation is wrong"
     # assert add_two.arity() == 1, "Error: C arity is wrong."
     assert add_two.tree_string() == "C2\n  S\n  S", "C tree is wrong."
     assert str(add_two) == "C2(S, S)", "Error: C is parenthesized wrongly"
-    assert add_two.complexity() == 1.0, "Error: C Complexity is wrong."
 
 
 def test_R():
@@ -74,7 +67,6 @@ def test_R():
         add.tree_string() == "R\n  P1\n  C2\n    S\n    P2"
     ), "Error: R tree is wrong"
     assert str(add) == "R(P1, C2(S, P2))", "Error: R parenthesis is wrong"
-    assert add.complexity() == 1.0, "Error: add complexity is wrong."
 
     # when input is 0 then returns 1 else returns 0
     when0_then1_else0 = C(R(S(), P(3)), P(1), Z())

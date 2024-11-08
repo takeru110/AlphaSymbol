@@ -32,9 +32,6 @@ class Expr:
         """語の木構造をインデント付きで出力する"""
         raise NotImplementedError()
 
-    def complexity(self) -> float:
-        """語の木構造の複雑さ。強化学習のスコアとして利用"""
-        raise NotImplementedError()
 
     def is_valid(self):
         """自然数関数が定義できるかをチェックする
@@ -120,9 +117,6 @@ class Z(Expr):
     def __str__(self) -> str:
         return "Z()"
 
-    def complexity(self) -> float:
-        return 1.0
-
     def arity(self):
         assert self.is_valid(), "Error: Invalid semantically"
         return None
@@ -173,9 +167,6 @@ class S(Expr):
 
     def __str__(self) -> str:
         return "S()"
-
-    def complexity(self) -> float:
-        return 1.0
 
     def arity(self):
         assert self.is_valid(), "Error: Invalid semantically"
@@ -230,9 +221,6 @@ class P(Expr):
 
     def __str__(self) -> str:
         return f"P({self.n}, {self.i})"
-
-    def complexity(self) -> float:
-        return 1.0
 
     def arity(self):
         assert self.is_valid(), "Error: Invalid semantically"
@@ -293,9 +281,6 @@ class C(Expr):
     def __str__(self) -> str:
         args_str = ", ".join(str(arg) for arg in self.args)
         return f"C({str(self.func)}, {args_str})"
-
-    def complexity(self) -> float:
-        return 1.0
 
     def is_valid(self):
         def all_elements_equal(li: List[int]) -> bool:
@@ -416,9 +401,6 @@ class R(Expr):
     def __str__(self) -> str:
         buffer = f"R({str(self.base)}, {str(self.step)})"
         return buffer
-
-    def complexity(self) -> float:
-        return 1.0
 
     def is_valid(self):
         if self.base.is_valid() is False:
