@@ -3,7 +3,15 @@ from collections import deque
 
 import pytest
 
-from AlphaStrictPrf.strict_prf import C, P, R, S, Z, expr_to_str_rec
+from AlphaStrictPrf.strict_prf import (
+    C,
+    InputSizeError,
+    P,
+    R,
+    S,
+    Z,
+    expr_to_str_rec,
+)
 
 logging.basicConfig(level=logging.DEBUG)
 
@@ -203,7 +211,7 @@ def test_P_evaluate():
 def test_invalid_P_evaluate():
     p_func = P(3, 2)
     logging.debug("P(3, 2)")
-    with pytest.raises(AssertionError):
+    with pytest.raises(InputSizeError):
         p_func.evaluate(10, 20)
 
 
@@ -254,21 +262,21 @@ def test_C_evaluate_complex_2():
 def test_invalid_R_evaluate():
     rss_invalid_arity = R(S(), S())
     logging.debug("Test Sample: R(S(), S())")
-    with pytest.raises(AssertionError):
+    with pytest.raises(InputSizeError):
         rss_invalid_arity.evaluate(1)
 
 
 def test_invalid_inner_evaluate():
     inner_invalid = R(Z(), C(S(), P(2, 2), P(2, 2)))
     logging.debug("R(Z(), C(S(), P(2, 2), P(2, 2)))")
-    with pytest.raises(AssertionError):
+    with pytest.raises(InputSizeError):
         inner_invalid.evaluate(1)
 
 
 def test_invalid_R_evaluate_2():
     inner_invalid2 = R(S(), Z())
     logging.debug("R(S(), Z())")
-    with pytest.raises(AssertionError):
+    with pytest.raises(InputSizeError):
         inner_invalid2.evaluate(1)
 
 
