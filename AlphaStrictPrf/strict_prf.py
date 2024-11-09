@@ -288,13 +288,17 @@ class C(Expr):
     def evaluate(self, *args: int) -> int:
         try:
             results_args: List[int] = [arg.evaluate(*args) for arg in self.args]
+            ret = self.func.evaluate(*results_args)
         except InputSizeError as e:
             raise InputSizeError(f"""{e}
                                  {str(self)} got invalid input size {len(args)}.""")
         except OverflowLimitExceededError as e:
             raise OverflowLimitExceededError(f"""{e}
                                  a calculating value exceeds the limit in {str(self)}""")
-        ret = self.func.evaluate(*results_args)
+        except Exception as e:
+            raise Exception(f"""{e} 
+                            at {str(self)}""")
+
         if ret > MAX_EVALUATION_LIMIT:
             raise OverflowLimitExceededError(
                 f"a calculating value exceeds the limit in {str(self)}"
@@ -427,6 +431,9 @@ class R(Expr):
         except OverflowLimitExceededError as e:
             raise OverflowLimitExceededError(f"""{e}
                                  a calculating value exceeds the limit in {str(self)}""")
+        except Exception as e:
+            raise Exception(f"""{e}
+                             at {str(self)}""")
         if ret > MAX_EVALUATION_LIMIT:
             raise OverflowLimitExceededError(
                 f"a calculating value exceeds the limit in {str(self)}"
