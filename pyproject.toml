@@ -2,6 +2,7 @@
 target-version="py312"
 line-length = 80
 indent-width = 4
+ignore = ["F401"]
 
 [tool.ruff.format]
 
@@ -15,3 +16,6 @@ testpaths = ["tests",]
 log_cli = true
 log_level = "DEBUG"
 addopts = "-vv"
+
+[tool.vscode]
+python.envFile = ".env"

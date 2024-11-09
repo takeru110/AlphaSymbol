@@ -2,6 +2,12 @@ from collections import deque
 from typing import Any, Deque, List
 
 
+class InputSizeError(Exception):
+    "the number of inputs is invalid for the arity of then function"
+
+    pass
+
+
 class Expr:
     def __eq__(self, other):
         """Expr型のクラスの等価性を確認する"""
@@ -156,9 +162,10 @@ class S(Expr):
         return hash("S")
 
     def evaluate(self, *args: int) -> int:
-        assert (
-            len(args) == 1
-        ), "Error: the number of args of S.evaluate() should be 1."
+        if len(args) != 1:
+            raise InputSizeError(
+                f"S.evaluate() got invalid input size {len(args)}"
+            )
         return args[0] + 1
 
     def tree_string(self, indent: int = 0) -> str:
@@ -210,9 +217,8 @@ class P(Expr):
         return hash((self.n, self.i))
 
     def evaluate(self, *args: int) -> int:
-        assert (
-            len(args) == self.n
-        ), f"Error: the number of args of P.evaluate() should be {self.n} but now {len(args)}"
+        if len(args) != self.n:
+            InputSizeError(f"P.evaluate() got invalid input size {len(args)}")
         return args[self.i - 1]
 
     def tree_string(self, indent: int = 0) -> str:
@@ -267,7 +273,11 @@ class C(Expr):
         return hash((self.func, tuple(self.args)))
 
     def evaluate(self, *args: int) -> int:
-        results_args: List[int] = [arg.evaluate(*args) for arg in self.args]
+        try:
+            results_args: List[int] = [arg.evaluate(*args) for arg in self.args]
+        except InputSizeError as e:
+            raise InputSizeError(f"""{e}
+                                 {str(self)} got invalid input size {len(args)}.""")
         return self.func.evaluate(*results_args)
 
     def tree_string(self, indent: int = 0) -> str:
@@ -378,18 +388,23 @@ class R(Expr):
         return hash((self.base, self.step))
 
     def evaluate(self, *args: int) -> int:
-        assert (
-            len(args) >= 1
-        ), "Error: the number of args of R.evaluate() should be >= 1."
+        if len(args) == 0:
+            InputSizeError(
+                "Error: the number of args of R.evaluate() should be >= 1."
+            )
         n = args[0]
         post_args = args[1:]
-        if n == 0:
-            return self.base.evaluate(*post_args)
-        else:
-            step_back = R(self.base, self.step)
-            return self.step.evaluate(
-                n - 1, step_back.evaluate(n - 1, *post_args), *post_args
-            )
+        try:
+            if n == 0:
+                return self.base.evaluate(*post_args)
+            else:
+                step_back = R(self.base, self.step)
+                return self.step.evaluate(
+                    n - 1, step_back.evaluate(n - 1, *post_args), *post_args
+                )
+        except InputSizeError as e:
+            raise InputSizeError(f"""{e}
+                                 {str(self)} got invalid input size {len(args)}.""")
 
     def tree_string(self, indent: int = 0) -> str:
         buffer = " " * indent + "R\n"

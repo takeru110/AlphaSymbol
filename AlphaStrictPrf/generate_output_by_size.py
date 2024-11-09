@@ -219,7 +219,7 @@ def update_r_pattern(
     for base in exprs[base_size][base_arity]:
         for arg in exprs[output_size - base_size - 1][base_arity + 2]:
             if_visited_then_append(
-                exprs[output_size][base_arity + 2],
+                exprs[output_size][base_arity + 1],
                 visited,
                 R(base, arg),
                 base_arity + 1,
@@ -394,9 +394,9 @@ def generate_expression_table(
 
 if __name__ == "__main__":
     # 使用例
-    max_size = 5
-    max_p_arity = 3
-    max_c_args = 2
+    max_size = 15
+    max_p_arity = 2
+    max_c_args = 3
     df_expr_table = generate_expression_table(
         max_size=max_size,
         max_p_arity=max_p_arity,
