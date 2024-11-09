@@ -25,8 +25,8 @@ StrictPRFの例を挙げる
 1. Z()のarityはNoneである
 2. S()のarityは1である
 3. P(n, i)のarityはnである
-4. C(Expr1, Expr2, ...,Expri)において、Expr1のarityはiに等しくなければならず、Expr2, Expr3...,Expriのそれぞれのarityは等しくなければならない(この値をdとする)。このとき、C(Expr1, Expr2, ...,Expri)のarityはdになる。
-5. R(Expr1, Expr2)において、Expr1のarityに2を足すとExpr2のarityにならばければいけない。またこのときR(Expr1, Expr2)のarityはExpr1のarity+1になる。
+4. C(Expr1, Expr2, ...,Expri)において、Expr1のarityはiに等しくなければならず、Expr2, Expr3...,ExpriのそれぞれのarityでNoneでないものは全て等しくなければならない(この値をdとする)。このとき、C(Expr1, Expr2, ...,Expri)のarityはdになる。
+5. R(Expr1, Expr2)において、Expr1の値がNoneでExpr2の値が2以上であるか、Expr1のarityに2を足すとExpr2のarityにならばければいけない。またこのときR(Expr1, Expr2)のarityはExpr1のarityがNoneならExpr2のarityの-1、Expr1のarityがNoneでないならばExpr1のarity+1になる。
 ```
 
 ただし、arityがNoneのときの対処は複雑なので、strict_prf.pyの各クラスにおけるarityメソッドを参照していただきたい。

@@ -3,7 +3,7 @@ from collections import deque
 
 import pytest
 
-from AlphaStrictPrf.strict_prf import C, P, R, S, Z
+from AlphaStrictPrf.strict_prf import C, P, R, S, Z, expr_to_str_rec
 
 logging.basicConfig(level=logging.DEBUG)
 
@@ -448,3 +448,14 @@ def test_R_is_valid():
     assert (
         not r.is_valid()
     ), "R(Z(), P(1, 1)) should always be semantically valid"
+
+
+def test_expr_to_str_rec():
+    expr = [Z(), S(), [P(1, 1), P(2, 1)], [C(S(), Z()), R(Z(), S())]]
+    str_expr = [
+        "Z()",
+        "S()",
+        ["P(1, 1)", "P(2, 1)"],
+        ["C(S(), Z())", "R(Z(), S())"],
+    ]
+    assert str_expr == expr_to_str_rec(expr), "Error: {expr} != {str_expr}"
