@@ -1,9 +1,19 @@
 from collections import deque
 from typing import Any, Deque, List
 
+MAX_EVALUATION_LIMIT = 10**4
+
 
 class InputSizeError(Exception):
     "the number of inputs is invalid for the arity of then function"
+
+    pass
+
+
+class OverflowLimitExceededError(Exception):
+    """
+    a value exceeds the overflow limit in the evaluation of the function
+    """
 
     pass
 
@@ -166,6 +176,7 @@ class S(Expr):
             raise InputSizeError(
                 f"S.evaluate() got invalid input size {len(args)}"
             )
+
         return args[0] + 1
 
     def tree_string(self, indent: int = 0) -> str:
@@ -218,7 +229,9 @@ class P(Expr):
 
     def evaluate(self, *args: int) -> int:
         if len(args) != self.n:
-            InputSizeError(f"P.evaluate() got invalid input size {len(args)}")
+            raise InputSizeError(
+                f"P.evaluate() got invalid input size {len(args)}"
+            )
         return args[self.i - 1]
 
     def tree_string(self, indent: int = 0) -> str:
@@ -278,7 +291,15 @@ class C(Expr):
         except InputSizeError as e:
             raise InputSizeError(f"""{e}
                                  {str(self)} got invalid input size {len(args)}.""")
-        return self.func.evaluate(*results_args)
+        except OverflowLimitExceededError as e:
+            raise OverflowLimitExceededError(f"""{e}
+                                 a calculating value exceeds the limit in {str(self)}""")
+        ret = self.func.evaluate(*results_args)
+        if ret > MAX_EVALUATION_LIMIT:
+            raise OverflowLimitExceededError(
+                f"a calculating value exceeds the limit in {str(self)}"
+            )
+        return ret
 
     def tree_string(self, indent: int = 0) -> str:
         buffer = " " * indent + f"C^{1 + len(self.args)}\n"
@@ -397,14 +418,20 @@ class R(Expr):
         try:
             if n == 0:
                 return self.base.evaluate(*post_args)
-            else:
-                step_back = R(self.base, self.step)
-                return self.step.evaluate(
-                    n - 1, step_back.evaluate(n - 1, *post_args), *post_args
-                )
+            step_back = R(self.base, self.step)
+            step_back_ans = step_back.evaluate(n - 1, *post_args)
+            ret = self.step.evaluate(n - 1, step_back_ans, *post_args)
         except InputSizeError as e:
             raise InputSizeError(f"""{e}
                                  {str(self)} got invalid input size {len(args)}.""")
+        except OverflowLimitExceededError as e:
+            raise OverflowLimitExceededError(f"""{e}
+                                 a calculating value exceeds the limit in {str(self)}""")
+        if ret > MAX_EVALUATION_LIMIT:
+            raise OverflowLimitExceededError(
+                f"a calculating value exceeds the limit in {str(self)}"
+            )
+        return ret
 
     def tree_string(self, indent: int = 0) -> str:
         buffer = " " * indent + "R\n"
