@@ -218,7 +218,9 @@ class P(Expr):
 
     def evaluate(self, *args: int) -> int:
         if len(args) != self.n:
-            InputSizeError(f"P.evaluate() got invalid input size {len(args)}")
+            raise InputSizeError(
+                f"P.evaluate() got invalid input size {len(args)}"
+            )
         return args[self.i - 1]
 
     def tree_string(self, indent: int = 0) -> str:
