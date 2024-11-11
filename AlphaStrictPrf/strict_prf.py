@@ -1,7 +1,7 @@
 from collections import deque
 from typing import Any, Deque, List
 
-MAX_EVALUATION_LIMIT = 10**4
+MAX_EVALUATION_LIMIT = 10**2
 
 
 class InputSizeError(Exception):
@@ -41,7 +41,20 @@ class Expr:
         raise NotImplementedError()
 
     def evaluate(self, *args: int) -> int:
-        """PRFが意味する自然数関数に変換して入力に対する値を評価する"""
+        """
+        PRFが意味する自然数関数に変換して入力に対する値を評価する
+
+        Args:
+        - args (int): 自然数関数に変換したPRFの引数に対応する自然数のリスト
+
+        Returns:
+        - int: PRFを自然数関数に変換したときの入力に対する出力値
+
+
+        Raises:
+        - InputSizeError: 入力リストのサイズとPRFのarityがが合わないとき
+        - OverflowLimitExceededError: 計算結果が設定した上限(再帰の上限)を超えたとき
+        """
         raise NotImplementedError()
 
     def tree_string(self, indent: int = 0) -> str:
