@@ -49,7 +49,8 @@ def ndim_output_map(base_array: list[int], d: int, f: Callable) -> NDArray:
     array = np.array(meshgrid)
     transposed = array.transpose(*range(1, d + 1), 0)
     flatten = transposed.reshape(-1, d)
-    results = np.array([f(*t) for t in flatten])
+    # convert all input to int for lru_cache
+    results = np.array([f(*(int(x) for x in t)) for t in flatten])
     results_reshaped = results.reshape((len(base_array),) * d)
     return results_reshaped
 
@@ -407,7 +408,7 @@ def generate_expression_table(
 
 if __name__ == "__main__":
     # 使用例
-    max_size = 15
+    max_size = 14
     max_p_arity = 2
     max_c_args = 3
     df_expr_table = generate_expression_table(
