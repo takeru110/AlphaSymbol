@@ -31,7 +31,19 @@ class Expr:
         raise NotImplementedError()
 
     def evaluate(self, *args: int) -> int:
-        """PRFが意味する自然数関数に変換して入力に対する値を評価する"""
+        """
+        PRFが意味する自然数関数に変換して入力に対する値を評価する
+
+        Args:
+        - args (int): 自然数関数に変換したPRFの引数に対応する自然数のリスト
+
+        Returns:
+        - int: PRFを自然数関数に変換したときの入力に対する出力値
+
+
+        Raises:
+        - InputSizeError: 入力リストのサイズとPRFのarityがが合わないとき
+        """
         raise NotImplementedError()
 
     def tree_string(self, indent: int = 0) -> str:
@@ -166,6 +178,7 @@ class S(Expr):
             raise InputSizeError(
                 f"S.evaluate() got invalid input size {len(args)}"
             )
+
         return args[0] + 1
 
     def tree_string(self, indent: int = 0) -> str:
@@ -277,10 +290,11 @@ class C(Expr):
     def evaluate(self, *args: int) -> int:
         try:
             results_args: List[int] = [arg.evaluate(*args) for arg in self.args]
+            ret = self.func.evaluate(*results_args)
         except InputSizeError as e:
             raise InputSizeError(f"""{e}
                                  {str(self)} got invalid input size {len(args)}.""")
-        return self.func.evaluate(*results_args)
+        return ret
 
     def tree_string(self, indent: int = 0) -> str:
         buffer = " " * indent + f"C^{1 + len(self.args)}\n"
@@ -399,14 +413,13 @@ class R(Expr):
         try:
             if n == 0:
                 return self.base.evaluate(*post_args)
-            else:
-                step_back = R(self.base, self.step)
-                return self.step.evaluate(
-                    n - 1, step_back.evaluate(n - 1, *post_args), *post_args
-                )
+            step_back = R(self.base, self.step)
+            step_back_ans = step_back.evaluate(n - 1, *post_args)
+            ret = self.step.evaluate(n - 1, step_back_ans, *post_args)
         except InputSizeError as e:
             raise InputSizeError(f"""{e}
                                  {str(self)} got invalid input size {len(args)}.""")
+        return ret
 
     def tree_string(self, indent: int = 0) -> str:
         buffer = " " * indent + "R\n"

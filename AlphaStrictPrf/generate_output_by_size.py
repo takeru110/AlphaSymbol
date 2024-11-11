@@ -1,3 +1,4 @@
+import logging
 from itertools import product
 from typing import Any, Callable
 
@@ -6,6 +7,10 @@ import pandas as pd
 from numpy.typing import NDArray
 
 from AlphaStrictPrf.strict_prf import C, Expr, P, R, S, Z, expr_to_str_rec
+
+logging.basicConfig(
+    level=logging.DEBUG, format="%(asctime)s - %(levelname)s - %(message)s"
+)
 
 
 def list_to_tuple(lst):
@@ -67,6 +72,7 @@ def if_visited_then_append_for_const(
             is_new = True
     if is_new:
         exprs.append(expr)
+        logging.debug(f"{expr} is appended.")
         return exprs, visited
     return exprs, visited
 
@@ -82,6 +88,7 @@ def if_visited_then_append(
     if output.tobytes() not in visited[expr_arity]:
         visited[expr_arity].add(output.tobytes())
         exprs.append(expr)
+        logging.debug(f"{expr} is appended.")
     return exprs, visited
 
 
