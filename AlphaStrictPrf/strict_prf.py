@@ -113,12 +113,6 @@ class Expr:
         """
         raise NotImplementedError()
 
-    def copy(self) -> "Expr":
-        """
-        属性が全く等しいコピーを作成する
-        """
-        raise NotImplementedError()
-
 
 class Z(Expr):
     """
@@ -163,9 +157,6 @@ class Z(Expr):
     def _change_recursion(self, pos: Deque[int], expr: "Expr") -> Expr:
         assert pos == Deque([]), "Error: invalid pos arg in Z.change()."
         return expr
-
-    def copy(self):
-        return Z()
 
 
 class S(Expr):
@@ -216,9 +207,6 @@ class S(Expr):
     def _change_recursion(self, pos: Deque[int], expr: "Expr") -> Expr:
         assert pos == Deque([]), "Error: invalid pos arg in S.change()."
         return expr
-
-    def copy(self):
-        return S()
 
 
 class P(Expr):
@@ -271,9 +259,6 @@ class P(Expr):
     def _change_recursion(self, pos: Deque[int], expr: "Expr") -> Expr:
         assert pos == Deque([]), "Error: invalid pos arg in P.change()."
         return expr
-
-    def copy(self):
-        return P(self.n, self.i)
 
 
 class C(Expr):
@@ -376,22 +361,17 @@ class C(Expr):
 
         arg_id = pos.popleft()
         if arg_id == 1:
-            copy_args = [arg.copy() for arg in self.args]
-            return C(self.func._change_recursion(pos, expr), *copy_args)
+            return C(self.func._change_recursion(pos, expr), *self.args)
         elif arg_id >= 2:
-            copy_args = [arg.copy() for arg in self.args]
+            copy_args = list(self.args)
             copy_args[arg_id - 2] = copy_args[arg_id - 2]._change_recursion(
                 pos, expr
             )
-            return C(self.func.copy(), *copy_args)
+            return C(self.func, *copy_args)
         else:
             raise ValueError(
                 "Error: pos arg of C._change_recursion() is invalid. Positive int is needed."
             )
-
-    def copy(self):
-        copy_args = (arg.copy() for arg in self.args)
-        return C(self.func.copy(), *copy_args)
 
 
 class R(Expr):
@@ -494,16 +474,13 @@ class R(Expr):
 
         arg_id = pos.popleft()
         if arg_id == 1:
-            return R(self.base._change_recursion(pos, expr), self.step.copy())
+            return R(self.base._change_recursion(pos, expr), self.step)
         elif arg_id == 2:
-            return R(self.base.copy(), self.step._change_recursion(pos, expr))
+            return R(self.base, self.step._change_recursion(pos, expr))
         else:
             raise ValueError(
                 "Error: invaid pos argument (not 1 or 2) at R._change_recursion()"
             )
-
-    def copy(self):
-        return R(self.base.copy(), self.step.copy())
 
 
 def expr_to_str_rec(lst):
