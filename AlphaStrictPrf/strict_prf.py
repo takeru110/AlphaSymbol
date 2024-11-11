@@ -3,11 +3,18 @@ from collections import deque
 from typing import Any, Deque, List
 
 OPTIMIZE_TAIL_RECURSION = True
-LRU_CACHE_SIZE = 0
+LRU_CACHE_SIZE = 10000
+OVERFLOW = 100
 
 
 class InputSizeError(Exception):
     "the number of inputs is invalid for the arity of then function"
+
+    pass
+
+
+class OverflowError(Exception):
+    "the result of the function is overflowed"
 
     pass
 
@@ -104,6 +111,10 @@ class Expr:
         """
         raise NotImplementedError()
 
+    def check_overflow(self, value: int):
+        if abs(value) > OVERFLOW:
+            raise OverflowError(f"Overflowed: {value} at {str(self)}")
+
 
 class Z(Expr):
     """
@@ -167,7 +178,9 @@ class S(Expr):
                 f"S.evaluate() got invalid input size {len(args)}"
             )
 
-        return args[0] + 1
+        ret = args[0] + 1
+        self.check_overflow(ret)
+        return ret
 
     def tree_string(self, indent: int = 0) -> str:
         return " " * indent + "S"
@@ -215,7 +228,9 @@ class P(Expr):
             raise InputSizeError(
                 f"P.evaluate() got invalid input size {len(args)}"
             )
-        return args[self.i - 1]
+        ret = args[self.i - 1]
+        self.check_overflow(ret)
+        return ret
 
     def tree_string(self, indent: int = 0) -> str:
         return " " * indent + f"P^{self.n}_{self.i}"
@@ -271,6 +286,7 @@ class C(Expr):
         except InputSizeError as e:
             raise InputSizeError(f"""{e}
                                  {str(self)} got invalid input size {len(args)}.""")
+        self.check_overflow(ret)
         return ret
 
     def tree_string(self, indent: int = 0) -> str:
@@ -383,16 +399,20 @@ class R(Expr):
         post_args = args[1:]
         try:
             if n == 0:
-                return self.base.evaluate(*post_args)
+                ret = self.base.evaluate(*post_args)
+                self.check_overflow(ret)
+                return ret
             if OPTIMIZE_TAIL_RECURSION:
                 rec_ans = self.base.evaluate(*post_args)
                 for i in range(0, n):
                     rec_ans = self.step.evaluate(i, rec_ans, *post_args)
+                self.check_overflow(rec_ans)
                 return rec_ans
 
             step_back = R(self.base, self.step)
             step_back_ans = step_back.evaluate(n - 1, *post_args)
             ret = self.step.evaluate(n - 1, step_back_ans, *post_args)
+            self.check_overflow(ret)
             return ret
         except InputSizeError as e:
             raise InputSizeError(f"""{e}
@@ -470,3 +490,12 @@ def expr_to_str_rec(lst):
         return [expr_to_str_rec(sub) for sub in lst]
     else:
         return str(lst)
+
+
+if __name__ == "__main__":
+    expr = C(
+        S(), C(S(), R(C(S(), C(S(), C(S(), Z()))), C(R(Z(), P(2, 1)), P(2, 2))))
+    )
+    print(f"arity = {expr.arity()}")
+    for i in range(10):
+        print(f"f({i}) = {expr.evaluate(i)}")
