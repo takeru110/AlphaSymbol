@@ -1,6 +1,8 @@
 from collections import deque
 from typing import Any, Deque, List
 
+OPTIMIZE_TAIL_RECURSION = True
+
 
 class InputSizeError(Exception):
     "the number of inputs is invalid for the arity of then function"
@@ -413,13 +415,19 @@ class R(Expr):
         try:
             if n == 0:
                 return self.base.evaluate(*post_args)
+            if OPTIMIZE_TAIL_RECURSION:
+                rec_ans = self.base.evaluate(*post_args)
+                for i in range(0, n):
+                    rec_ans = self.step.evaluate(i, rec_ans, *post_args)
+                return rec_ans
+
             step_back = R(self.base, self.step)
             step_back_ans = step_back.evaluate(n - 1, *post_args)
             ret = self.step.evaluate(n - 1, step_back_ans, *post_args)
+            return ret
         except InputSizeError as e:
             raise InputSizeError(f"""{e}
                                  {str(self)} got invalid input size {len(args)}.""")
-        return ret
 
     def tree_string(self, indent: int = 0) -> str:
         buffer = " " * indent + "R\n"
