@@ -73,13 +73,8 @@ def test_change_complex():
     pos = deque([2, 1])
     new_expr = expr.change(pos, R(Z(), P(2, 1)))
     expected_expr = C(R(Z(), P(2, 1)), C(R(Z(), P(2, 1)), S()))
-    assert new_expr == expected_expr, "Error: Expr.change()"
-    # check non-destructive
-    expr_copy = expr.copy()
-    for pos in expr.positions():
-        expr_copy.change(pos, Z())
-        assert expr_copy == expr, "Error: Expr.change()"
-        assert id(expr_copy) != id(expr), "Error: Expr.change()"
+    assert new_expr is expected_expr, "Error: Expr.change()"
+    assert new_expr is not expr, "Error: Expr.change()"
 
 
 # ---- copy -----
@@ -467,3 +462,12 @@ def test_expr_to_str_rec():
         ["C(S(), Z())", "R(Z(), S())"],
     ]
     assert str_expr == expr_to_str_rec(expr), "Error: {expr} != {str_expr}"
+
+
+# ---- id ----
+def test_id():
+    assert id(Z()) == id(Z()), "id is not equal."
+    assert id(S()) == id(S()), "id is not equal."
+    assert id(P(1, 1)) == id(P(1, 1)), "id is not equal."
+    assert id(C(S(), Z())) == id(C(S(), Z())), "id is not equal."
+    assert id(R(S(), P(2, 1))) == id(R(S(), P(2, 1))), "id is not equal."

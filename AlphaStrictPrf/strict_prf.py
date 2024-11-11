@@ -11,6 +11,16 @@ class InputSizeError(Exception):
 
 
 class Expr:
+    _instances: dict[int, int] = {}
+
+    def __new__(cls, *args):
+        key = hash((cls, *args))
+        if key in cls._instances:
+            return cls._instances[key]
+        instance = super().__new__(cls)
+        cls._instances[key] = instance
+        return instance
+
     def __eq__(self, other):
         """Expr型のクラスの等価性を確認する"""
         if type(self) is not type(other):
