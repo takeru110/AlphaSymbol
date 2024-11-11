@@ -1,4 +1,5 @@
 import logging
+import time
 from itertools import product
 from typing import Any, Callable
 
@@ -341,14 +342,19 @@ def generate_output_by_size(
     - max_c_args (int): Maximum the number of arguments of C.
     - eq_domain (List[int]): List of inputs to defining semantic equivalence of Exprs.
     """
+    start_time = time.time()
     visited: list[set[bytes]] = [set() for _ in range(size + 1)]
-    return _generate_output_by_size(
+    ret = _generate_output_by_size(
         size,
         max_p_arity,
         max_c_args,
         eq_domain,
         visited,
     )
+    end_time = time.time()
+    duration = end_time - start_time
+    logging.info(f"Duration: {duration} sec.")
+    return ret
 
 
 def generate_expression_table(
