@@ -280,13 +280,6 @@ def test_invalid_R_evaluate_2():
         inner_invalid2.evaluate(1)
 
 
-def test_too_big():
-    power = R(C(S(), Z()), C(R(Z(), C(S(), C(S(), P(2, 2)))), P(2, 2)))
-    logging.debug(f"{power}")
-    power.evaluate(14)
-    pass
-
-
 # ---- hash -----
 def test_complex_hash():
     expr1 = C(S(), Z())
