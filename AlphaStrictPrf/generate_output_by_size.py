@@ -7,7 +7,16 @@ import numpy as np
 import pandas as pd
 from numpy.typing import NDArray
 
-from AlphaStrictPrf.strict_prf import C, Expr, P, R, S, Z, expr_to_str_rec
+from AlphaStrictPrf.strict_prf import (
+    C,
+    Expr,
+    OverflowError,
+    P,
+    R,
+    S,
+    Z,
+    expr_to_str_rec,
+)
 
 logging.basicConfig(
     level=logging.DEBUG, format="%(asctime)s - %(levelname)s - %(message)s"
@@ -49,8 +58,13 @@ def ndim_output_map(base_array: list[int], d: int, f: Callable) -> NDArray:
     array = np.array(meshgrid)
     transposed = array.transpose(*range(1, d + 1), 0)
     flatten = transposed.reshape(-1, d)
-    # convert all input to int for lru_cache
-    results = np.array([f(*(int(x) for x in t)) for t in flatten])
+    try:
+        # convert all input to int for lru_cache
+        results = np.array([f(*(int(x) for x in t)) for t in flatten])
+    except OverflowError:
+        results = np.empty(flatten.shape[0], dtype=object)
+        results.fill(None)
+
     results_reshaped = results.reshape((len(base_array),) * d)
     return results_reshaped
 
@@ -69,7 +83,9 @@ def if_visited_then_append_for_const(
     is_new = False
     for num_inputs in range(1, max_p_arity + 1):
         output_array = ndim_output_map(eq_domain, num_inputs, expr.evaluate)
-        if output_array.tobytes() not in visited[num_inputs]:
+        if np.any(output_array == None):
+            return exprs, visited
+        elif output_array.tobytes() not in visited[num_inputs]:
             visited[num_inputs].add(output_array.tobytes())
             is_new = True
     if is_new:
@@ -87,7 +103,9 @@ def if_visited_then_append(
     eq_domain: list[int],
 ) -> tuple[list[Expr], list[set[bytes]]]:
     output = ndim_output_map(eq_domain, expr_arity, expr.evaluate)
-    if output.tobytes() not in visited[expr_arity]:
+    if np.any(output == None):
+        return exprs, visited
+    elif output.tobytes() not in visited[expr_arity]:
         visited[expr_arity].add(output.tobytes())
         exprs.append(expr)
         logging.debug(f"{expr} is appended.")
@@ -408,7 +426,7 @@ def generate_expression_table(
 
 if __name__ == "__main__":
     # 使用例
-    max_size = 14
+    max_size = 21
     max_p_arity = 2
     max_c_args = 3
     df_expr_table = generate_expression_table(
