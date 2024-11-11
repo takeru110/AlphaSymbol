@@ -1,19 +1,9 @@
 from collections import deque
 from typing import Any, Deque, List
 
-MAX_EVALUATION_LIMIT = 10**2
-
 
 class InputSizeError(Exception):
     "the number of inputs is invalid for the arity of then function"
-
-    pass
-
-
-class OverflowLimitExceededError(Exception):
-    """
-    a value exceeds the overflow limit in the evaluation of the function
-    """
 
     pass
 
@@ -53,7 +43,6 @@ class Expr:
 
         Raises:
         - InputSizeError: 入力リストのサイズとPRFのarityがが合わないとき
-        - OverflowLimitExceededError: 計算結果が設定した上限(再帰の上限)を超えたとき
         """
         raise NotImplementedError()
 
@@ -305,17 +294,6 @@ class C(Expr):
         except InputSizeError as e:
             raise InputSizeError(f"""{e}
                                  {str(self)} got invalid input size {len(args)}.""")
-        except OverflowLimitExceededError as e:
-            raise OverflowLimitExceededError(f"""{e}
-                                 a calculating value exceeds the limit in {str(self)}""")
-        except Exception as e:
-            raise Exception(f"""{e} 
-                            at {str(self)}""")
-
-        if ret > MAX_EVALUATION_LIMIT:
-            raise OverflowLimitExceededError(
-                f"a calculating value exceeds the limit in {str(self)}"
-            )
         return ret
 
     def tree_string(self, indent: int = 0) -> str:
@@ -441,16 +419,6 @@ class R(Expr):
         except InputSizeError as e:
             raise InputSizeError(f"""{e}
                                  {str(self)} got invalid input size {len(args)}.""")
-        except OverflowLimitExceededError as e:
-            raise OverflowLimitExceededError(f"""{e}
-                                 a calculating value exceeds the limit in {str(self)}""")
-        except Exception as e:
-            raise Exception(f"""{e}
-                             at {str(self)}""")
-        if ret > MAX_EVALUATION_LIMIT:
-            raise OverflowLimitExceededError(
-                f"a calculating value exceeds the limit in {str(self)}"
-            )
         return ret
 
     def tree_string(self, indent: int = 0) -> str:
