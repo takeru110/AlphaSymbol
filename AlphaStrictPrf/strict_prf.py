@@ -1,7 +1,9 @@
+import functools
 from collections import deque
 from typing import Any, Deque, List
 
 OPTIMIZE_TAIL_RECURSION = True
+LRU_CACHE_SIZE = 1000
 
 
 class InputSizeError(Exception):
@@ -41,7 +43,6 @@ class Expr:
 
         Returns:
         - int: PRFを自然数関数に変換したときの入力に対する出力値
-
 
         Raises:
         - InputSizeError: 入力リストのサイズとPRFのarityがが合わないとき
@@ -255,12 +256,15 @@ class C(Expr):
     def __init__(self, func: Expr, *args: Expr):
         self.func = func
         self.args: tuple[Expr, ...] = args
+        self.evaluate = functools.lru_cache(maxsize=LRU_CACHE_SIZE)(
+            self._evaluate
+        )
         assert len(self.args) > 0, "Error: Args of C should be >= 1"
 
     def _hash_impl(self):
         return hash((self.func, tuple(self.args)))
 
-    def evaluate(self, *args: int) -> int:
+    def _evaluate(self, *args: int) -> int:
         try:
             results_args: List[int] = [arg.evaluate(*args) for arg in self.args]
             ret = self.func.evaluate(*results_args)
@@ -363,11 +367,14 @@ class R(Expr):
     def __init__(self, base: Expr, step: Expr):
         self.base = base
         self.step = step
+        self.evaluate = functools.lru_cache(maxsize=LRU_CACHE_SIZE)(
+            self._evaluate
+        )
 
     def _hash_impl(self):
         return hash((self.base, self.step))
 
-    def evaluate(self, *args: int) -> int:
+    def _evaluate(self, *args: int) -> int:
         if len(args) == 0:
             InputSizeError(
                 "Error: the number of args of R.evaluate() should be >= 1."
