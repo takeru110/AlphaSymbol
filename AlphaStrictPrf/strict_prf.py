@@ -11,18 +11,18 @@ class InputSizeError(Exception):
 
 
 class Expr:
-    def __eq__(self, other):
-        """Expr型のクラスの等価性を確認する"""
-        if type(self) is not type(other):
-            return False
-        return self._eq_impl(other)
+    _instances: dict[int, int] = {}
+
+    def __new__(cls, *args):
+        key = hash((cls, *args))
+        if key in cls._instances:
+            return cls._instances[key]
+        instance = super().__new__(cls)
+        cls._instances[key] = instance
+        return instance
 
     def __str__(self):
         return NotImplementedError()
-
-    def _eq_impl(self, other):
-        """派生クラスで実装する等価性の比較"""
-        raise NotImplementedError()
 
     def __hash__(self):
         """Expr型のクラスのハッシュ値を計算する"""
@@ -103,12 +103,6 @@ class Expr:
         """
         raise NotImplementedError()
 
-    def copy(self) -> "Expr":
-        """
-        属性が全く等しいコピーを作成する
-        """
-        raise NotImplementedError()
-
 
 class Z(Expr):
     """
@@ -120,9 +114,6 @@ class Z(Expr):
 
     def __init__(self, *args: Any):
         assert len(args) == 0, "The number of args of Z should be 0."
-
-    def _eq_impl(self, other):
-        return True  # Z() は常に等しい
 
     def _hash_impl(self):
         return hash("Z")  # 固定のハッシュ値を返す
@@ -154,9 +145,6 @@ class Z(Expr):
         assert pos == Deque([]), "Error: invalid pos arg in Z.change()."
         return expr
 
-    def copy(self):
-        return Z()
-
 
 class S(Expr):
     """
@@ -168,9 +156,6 @@ class S(Expr):
 
     def __init__(self, *args):
         assert len(args) == 0, "The number of args of S should be 0."
-
-    def _eq_impl(self, other):
-        return True  # S() も常に等しい
 
     def _hash_impl(self):
         return hash("S")
@@ -207,9 +192,6 @@ class S(Expr):
         assert pos == Deque([]), "Error: invalid pos arg in S.change()."
         return expr
 
-    def copy(self):
-        return S()
-
 
 class P(Expr):
     """
@@ -223,10 +205,6 @@ class P(Expr):
         self.n = n
         self.i = i
         assert self.i <= self.n, "Error: P should be self.i <= self.n"
-
-    def _eq_impl(self, other):
-        # n と i が同じなら等しい
-        return self.n == other.n and self.i == other.i
 
     def _hash_impl(self):
         return hash((self.n, self.i))
@@ -262,9 +240,6 @@ class P(Expr):
         assert pos == Deque([]), "Error: invalid pos arg in P.change()."
         return expr
 
-    def copy(self):
-        return P(self.n, self.i)
-
 
 class C(Expr):
     """
@@ -281,10 +256,6 @@ class C(Expr):
         self.func = func
         self.args: tuple[Expr, ...] = args
         assert len(self.args) > 0, "Error: Args of C should be >= 1"
-
-    def _eq_impl(self, other):
-        # func と args の全てが同じなら等しい
-        return self.func == other.func and self.args == other.args
 
     def _hash_impl(self):
         return hash((self.func, tuple(self.args)))
@@ -366,22 +337,17 @@ class C(Expr):
 
         arg_id = pos.popleft()
         if arg_id == 1:
-            copy_args = [arg.copy() for arg in self.args]
-            return C(self.func._change_recursion(pos, expr), *copy_args)
+            return C(self.func._change_recursion(pos, expr), *self.args)
         elif arg_id >= 2:
-            copy_args = [arg.copy() for arg in self.args]
+            copy_args = list(self.args)
             copy_args[arg_id - 2] = copy_args[arg_id - 2]._change_recursion(
                 pos, expr
             )
-            return C(self.func.copy(), *copy_args)
+            return C(self.func, *copy_args)
         else:
             raise ValueError(
                 "Error: pos arg of C._change_recursion() is invalid. Positive int is needed."
             )
-
-    def copy(self):
-        copy_args = (arg.copy() for arg in self.args)
-        return C(self.func.copy(), *copy_args)
 
 
 class R(Expr):
@@ -397,10 +363,6 @@ class R(Expr):
     def __init__(self, base: Expr, step: Expr):
         self.base = base
         self.step = step
-
-    def _eq_impl(self, other):
-        # base と step が同じなら等しい
-        return self.base == other.base and self.step == other.step
 
     def _hash_impl(self):
         return hash((self.base, self.step))
@@ -484,16 +446,13 @@ class R(Expr):
 
         arg_id = pos.popleft()
         if arg_id == 1:
-            return R(self.base._change_recursion(pos, expr), self.step.copy())
+            return R(self.base._change_recursion(pos, expr), self.step)
         elif arg_id == 2:
-            return R(self.base.copy(), self.step._change_recursion(pos, expr))
+            return R(self.base, self.step._change_recursion(pos, expr))
         else:
             raise ValueError(
                 "Error: invaid pos argument (not 1 or 2) at R._change_recursion()"
             )
-
-    def copy(self):
-        return R(self.base.copy(), self.step.copy())
 
 
 def expr_to_str_rec(lst):

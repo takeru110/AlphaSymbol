@@ -73,70 +73,8 @@ def test_change_complex():
     pos = deque([2, 1])
     new_expr = expr.change(pos, R(Z(), P(2, 1)))
     expected_expr = C(R(Z(), P(2, 1)), C(R(Z(), P(2, 1)), S()))
-    assert new_expr == expected_expr, "Error: Expr.change()"
-    # check non-destructive
-    expr_copy = expr.copy()
-    for pos in expr.positions():
-        expr_copy.change(pos, Z())
-        assert expr_copy == expr, "Error: Expr.change()"
-        assert id(expr_copy) != id(expr), "Error: Expr.change()"
-
-
-# ---- copy -----
-def test_Z_copy():
-    z1 = Z()
-    z2 = z1.copy()
-    assert z1 == z2, "Copy of Z should be equal to the original"
-
-    assert (
-        z1 is not z2
-    ), "Copy of Z should not be the same object as the original"
-
-
-def test_S_copy():
-    s1 = S()
-    s2 = s1.copy()
-    assert s1 == s2, "Copy of S should be equal to the original"
-    assert (
-        s1 is not s2
-    ), "Copy of S should not be the same object as the original"
-
-
-def test_P_copy():
-    p1 = P(3, 2)
-    p2 = p1.copy()
-    assert p1 == p2, "Copy of P should be equal to the original"
-    assert (
-        p1 is not p2
-    ), "Copy of P should not be the same object as the original"
-
-
-def test_C_copy():
-    c1 = C(S(), Z())
-    c2 = c1.copy()
-    assert c1 == c2, "Copy of C should be equal to the original"
-    assert (
-        c1 is not c2
-    ), "Copy of C should not be the same object as the original"
-
-
-def test_R_copy():
-    r1 = R(Z(), S())
-    r2 = r1.copy()
-    assert r1 == r2, "Copy of R should be equal to the original"
-    assert (
-        r1 is not r2
-    ), "Copy of R should not be the same object as the original"
-
-
-def test_copy_complex():
-    assert Z().copy() == Z(), "Error: Z().copy"
-    assert S().copy() == S(), "Error: S().copy"
-    assert P(3, 1).copy() == P(3, 1), "Error: P(1, 2).copy"
-    assert C(S(), Z()).copy() == C(S(), Z()), "Error: C(S(), Z()).copy"
-    assert R(P(1, 1), P(3, 1)).copy() == R(
-        P(1, 1), P(3, 1)
-    ), "Error: R(C(1, 1), P(3, 1).copy"
+    assert new_expr is expected_expr, "Error: Expr.change()"
+    assert new_expr is not expr, "Error: Expr.change()"
 
 
 # ---- equality -----
@@ -293,6 +231,20 @@ def test_complex_hash():
     expr1 = R(S(), C(P(3, 1), S(), S()))
     expr2 = R(S(), C(P(3, 1), Z(), Z()))
     assert expr1 != expr2, "Error: Expr.__eq__()"
+
+
+# ---- id ----
+def test_id():
+    assert id(Z()) == id(Z()), "id is not equal."
+    assert id(S()) == id(S()), "id is not equal."
+    assert id(P(1, 1)) == id(P(1, 1)), "id is not equal."
+    assert id(C(S(), Z())) == id(C(S(), Z())), "id is not equal."
+    assert id(R(S(), P(2, 1))) == id(R(S(), P(2, 1))), "id is not equal."
+
+
+def test_id_change():
+    ch_expr = C(S(), Z()).change(deque([2]), S())
+    assert id(ch_expr) == id(C(S(), S())), "id is not equal."
 
 
 # ---- str -----
