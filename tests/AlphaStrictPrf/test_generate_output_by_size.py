@@ -53,7 +53,7 @@ def test_size_1():
         [0, 1, 2],
         visited,
     )
-    expected = [[], [[Z()], [S(), P(1, 1)], [P(2, 1), P(2, 2)]]]
+    expected = [[[], [], []], [[Z()], [S(), P(1, 1)], [P(2, 1), P(2, 2)]]]
     assert output == expected, "Error: output is not as expected."
 
 
