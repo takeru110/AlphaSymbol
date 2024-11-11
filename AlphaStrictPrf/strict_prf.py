@@ -21,18 +21,8 @@ class Expr:
         cls._instances[key] = instance
         return instance
 
-    def __eq__(self, other):
-        """Expr型のクラスの等価性を確認する"""
-        if type(self) is not type(other):
-            return False
-        return self._eq_impl(other)
-
     def __str__(self):
         return NotImplementedError()
-
-    def _eq_impl(self, other):
-        """派生クラスで実装する等価性の比較"""
-        raise NotImplementedError()
 
     def __hash__(self):
         """Expr型のクラスのハッシュ値を計算する"""
@@ -125,9 +115,6 @@ class Z(Expr):
     def __init__(self, *args: Any):
         assert len(args) == 0, "The number of args of Z should be 0."
 
-    def _eq_impl(self, other):
-        return True  # Z() は常に等しい
-
     def _hash_impl(self):
         return hash("Z")  # 固定のハッシュ値を返す
 
@@ -169,9 +156,6 @@ class S(Expr):
 
     def __init__(self, *args):
         assert len(args) == 0, "The number of args of S should be 0."
-
-    def _eq_impl(self, other):
-        return True  # S() も常に等しい
 
     def _hash_impl(self):
         return hash("S")
@@ -221,10 +205,6 @@ class P(Expr):
         self.n = n
         self.i = i
         assert self.i <= self.n, "Error: P should be self.i <= self.n"
-
-    def _eq_impl(self, other):
-        # n と i が同じなら等しい
-        return self.n == other.n and self.i == other.i
 
     def _hash_impl(self):
         return hash((self.n, self.i))
@@ -276,10 +256,6 @@ class C(Expr):
         self.func = func
         self.args: tuple[Expr, ...] = args
         assert len(self.args) > 0, "Error: Args of C should be >= 1"
-
-    def _eq_impl(self, other):
-        # func と args の全てが同じなら等しい
-        return self.func == other.func and self.args == other.args
 
     def _hash_impl(self):
         return hash((self.func, tuple(self.args)))
@@ -387,10 +363,6 @@ class R(Expr):
     def __init__(self, base: Expr, step: Expr):
         self.base = base
         self.step = step
-
-    def _eq_impl(self, other):
-        # base と step が同じなら等しい
-        return self.base == other.base and self.step == other.step
 
     def _hash_impl(self):
         return hash((self.base, self.step))
