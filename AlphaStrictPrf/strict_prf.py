@@ -3,7 +3,7 @@ from collections import deque
 from typing import Any, Deque, List
 
 OPTIMIZE_TAIL_RECURSION = True
-LRU_CACHE_SIZE = 1000
+LRU_CACHE_SIZE = 0
 
 
 class InputSizeError(Exception):
