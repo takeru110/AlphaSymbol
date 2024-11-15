@@ -10,6 +10,12 @@ class PrfSyntaxError(Exception):
     pass
 
 
+class SemanticsError(Exception):
+    "the semantics of the PRF cannot defined"
+
+    pass
+
+
 class Expr:
     _instances: dict[int, int] = {}
 
@@ -90,6 +96,8 @@ class C(Expr):
         self._base: Expr = args[0]
         self._args: tuple[Expr, ...] = args[1:]
         self._is_valid = self._init_is_valid()
+        if self.is_valid:
+            self._arity = self._init_arity()
 
     def __str__(self) -> str:
         args_str = ", ".join(str(arg) for arg in self._args)
@@ -97,8 +105,16 @@ class C(Expr):
 
     @property
     def arity(self):
-        """This function needs that "self" is valid semantically."""
-        return self._args[0].arity
+        if not self.is_valid:
+            raise SemanticsError(f"{str(self)} is invalid semantically")
+        return self._arity
+
+    def _init_arity(self):
+        """This function is called only in __init__()."""
+        arity_set = set(arg.arity for arg in self._args)
+        if any(ar is not None for ar in arity_set):
+            return (arity_set - {None}).pop()
+        return None
 
     @property
     def is_valid(self):
@@ -128,16 +144,17 @@ class R(Expr):
         self._term = args[0]
         self._steps: tuple[Expr, ...] = args[1 : self._dim + 1]
         self._bases: tuple[Expr, ...] = args[self._dim + 1 :]
-        self._arity = self._calc_arity()
         self._is_valid = self._init_is_valid()
+        if self.is_valid:
+            self._arity = self._init_arity()
 
     def __str__(self) -> str:
         steps_str = ", ".join(str(step) for step in self._steps)
         bases_str = ", ".join(str(base) for base in self._bases)
         return f"R({str(self._term)}, {steps_str}, {bases_str})"
 
-    def _calc_arity(self):
-        """This function is called when initializing this object."""
+    def _init_arity(self):
+        """This function is called only in __init__()."""
         for base in self._bases:
             if base.arity is not None:
                 return base.arity + 1
@@ -148,7 +165,8 @@ class R(Expr):
 
     @property
     def arity(self):
-        """This function needs that "self" is valid semantically."""
+        if not self.is_valid:
+            raise SemanticsError(f"{str(self)} is invalid semantically")
         return self._arity
 
     @property
