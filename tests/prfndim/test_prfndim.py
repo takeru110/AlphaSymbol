@@ -87,3 +87,50 @@ def test_r_arity():
     assert R(P(2, 1), P(3, 2), P(3, 1), Z(), Z()).arity == 1
     assert R(P(2, 1), P(4, 2), P(4, 1), S(), P(1, 1)).arity == 2
     assert R(P(2, 1), Z(), Z(), Z(), Z()).arity is None
+
+
+# ---- is_valid ----
+
+
+def test_z_is_valid():
+    assert Z().is_valid
+
+
+def test_s_is_valid():
+    assert S().is_valid
+
+
+def test_p_is_valid():
+    assert P(2, 1).is_valid
+
+
+def test_c_is_valid():
+    assert C(S(), Z()).is_valid
+    assert C(Z(), S()).is_valid
+    assert C(P(2, 1), Z(), S()).is_valid
+    assert C(P(2, 2), P(2, 1), C(S(), P(2, 2))).is_valid
+
+    assert not C(C(P(2, 1), S()), S()).is_valid
+    assert not C(Z(), C(P(2, 1), S())).is_valid
+    assert not C(P(2, 1), P(3, 1), S()).is_valid
+
+
+def test_r_is_valid():
+    assert R(S(), Z(), P(1, 1)).is_valid
+    assert R(S(), P(2, 1), Z()).is_valid
+    assert R(P(2, 1), P(3, 2), P(3, 1), Z(), Z()).is_valid
+    assert R(P(2, 1), P(4, 2), P(4, 1), S(), P(1, 1)).is_valid
+    assert R(P(2, 1), Z(), Z(), Z(), Z()).is_valid
+    assert R(P(2, 1), Z(), Z(), Z(), P(2, 1)).is_valid
+
+    # sub expr is invalid
+    assert not R(S(), Z(), C(P(2, 2), S())).is_valid
+    assert not R(P(2, 1), P(4, 2), C(P(3, 1), S()), S(), P(1, 1)).is_valid
+
+    # step arity is invalid for base
+    assert not R(S(), P(2, 1), S()).is_valid
+    assert not R(P(2, 1), P(3, 2), P(3, 1), Z(), S()).is_valid
+    assert not R(P(2, 1), Z(), S(), Z(), Z()).is_valid
+
+    # termianl function is invalid
+    assert not R(P(3, 1), Z(), Z(), Z(), S()).is_valid
