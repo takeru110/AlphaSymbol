@@ -59,3 +59,31 @@ def test_r_syntax_error():
         R(S(), Z())
     with pytest.raises(PrfSyntaxError):
         R(S())
+
+
+# ---- arity ----
+
+
+def test_z_arity():
+    assert Z().arity is None
+
+
+def test_s_arity():
+    assert S().arity == 1
+
+
+def test_p_arity():
+    assert P(2, 1).arity == 2
+
+
+def test_c_arity():
+    assert C(S(), Z()).arity is None
+    assert C(P(2, 2), P(2, 1), C(S(), P(2, 2))).arity == 2
+
+
+def test_r_arity():
+    assert R(S(), Z(), P(1, 1)).arity == 2
+    assert R(S(), P(2, 1), Z()).arity == 1
+    assert R(P(2, 1), P(3, 2), P(3, 1), Z(), Z()).arity == 1
+    assert R(P(2, 1), P(4, 2), P(4, 1), S(), P(1, 1)).arity == 2
+    assert R(P(2, 1), Z(), Z(), Z(), Z()).arity is None
