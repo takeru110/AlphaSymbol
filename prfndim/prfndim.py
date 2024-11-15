@@ -1,3 +1,9 @@
+import functools
+
+LRU_CACHE_SIZE = 1000
+OVERFLOW = 1000
+
+
 class InputSizeError(Exception):
     "the number of inputs is invalid for the arity of then function"
 
@@ -16,6 +22,12 @@ class SemanticsError(Exception):
     pass
 
 
+class OverflowError(Exception):
+    "the result of the function is overflowed"
+
+    pass
+
+
 class Expr:
     _instances: dict[int, int] = {}
 
@@ -27,7 +39,7 @@ class Expr:
         cls._instances[key] = instance
         return instance
 
-    def eval(self, *args: int):
+    def eval(self, *args: int) -> int:
         raise NotImplementedError()
 
     def __str__(self) -> str:
@@ -38,6 +50,10 @@ class Expr:
 
     def is_valid(self):
         raise NotImplementedError()
+
+    def check_overflow(self, value: int):
+        if abs(value) > OVERFLOW:
+            raise OverflowError(f"Overflowed: {value} at {str(self)}")
 
 
 class Z(Expr):
@@ -68,6 +84,14 @@ class S(Expr):
     def is_valid(self):
         return True
 
+    def eval(self, *args: int) -> int:
+        if len(args) != 1:
+            raise InputSizeError(f"S.eval() got invalid input size {len(args)}")
+
+        ret = args[0] + 1
+        self.check_overflow(ret)
+        return ret
+
 
 class P(Expr):
     def __init__(self, n: int, i: int):
@@ -87,6 +111,13 @@ class P(Expr):
     def is_valid(self):
         return True
 
+    def eval(self, *args: int) -> int:
+        if len(args) != self._n:
+            raise InputSizeError(f"P.eval() got invalid input size {len(args)}")
+        ret = args[self._i - 1]
+        self.check_overflow(ret)
+        return ret
+
 
 class C(Expr):
     def __init__(self, *args: Expr):
@@ -98,6 +129,7 @@ class C(Expr):
         self._is_valid = self._init_is_valid()
         if self.is_valid:
             self._arity = self._init_arity()
+        self.eval = functools.lru_cache(maxsize=LRU_CACHE_SIZE)(self._eval)
 
     def __str__(self) -> str:
         args_str = ", ".join(str(arg) for arg in self._args)
@@ -131,6 +163,18 @@ class C(Expr):
         var.discard(None)
         return len(var) in (0, 1)
 
+    def _eval(self, *args: int) -> int:
+        if not self.is_valid:
+            raise SemanticsError(f"{str(self)} is invalid semantically")
+        if self.arity not in (len(args), None):
+            raise InputSizeError(
+                f"{str(self)} got invalid input size {len(args)}."
+            )
+        results_args: list[int] = [arg.eval(*args) for arg in self._args]
+        ret = self._base.eval(*results_args)
+        self.check_overflow(ret)
+        return ret
+
 
 class R(Expr):
     def __init__(self, *args: Expr):
@@ -147,6 +191,7 @@ class R(Expr):
         self._is_valid = self._init_is_valid()
         if self.is_valid:
             self._arity = self._init_arity()
+        self.eval = functools.lru_cache(maxsize=LRU_CACHE_SIZE)(self._eval)
 
     def __str__(self) -> str:
         steps_str = ", ".join(str(step) for step in self._steps)
@@ -202,3 +247,27 @@ class R(Expr):
             return False
         if step_arity == base_arity + self._dim + 1:
             return True
+
+    def _eval(self, *args: int) -> int:
+        if not self.is_valid:
+            raise SemanticsError(f"{str(self)} is invalid semantically")
+        if self.arity not in (None, len(args)):
+            raise InputSizeError(
+                f"{str(self)} got invalid input size {len(args)}."
+            )
+        n = args[0]
+        post_args = args[1:]
+        if n == 0:
+            inter = tuple(base.eval(*post_args) for base in self._bases)
+            ret = self._term.eval(*inter)
+        else:
+            rec_vec = tuple(base.eval(*post_args) for base in self._bases)
+            for i in range(0, n):
+                rec_vec = tuple(
+                    step.eval(i, *rec_vec, *post_args) for step in self._steps
+                )
+                print(rec_vec)
+            ret = self._term.eval(*rec_vec)
+
+        self.check_overflow(ret)
+        return ret
