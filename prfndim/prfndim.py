@@ -12,11 +12,11 @@ class Expr:
     def eval(self, *args: int):
         raise NotImplementedError()
 
+    def __str__(self) -> str:
+        raise NotImplementedError()
+
 
 class Z(Expr):
-    def __init__(self):
-        self._arity = None
-
     def eval(self, *args: int) -> int:
         return 0
 
@@ -25,4 +25,4 @@ class Z(Expr):
 
     @property
     def arity(self):
-        return self._arity
+        return None
