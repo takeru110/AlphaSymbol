@@ -1,6 +1,6 @@
 import pytest
 
-from prfndim.prfndim import C, Expr, P, PrfSyntaxError, R, S, Z
+from prfndim.prfndim import C, Expr, P, PrfSyntaxError, R, S, SemanticsError, Z
 
 
 def test_Z():
@@ -78,7 +78,10 @@ def test_p_arity():
 
 def test_c_arity():
     assert C(S(), Z()).arity is None
+    assert C(P(2, 1), Z(), S()).arity == 1
     assert C(P(2, 2), P(2, 1), C(S(), P(2, 2))).arity == 2
+    with pytest.raises(SemanticsError):
+        C(P(2, 1), S()).arity
 
 
 def test_r_arity():
@@ -87,6 +90,8 @@ def test_r_arity():
     assert R(P(2, 1), P(3, 2), P(3, 1), Z(), Z()).arity == 1
     assert R(P(2, 1), P(4, 2), P(4, 1), S(), P(1, 1)).arity == 2
     assert R(P(2, 1), Z(), Z(), Z(), Z()).arity is None
+    with pytest.raises(SemanticsError):
+        R(S(), S(), Z()).arity
 
 
 # ---- is_valid ----
