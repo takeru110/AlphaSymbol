@@ -30,6 +30,9 @@ class Expr:
     def arity(self):
         raise NotImplementedError()
 
+    def is_valid(self):
+        raise NotImplementedError()
+
 
 class Z(Expr):
     def eval(self, *args: int) -> int:
@@ -42,6 +45,10 @@ class Z(Expr):
     def arity(self):
         return None
 
+    @property
+    def is_valid(self):
+        return True
+
 
 class S(Expr):
     def __str__(self) -> str:
@@ -50,6 +57,10 @@ class S(Expr):
     @property
     def arity(self):
         return 1
+
+    @property
+    def is_valid(self):
+        return True
 
 
 class P(Expr):
@@ -66,6 +77,10 @@ class P(Expr):
     def arity(self):
         return self._n
 
+    @property
+    def is_valid(self):
+        return True
+
 
 class C(Expr):
     def __init__(self, *args: Expr):
@@ -74,6 +89,7 @@ class C(Expr):
 
         self._base: Expr = args[0]
         self._args: tuple[Expr, ...] = args[1:]
+        self._is_valid = self._init_is_valid()
 
     def __str__(self) -> str:
         args_str = ", ".join(str(arg) for arg in self._args)
@@ -83,6 +99,21 @@ class C(Expr):
     def arity(self):
         """This function needs that "self" is valid semantically."""
         return self._args[0].arity
+
+    @property
+    def is_valid(self):
+        return self._is_valid
+
+    def _init_is_valid(self):
+        if not self._base.is_valid:
+            return False
+        if not all(arg.is_valid for arg in self._args):
+            return False
+        if self._base.arity not in (None, len(self._args)):
+            return False
+        var = set(arg.arity for arg in self._args)
+        var.discard(None)
+        return len(var) in (0, 1)
 
 
 class R(Expr):
@@ -98,6 +129,7 @@ class R(Expr):
         self._steps: tuple[Expr, ...] = args[1 : self._dim + 1]
         self._bases: tuple[Expr, ...] = args[self._dim + 1 :]
         self._arity = self._calc_arity()
+        self._is_valid = self._init_is_valid()
 
     def __str__(self) -> str:
         steps_str = ", ".join(str(step) for step in self._steps)
@@ -118,3 +150,37 @@ class R(Expr):
     def arity(self):
         """This function needs that "self" is valid semantically."""
         return self._arity
+
+    @property
+    def is_valid(self):
+        return self._is_valid
+
+    def _init_is_valid(self):
+        """
+        term.arity == len(steps) == len(bases) (== self._dim actually)
+        and len(steps) == self._dim + base.arity + 1
+        """
+
+        if not all(base.is_valid for base in self._bases):
+            return False
+
+        if not all(step.is_valid for step in self._steps):
+            return False
+
+        if self._term.arity not in (None, self._dim):
+            return False
+
+        base_arity_int = set(base.arity for base in self._bases)
+        base_arity_int.discard(None)
+        base_arity = base_arity_int.pop() if len(base_arity_int) == 1 else None
+        step_arity_int = set(step.arity for step in self._steps)
+        step_arity_int.discard(None)
+        step_arity = step_arity_int.pop() if len(step_arity_int) == 1 else None
+        if step_arity is None:
+            return True
+        if base_arity is None:
+            if step_arity >= self._dim + 1:
+                return True
+            return False
+        if step_arity == base_arity + self._dim + 1:
+            return True
