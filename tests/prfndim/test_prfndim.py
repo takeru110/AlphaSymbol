@@ -239,6 +239,21 @@ def test_invalid_R_eval_2():
         inner_invalid2.eval(1)
 
 
+def test_temp_eval():
+    expr = R(
+        P(2, 1),
+        R(
+            R(S(), P(3, 2), Z()),
+            P(4, 2),
+            P(2, 2),
+        ),
+        P(3, 1),
+        Z(),
+        Z(),
+    )
+    assert expr.is_valid is True
+
+
 # ---- is_valid ----
 
 

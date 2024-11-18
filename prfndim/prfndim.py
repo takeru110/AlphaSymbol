@@ -266,7 +266,6 @@ class R(Expr):
                 rec_vec = tuple(
                     step.eval(i, *rec_vec, *post_args) for step in self._steps
                 )
-                print(rec_vec)
             ret = self._term.eval(*rec_vec)
 
         self.check_overflow(ret)
