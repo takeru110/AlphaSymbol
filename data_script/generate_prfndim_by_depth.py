@@ -3,6 +3,7 @@ from itertools import product
 
 import numpy as np
 import numpy.typing as npt
+import pandas as pd
 
 from prfndim.prfndim import C, Expr, P, R, S, Z, expr_list_to_str
 
@@ -10,7 +11,7 @@ from prfndim.prfndim import C, Expr, P, R, S, Z, expr_list_to_str
 def output_bytes_not_const(expr: Expr, eq_domain: list[npt.NDArray]) -> bytes:
     assert expr.arity is not None
     ans: npt.NDArray = np.array(
-        tuple(expr.eval(x) for x in eq_domain[expr.arity])
+        tuple(expr.eval(*x) for x in eq_domain[expr.arity])
     ).flatten()
     logging.debug("output_bytes_not_const: %s", ans)
     return ans.tobytes()
@@ -20,9 +21,10 @@ def output_bytes_const(
     expr: Expr, input_size: int, eq_domain: list[npt.NDArray]
 ) -> bytes:
     assert input_size >= 1
-    return np.array(
-        expr.eval(0) for _ in range(len(eq_domain[input_size]))
-    ).tobytes()
+    ret_arr = np.array(
+        tuple(expr.eval(0) for _ in range(len(eq_domain[input_size])))
+    )
+    return ret_arr.tobytes()
 
 
 def one_depth_exprs(
@@ -121,13 +123,12 @@ def if_not_visited_then_update_const(
     eq_domain: list[npt.NDArray],
 ) -> tuple[list[list[Expr]], list[set[bytes]], bool]:
     assert expr.arity is None
-    is_visited = False
+    is_visited = True
     for dim in range(1, max_dim + 1):
         out_bytes = output_bytes_const(expr, dim, eq_domain)
-        if out_bytes in outputs[dim]:
-            continue
-        outputs[dim].add(out_bytes)
-        is_visited = True
+        if out_bytes not in outputs[dim]:
+            outputs[dim].add(out_bytes)
+            is_visited = False
 
     if not is_visited:
         exprs[0].append(expr)
@@ -204,3 +205,80 @@ def _generate_prfndim_by_depth(
             )
 
     return exprs, visited
+
+
+def generate_prfndim_by_depth(
+    depth: int,
+    max_arity: int,
+    max_c: int,
+    max_r: int,
+    eq_domain: list[npt.NDArray],
+) -> list[Expr]:
+    visited: list[set[bytes]] = [set() for _ in range(max_arity + 1)]
+    exprs, _ = _generate_prfndim_by_depth(
+        depth,
+        max_arity,
+        max_c,
+        max_r,
+        eq_domain,
+        visited,
+    )
+    ret: list[Expr] = [
+        expr
+        for fix_depth in exprs
+        for fix_depth_arity in fix_depth
+        for expr in fix_depth_arity
+    ]
+    return ret
+
+
+if __name__ == "__main__":
+    depth = 5
+    max_arity = 3
+    max_c = 2
+    max_r = 3
+
+    sample_max = 10
+    sample_num = 5
+    eq_domain = [np.zeros((1))] + [
+        np.random.randint(1, sample_max + 1, size=(sample_num, dim))
+        for dim in range(1, max_arity + 1)
+    ]
+    eq_domain[1] = np.arange(10).reshape(10, 1)
+    ret = generate_prfndim_by_depth(
+        depth,
+        max_arity,
+        max_c,
+        max_r,
+        eq_domain,
+    )
+    ret = list(set(ret))
+    input = list(range(10))
+    df = pd.DataFrame(ret, columns=["expr"])
+    inputs = []
+    outputs = []
+    arities = []
+    len_expr = []
+    for index, row in df.iterrows():
+        expr: Expr = row["expr"]
+        len_expr.append(len(str(expr)))
+        if expr.arity == None:
+            arities.append(0)
+            inputs.append([0])
+            outputs.append([expr.eval(0)])
+        else:
+            arities.append(expr.arity)
+            inputs.append(
+                [[int(num) for num in vec] for vec in eq_domain[expr.arity]]
+            )
+            outputs.append([int(expr.eval(*x)) for x in eq_domain[expr.arity]])
+    df["arity"] = arities
+    df["inputs"] = inputs
+    df["outputs"] = outputs
+    df["len_expr"] = len_expr
+
+    df = df.sort_values(by=["arity", "len_expr"])
+    df.to_csv(
+        f"./data/prfndim/unique_outputs/d{depth}-a{max_arity}-c{max_c}-r{max_r}.csv",
+        index=True,
+    )
