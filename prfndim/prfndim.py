@@ -127,11 +127,15 @@ class C(Expr):
         self._base: Expr = args[0]
         self._args: tuple[Expr, ...] = args[1:]
         self._is_valid = self._init_is_valid()
+        self._str: str = self._init_str()
         if self.is_valid:
             self._arity = self._init_arity()
         self.eval = functools.lru_cache(maxsize=LRU_CACHE_SIZE)(self._eval)
 
     def __str__(self) -> str:
+        return self._str
+
+    def _init_str(self):
         args_str = ", ".join(str(arg) for arg in self._args)
         return f"C({str(self._base)}, {args_str})"
 
@@ -189,11 +193,15 @@ class R(Expr):
         self._steps: tuple[Expr, ...] = args[1 : self._dim + 1]
         self._bases: tuple[Expr, ...] = args[self._dim + 1 :]
         self._is_valid = self._init_is_valid()
+        self._str: str = self._init_str()
         if self.is_valid:
             self._arity = self._init_arity()
         self.eval = functools.lru_cache(maxsize=LRU_CACHE_SIZE)(self._eval)
 
     def __str__(self) -> str:
+        return self._str
+
+    def _init_str(self):
         steps_str = ", ".join(str(step) for step in self._steps)
         bases_str = ", ".join(str(base) for base in self._bases)
         return f"R({str(self._term)}, {steps_str}, {bases_str})"

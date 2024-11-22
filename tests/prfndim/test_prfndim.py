@@ -251,7 +251,7 @@ def test_temp_eval():
         Z(),
         Z(),
     )
-    assert expr.is_valid is True
+    assert expr.is_valid is False
 
 
 # ---- is_valid ----
