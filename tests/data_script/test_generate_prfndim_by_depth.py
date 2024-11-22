@@ -117,7 +117,7 @@ def test_one_depth_exprs():
     ]
     exprs, visited = one_depth_exprs(max_arity, eq_domain)
     expr = C(S(), P(1, 1))
-    output_bytes = output_bytes_not_const(expr, eq_domain)
+    output_bytes, _= output_bytes_not_const(expr, eq_domain)
     logging.debug("output_bytes: %s", output_bytes)
     assert output_bytes in visited[1]
 
@@ -135,7 +135,7 @@ def test_one_depth_exprs_const():
     exprs, visited = one_depth_exprs(max_arity, eq_domain)
     expr = C(P(1, 1), Z())
     for input_size in range(1, max_arity + 1):
-        output_bytes = output_bytes_const(expr, input_size, eq_domain)
+        output_bytes, _ = output_bytes_const(expr, input_size, eq_domain)
         assert output_bytes in visited[input_size]
     logging.debug("output_bytes: %s", output_bytes)
 
@@ -151,6 +151,6 @@ def test_output_bytes_const():
         for dim in range(1, max_arity + 1)
     ]
     input_size = 1
-    e1_out = output_bytes_const(e1, 1, eq_domain[input_size])
-    e2_out = output_bytes_const(e2, 1, eq_domain[input_size])
+    e1_out, _ = output_bytes_const(e1, 1, eq_domain[input_size])
+    e2_out, _ = output_bytes_const(e2, 1, eq_domain[input_size])
     assert e1_out == e2_out

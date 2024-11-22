@@ -5,26 +5,49 @@ import numpy as np
 import numpy.typing as npt
 import pandas as pd
 
-from prfndim.prfndim import C, Expr, P, R, S, Z, expr_list_to_str
+from prfndim.prfndim import C, Expr, OverflowError, P, R, S, Z, expr_list_to_str
 
 
-def output_bytes_not_const(expr: Expr, eq_domain: list[npt.NDArray]) -> bytes:
+def output_bytes_not_const(
+    expr: Expr, eq_domain: list[npt.NDArray]
+) -> tuple[bytes, bool]:
+    """
+    Returns:
+    - bytes: output of Expr.eval on eq_domain
+    - bool: True if no OverflowError, False otherwise
+    """
     assert expr.arity is not None
-    ans: npt.NDArray = np.array(
-        tuple(expr.eval(*x) for x in eq_domain[expr.arity])
-    ).flatten()
-    logging.debug("output_bytes_not_const: %s", ans)
-    return ans.tobytes()
+    try:
+        ans: npt.NDArray = np.array(
+            tuple(expr.eval(*x) for x in eq_domain[expr.arity])
+        ).flatten()
+        logging.debug("output_bytes_not_const: %s", ans)
+        return ans.tobytes(), True
+    except OverflowError:
+        ans = np.empty((eq_domain[expr.arity]).shape[0])
+        ans.fill(None)
+        logging.debug("output oveflowed")
+        return ans.tobytes(), False
 
 
 def output_bytes_const(
     expr: Expr, input_size: int, eq_domain: list[npt.NDArray]
-) -> bytes:
+) -> tuple[bytes, bool]:
+    """
+    Returns:
+    - bytes: output of Expr.eval on eq_domain
+    - bool: True if no OverflowError, False otherwise
+    """
     assert input_size >= 1
-    ret_arr = np.array(
-        tuple(expr.eval(0) for _ in range(len(eq_domain[input_size])))
-    )
-    return ret_arr.tobytes()
+    try:
+        ret_arr = np.array(
+            tuple(expr.eval(0) for _ in range(len(eq_domain[input_size])))
+        )
+        return ret_arr.tobytes(), True
+    except OverflowError:
+        ret_arr = np.empty(eq_domain[input_size].shape[0], dtype=object)
+        ret_arr.fill(None)
+        return ret_arr.tobytes(), False
 
 
 def one_depth_exprs(
@@ -32,15 +55,23 @@ def one_depth_exprs(
 ) -> tuple[list[list[list[Expr]]], list[set[bytes]]]:
     exprs: list[list[list[Expr]]] = [[], [[] for _ in range(max_arity + 1)]]
     visited: list[set[bytes]] = [set() for _ in range(max_arity + 1)]
+
     exprs[1][0].append(Z())
     for input_size in range(1, max_arity + 1):
-        visited[input_size].add(output_bytes_const(Z(), input_size, eq_domain))
-    exprs[1][1].append(S())
-    visited[1].add(output_bytes_not_const(S(), eq_domain))
+        output_bytes, _ = output_bytes_const(Z(), input_size, eq_domain)
+        visited[input_size].add(output_bytes)
+
+    b_output, is_success = output_bytes_not_const(S(), eq_domain)
+    if is_success:
+        visited[1].add(b_output)
+        exprs[1][1].append(S())
+
     for i in range(1, max_arity + 1):
         for j in range(1, i + 1):
-            exprs[1][i].append(P(i, j))
-            visited[i].add(output_bytes_not_const(P(i, j), eq_domain))
+            b_output, is_success = output_bytes_not_const(P(i, j), eq_domain)
+            if is_success:
+                exprs[1][i].append(P(i, j))
+                visited[i].add(b_output)
     return exprs, visited
 
 
@@ -125,7 +156,9 @@ def if_not_visited_then_update_const(
     assert expr.arity is None
     is_visited = True
     for dim in range(1, max_dim + 1):
-        out_bytes = output_bytes_const(expr, dim, eq_domain)
+        out_bytes, is_success = output_bytes_const(expr, dim, eq_domain)
+        if not is_success:
+            return exprs, outputs, False
         if out_bytes not in outputs[dim]:
             outputs[dim].add(out_bytes)
             is_visited = False
@@ -145,7 +178,9 @@ def if_not_visited_then_update_not_const(
     eq_domain: list[npt.NDArray],
 ) -> tuple[list[list[Expr]], list[set[bytes]], bool]:
     assert expr.arity is not None
-    out_bytes = output_bytes_not_const(expr, eq_domain)
+    out_bytes, is_success = output_bytes_not_const(expr, eq_domain)
+    if not is_success:
+        return exprs, outputs, False
     if out_bytes in outputs[expr.arity]:
         return exprs, outputs, False
     exprs[expr.arity].append(expr)
@@ -279,6 +314,7 @@ if __name__ == "__main__":
 
     df = df.sort_values(by=["arity", "len_expr"])
     df.to_csv(
-        f"./data/prfndim/unique_outputs/d{depth}-a{max_arity}-c{max_c}-r{max_r}.csv",
+        # f"./data/prfndim/unique_outputs/d{depth}-a{max_arity}-c{max_c}-r{max_r}.csv",
+        f"./temp/d{depth}-a{max_arity}-c{max_c}-r{max_r}.csv",
         index=True,
     )
