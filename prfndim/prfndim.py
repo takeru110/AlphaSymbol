@@ -1,4 +1,28 @@
 import functools
+import logging
+import sys
+
+logging.basicConfig(level=logging.DEBUG)
+
+
+def custom_excepthook(exc_type, exc_value, exc_tb):
+    if exc_type is OverflowError:
+        tb = exc_tb
+        while tb is not None:
+            frame = tb.tb_frame
+            code = frame.f_code
+            local_vars = frame.f_locals
+            if code.co_name in ["eval", "_eval"] and isinstance(
+                local_vars.get("self"), Expr
+            ):
+                logging.info(
+                    f"OverflowError in Expr = {local_vars["self"]}.{code.co_name}"
+                )
+            tb = tb.tb_next
+    sys.__excepthook__(exc_type, exc_value, exc_tb)
+
+
+sys.excepthook = custom_excepthook
 
 LRU_CACHE_SIZE = 1000
 OVERFLOW = 1000
