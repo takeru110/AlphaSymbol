@@ -52,6 +52,12 @@ class OverflowError(Exception):
     pass
 
 
+def expr_list_to_str(exprs):
+    if isinstance(exprs, Expr):
+        return str(exprs)
+    return [expr_list_to_str(expr) for expr in exprs]
+
+
 class Expr:
     _instances: dict[int, int] = {}
 
