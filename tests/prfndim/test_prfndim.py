@@ -107,6 +107,25 @@ def test_r_arity():
         R(S(), S(), Z()).arity
 
 
+# ---- depth ----
+
+
+def test_termianl_depth():
+    assert Z().depth == 1
+    assert S().depth == 1
+    assert P(2, 1).depth == 1
+
+
+def test_C_depth():
+    expr = C(Z(), C(C(S(), P(2, 2)), P(1, 1), S()))
+    assert expr.depth == 4
+
+
+def test_R_depth():
+    expr = R(Z(), R(S(), P(3, 2), P(1, 1)), Z())
+    assert expr.depth == 3
+
+
 # ---- eval ----
 
 

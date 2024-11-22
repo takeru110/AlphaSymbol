@@ -75,6 +75,9 @@ class Expr:
     def is_valid(self):
         raise NotImplementedError()
 
+    def depth(self):
+        raise NotImplementedError()
+
     def check_overflow(self, value: int):
         if abs(value) > OVERFLOW:
             raise OverflowError(f"Overflowed: {value} at {str(self)}")
@@ -94,6 +97,10 @@ class Z(Expr):
     @property
     def is_valid(self):
         return True
+
+    @property
+    def depth(self):
+        return 1
 
 
 class S(Expr):
@@ -115,6 +122,10 @@ class S(Expr):
         ret = args[0] + 1
         self.check_overflow(ret)
         return ret
+
+    @property
+    def depth(self):
+        return 1
 
 
 class P(Expr):
@@ -142,6 +153,10 @@ class P(Expr):
         self.check_overflow(ret)
         return ret
 
+    @property
+    def depth(self):
+        return 1
+
 
 class C(Expr):
     def __init__(self, *args: Expr):
@@ -152,6 +167,7 @@ class C(Expr):
         self._args: tuple[Expr, ...] = args[1:]
         self._is_valid = self._init_is_valid()
         self._str: str = self._init_str()
+        self._depth: int = self._init_depth()
         if self.is_valid:
             self._arity = self._init_arity()
         self.eval = functools.lru_cache(maxsize=LRU_CACHE_SIZE)(self._eval)
@@ -175,6 +191,13 @@ class C(Expr):
         if any(ar is not None for ar in arity_set):
             return (arity_set - {None}).pop()
         return None
+
+    @property
+    def depth(self):
+        return self._depth
+
+    def _init_depth(self):
+        return 1 + max(self._base.depth, *(arg.depth for arg in self._args))
 
     @property
     def is_valid(self):
@@ -218,6 +241,7 @@ class R(Expr):
         self._bases: tuple[Expr, ...] = args[self._dim + 1 :]
         self._is_valid = self._init_is_valid()
         self._str: str = self._init_str()
+        self._depth: int = self._init_depth()
         if self.is_valid:
             self._arity = self._init_arity()
         self.eval = functools.lru_cache(maxsize=LRU_CACHE_SIZE)(self._eval)
@@ -302,3 +326,13 @@ class R(Expr):
 
         self.check_overflow(ret)
         return ret
+
+    @property
+    def depth(self):
+        return self._depth
+
+    def _init_depth(self):
+        return 1 + max(
+            *(base.depth for base in self._bases),
+            *(step.depth for step in self._steps),
+        )
