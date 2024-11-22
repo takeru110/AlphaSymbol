@@ -107,6 +107,25 @@ def test_r_arity():
         R(S(), S(), Z()).arity
 
 
+# ---- depth ----
+
+
+def test_termianl_depth():
+    assert Z().depth == 1
+    assert S().depth == 1
+    assert P(2, 1).depth == 1
+
+
+def test_C_depth():
+    expr = C(Z(), C(C(S(), P(2, 2)), P(1, 1), S()))
+    assert expr.depth == 4
+
+
+def test_R_depth():
+    expr = R(Z(), R(S(), P(3, 2), P(1, 1)), Z())
+    assert expr.depth == 3
+
+
 # ---- eval ----
 
 
@@ -251,7 +270,7 @@ def test_temp_eval():
         Z(),
         Z(),
     )
-    assert expr.is_valid is True
+    assert expr.is_valid is False
 
 
 # ---- is_valid ----
@@ -299,3 +318,16 @@ def test_r_is_valid():
 
     # termianl function is invalid
     assert not R(P(3, 1), Z(), Z(), Z(), S()).is_valid
+
+
+def test_overflow_trace_back():
+    """
+    Show details of Overflow Error traceback
+    when executed in standard python file
+    """
+    plus = R(P(1, 1), C(S(), P(3, 2)), P(1, 1))
+    mult = R(P(1, 1), C(plus, P(3, 2), P(3, 3)), Z())
+    power = R(P(1, 1), C(mult, P(3, 2), P(3, 3)), C(S(), Z()))
+    tetra = R(P(1, 1), C(power, P(3, 2), P(3, 3)), C(S(), Z()))
+    with pytest.raises(OverflowError):
+        tetra.eval(5, 2)
