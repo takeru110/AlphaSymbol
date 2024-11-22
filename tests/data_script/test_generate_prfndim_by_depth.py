@@ -26,7 +26,7 @@ def test_c_pattern_base_arity_1():
         [P(3, 1), P(3, 2), P(3, 3)],
     ]
 
-    c_exprs = c_pattern(exprs_by_arity, max_arity, max_c)
+    c_exprs = c_pattern(2, exprs_by_arity, max_arity, max_c)
     assert len(c_exprs) > 0
 
 
@@ -40,7 +40,7 @@ def test_c_pattern_arity_2():
         [P(3, 1), P(3, 2), P(3, 3)],
     ]
 
-    c_exprs = c_pattern(exprs_by_arity, max_arity, max_c)
+    c_exprs = c_pattern(2, exprs_by_arity, max_arity, max_c)
     assert len(c_exprs) > 0
 
 
@@ -54,7 +54,7 @@ def test_r_pattern_r_3():
         [P(3, 1), P(3, 2), P(3, 3)],
     ]
 
-    r_exprs = r_pattern(exprs_by_arity, max_arity, max_r)
+    r_exprs = r_pattern(2, exprs_by_arity, max_arity, max_r)
     assert len(r_exprs) > 0
 
 
@@ -70,7 +70,7 @@ def test_r_pattern():
         [P(5, 1), P(5, 2), P(5, 3), P(5, 4), P(5, 5)],
     ]
 
-    r_exprs = r_pattern(exprs_by_arity, max_arity, max_r)
+    r_exprs = r_pattern(2, exprs_by_arity, max_arity, max_r)
     assert len(r_exprs) > 0
 
 

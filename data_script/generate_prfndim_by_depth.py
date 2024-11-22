@@ -1,4 +1,5 @@
 import logging
+import time
 from itertools import product
 
 import numpy as np
@@ -6,6 +7,8 @@ import numpy.typing as npt
 import pandas as pd
 
 from prfndim.prfndim import C, Expr, OverflowError, P, R, S, Z, expr_list_to_str
+
+logging.basicConfig(level=logging.DEBUG)
 
 
 def output_bytes_not_const(
@@ -21,7 +24,6 @@ def output_bytes_not_const(
         ans: npt.NDArray = np.array(
             tuple(expr.eval(*x) for x in eq_domain[expr.arity])
         ).flatten()
-        logging.debug("output_bytes_not_const: %s", ans)
         return ans.tobytes(), True
     except OverflowError:
         ans = np.empty((eq_domain[expr.arity]).shape[0])
@@ -56,6 +58,7 @@ def one_depth_exprs(
     exprs: list[list[list[Expr]]] = [[], [[] for _ in range(max_arity + 1)]]
     visited: list[set[bytes]] = [set() for _ in range(max_arity + 1)]
 
+    logging.debug("Z() added")
     exprs[1][0].append(Z())
     for input_size in range(1, max_arity + 1):
         output_bytes, _ = output_bytes_const(Z(), input_size, eq_domain)
@@ -64,6 +67,7 @@ def one_depth_exprs(
     b_output, is_success = output_bytes_not_const(S(), eq_domain)
     if is_success:
         visited[1].add(b_output)
+        logging.debug("S() added")
         exprs[1][1].append(S())
 
     for i in range(1, max_arity + 1):
@@ -83,7 +87,7 @@ def gen_exprs_by_arity(exprs):
     return ret_li
 
 
-def c_pattern(exprs_by_arity, max_arity, max_c):
+def c_pattern(depth, exprs_by_arity, max_arity, max_c):
     c_exprs = [[] for _ in range(max_arity + 1)]
     max_base_arity = min(max_arity, max_c - 1)
     outer_arities = tuple(range(1, max_base_arity + 1))
@@ -98,10 +102,15 @@ def c_pattern(exprs_by_arity, max_arity, max_c):
     )
     for args in args_arities_list:
         # args is like (5, 2, 2, 0, 2, 2)
-        new_args_list = tuple(product(*((exprs_by_arity[arg]) for arg in args)))
-        for new_args in zip(new_args_list):
+        new_args_list = list(product(*((exprs_by_arity[arg]) for arg in args)))
+        new_args_list_filterd_depth = [
+            tup
+            for tup in new_args_list
+            if any(expr.depth == depth - 1 for expr in tup)
+        ]
+        for new_args in new_args_list_filterd_depth:
             new_arity = max(args[1:])
-            c_exprs[new_arity].extend([C(*args) for args in new_args])
+            c_exprs[new_arity].extend([C(*new_args)])
     return c_exprs
 
 
@@ -121,13 +130,12 @@ def get_r_arity(args: tuple):
     return b_arity
 
 
-def r_pattern(exprs_by_arity, max_arity, max_r):
+def r_pattern(depth, exprs_by_arity, max_arity, max_r):
     t_a_b_list = [
         (n, d + n + 1, d)
         for d in range(0, max_arity - 1)
         for n in range(1, min(max_arity - d - 1, (max_r - 1) // 2) + 1)
     ]
-    logging.debug(f"t_a_b: {t_a_b_list}")
 
     args_list = [
         (t, *a_s, *b_s)
@@ -136,13 +144,16 @@ def r_pattern(exprs_by_arity, max_arity, max_r):
         for b_s in product((b,), repeat=t)
     ]
 
-    logging.debug(f"args_list: {args_list}")
-
     r_exprs: list[list[Expr]] = [[] for _ in range(max_arity + 1)]
     for args in args_list:
         expr_list = tuple(product(*(exprs_by_arity[arg] for arg in args)))
+        expr_list_filterd_depth = [
+            tup
+            for tup in expr_list
+            if any(expr.depth == depth - 1 for expr in tup)
+        ]
         arity = get_r_arity(args)
-        r_exprs[arity].extend([R(*args) for args in expr_list])
+        r_exprs[arity].extend([R(*args) for args in expr_list_filterd_depth])
     return r_exprs
 
 
@@ -165,6 +176,7 @@ def if_not_visited_then_update_const(
 
     if not is_visited:
         exprs[0].append(expr)
+        logging.debug(f"{expr} added")
         is_updated = True
     else:
         is_updated = False
@@ -183,6 +195,7 @@ def if_not_visited_then_update_not_const(
         return exprs, outputs, False
     if out_bytes in outputs[expr.arity]:
         return exprs, outputs, False
+    logging.debug(f"{expr} added")
     exprs[expr.arity].append(expr)
     outputs[expr.arity].add(out_bytes)
     return exprs, outputs, True
@@ -213,7 +226,7 @@ def _generate_prfndim_by_depth(
     exprs_by_arity = gen_exprs_by_arity(exprs)
     exprs.append([[] for _ in range(max_arity + 1)])
 
-    c_exprs = c_pattern(exprs_by_arity, max_arity, max_c)
+    c_exprs = c_pattern(depth, exprs_by_arity, max_arity, max_c)
 
     for expr in c_exprs[0]:
         exprs[depth], visited, _ = if_not_visited_then_update_const(
@@ -226,7 +239,7 @@ def _generate_prfndim_by_depth(
                 exprs[depth], visited, expr, eq_domain
             )
 
-    r_exprs = r_pattern(exprs_by_arity, max_arity, max_r)
+    r_exprs = r_pattern(depth, exprs_by_arity, max_arity, max_r)
 
     for expr in r_exprs[0]:
         exprs[depth], visited, _ = if_not_visited_then_update_const(
@@ -268,6 +281,7 @@ def generate_prfndim_by_depth(
 
 
 if __name__ == "__main__":
+    start_time = time.time()
     depth = 5
     max_arity = 3
     max_c = 2
@@ -294,13 +308,16 @@ if __name__ == "__main__":
     outputs = []
     arities = []
     len_expr = []
+    depth_list = []
     for index, row in df.iterrows():
         expr: Expr = row["expr"]
         len_expr.append(len(str(expr)))
+        depth_list.append(expr.depth)
         if expr.arity == None:
             arities.append(0)
             inputs.append([0])
             outputs.append([expr.eval(0)])
+
         else:
             arities.append(expr.arity)
             inputs.append(
@@ -311,6 +328,7 @@ if __name__ == "__main__":
     df["inputs"] = inputs
     df["outputs"] = outputs
     df["len_expr"] = len_expr
+    df["depth"] = depth_list
 
     df = df.sort_values(by=["arity", "len_expr"])
     df.to_csv(
@@ -318,3 +336,5 @@ if __name__ == "__main__":
         f"./temp/d{depth}-a{max_arity}-c{max_c}-r{max_r}.csv",
         index=True,
     )
+    end_time = time.time()
+    logging.info(f"Time: {end_time - start_time}")
