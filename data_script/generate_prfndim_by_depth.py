@@ -1,6 +1,7 @@
 import logging
 import time
 from itertools import product
+from pathlib import Path
 
 import numpy as np
 import numpy.typing as npt
@@ -9,6 +10,36 @@ import pandas as pd
 from prfndim.prfndim import C, Expr, OverflowError, P, R, S, Z, expr_list_to_str
 
 logging.basicConfig(level=logging.DEBUG)
+
+BATCH_SIZE = 10000
+OUTPUT_FILE = Path("./data/prfndim/depth-batch.csv")
+conter = 0
+data_buffer = []
+
+
+def add_data(new_data):
+    global data_buffer, counter
+
+    # データをバッファに追加
+    data_buffer.append(new_data)
+    counter = len(data_buffer)
+    logging.debug(f"counter = {counter}")
+
+    # バッチサイズを超えた場合、CSVファイルに追記してバッファをクリア
+    if counter >= BATCH_SIZE:
+        save_to_csv(data_buffer)
+        data_buffer.clear()
+
+
+def save_to_csv(data):
+    # データをDataFrameに変換
+    df = pd.DataFrame(data)
+
+    # ファイルが存在しない場合は新規作成、存在する場合は追記
+    if not OUTPUT_FILE.exists():
+        df.to_csv(OUTPUT_FILE, mode="w", index=False)
+    else:
+        df.to_csv(OUTPUT_FILE, mode="a", index=False, header=False)
 
 
 def output_bytes_not_const(
@@ -60,6 +91,7 @@ def one_depth_exprs(
 
     logging.debug("Z() added")
     exprs[1][0].append(Z())
+    add_data(Z())
     for input_size in range(1, max_arity + 1):
         output_bytes, _ = output_bytes_const(Z(), input_size, eq_domain)
         visited[input_size].add(output_bytes)
@@ -69,12 +101,14 @@ def one_depth_exprs(
         visited[1].add(b_output)
         logging.debug("S() added")
         exprs[1][1].append(S())
+        add_data(S())
 
     for i in range(1, max_arity + 1):
         for j in range(1, i + 1):
             b_output, is_success = output_bytes_not_const(P(i, j), eq_domain)
             if is_success:
                 exprs[1][i].append(P(i, j))
+                add_data(P(i, j))
                 visited[i].add(b_output)
     return exprs, visited
 
@@ -176,6 +210,7 @@ def if_not_visited_then_update_const(
 
     if not is_visited:
         exprs[0].append(expr)
+        add_data(expr)
         logging.debug(f"{expr} added")
         is_updated = True
     else:
@@ -197,6 +232,7 @@ def if_not_visited_then_update_not_const(
         return exprs, outputs, False
     logging.debug(f"{expr} added")
     exprs[expr.arity].append(expr)
+    add_data(expr)
     outputs[expr.arity].add(out_bytes)
     return exprs, outputs, True
 
