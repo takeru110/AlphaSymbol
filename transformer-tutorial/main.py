@@ -108,6 +108,11 @@ corpus = data.Corpus(args.data)
 
 
 def batchify(data, bsz):
+    """
+    Args:
+    - data
+    - bsz: batch size
+    """
     # Work out how cleanly we can divide the dataset into bsz parts.
     nbatch = data.size(0) // bsz
     # Trim off any extra elements that wouldn't cleanly fit (remainders).
@@ -127,7 +132,7 @@ test_data = batchify(corpus.test, eval_batch_size)
 ###############################################################################
 
 ntokens = len(corpus.dictionary)
-model = model.TransformerModel(
+model_instance = model.TransformerModel(
     ntokens, args.emsize, args.nhead, args.nhid, args.nlayers, args.dropout
 ).to(device)
 criterion = nn.NLLLoss()
@@ -166,13 +171,13 @@ def get_batch(source, i):
 
 def evaluate(data_source):
     # Turn on evaluation mode which disables dropout.
-    model.eval()
+    model_instance.eval()
     total_loss = 0.0
     ntokens = len(corpus.dictionary)
     with torch.no_grad():
         for i in range(0, data_source.size(0) - 1, args.bptt):
             data, targets = get_batch(data_source, i)
-            output = model(data)
+            output = model_instance(data)
             output = output.view(-1, ntokens)
             total_loss += len(data) * criterion(output, targets).item()
     return total_loss / (len(data_source) - 1)
@@ -180,7 +185,7 @@ def evaluate(data_source):
 
 def train():
     # Turn on training mode which enables dropout.
-    model.train()
+    model_instance.train()
     total_loss = 0.0
     start_time = time.time()
     ntokens = len(corpus.dictionary)
@@ -188,15 +193,15 @@ def train():
         data, targets = get_batch(train_data, i)
         # Starting each batch, we detach the hidden state from how it was previously produced.
         # If we didn't, the model would try backpropagating all the way to start of the dataset.
-        model.zero_grad()
-        output = model(data)
+        model_instance.zero_grad()
+        output = model_instance(data)
         output = output.view(-1, ntokens)
         loss = criterion(output, targets)
         loss.backward()
 
         # `clip_grad_norm` helps prevent the exploding gradient problem in RNNs / LSTMs.
-        torch.nn.utils.clip_grad_norm_(model.parameters(), args.clip)
-        for p in model.parameters():
+        torch.nn.utils.clip_grad_norm_(model_instance.parameters(), args.clip)
+        for p in model_instance.parameters():
             p.data.add_(p.grad, alpha=-lr)
 
         total_loss += loss.item()
@@ -228,15 +233,15 @@ def export_onnx(path, batch_size, seq_len):
             os.path.realpath(args.onnx_export)
         )
     )
-    model.eval()
+    model_instance.eval()
     dummy_input = (
         torch.LongTensor(seq_len * batch_size)
         .zero_()
         .view(-1, batch_size)
         .to(device)
     )
-    hidden = model.init_hidden(batch_size)
-    torch.onnx.export(model, (dummy_input, hidden), path)
+    hidden = model_instance.init_hidden(batch_size)
+    torch.onnx.export(model_instance, (dummy_input, hidden), path)
 
 
 # Loop over epochs.
@@ -263,7 +268,7 @@ try:
         # Save the model if the validation loss is the best we've seen so far.
         if not best_val_loss or val_loss < best_val_loss:
             with open(args.save, "wb") as f:
-                torch.save(model, f)
+                torch.save(model_instance, f)
             best_val_loss = val_loss
         else:
             # Anneal the learning rate if no improvement has been seen in the validation dataset.
@@ -274,7 +279,7 @@ except KeyboardInterrupt:
 
 # Load the best saved model.
 with open(args.save, "rb") as f:
-    model = torch.load(f)
+    model_instance = torch.load(f)
     # after load the rnn params are not a continuous chunk of memory
     # this makes them a continuous chunk, and will speed up forward pass
     # Currently, only rnn model supports flatten_parameters function.
