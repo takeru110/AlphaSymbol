@@ -92,7 +92,16 @@ else:
 # Load data
 ###############################################################################
 
+# corpus structure
+# corpus
+# ├── dictionary
+# │   ├── word2idx: dict[word, idx]
+# │   └── idx2word: list[word] (idx is index)
+# ├── train: Tensor[torch.int64] of shape (words, )
+# ├── valid: Tensor[torch.int64] of shape (words, )
+# └── test: Tensor[torch.int64] of shape (words, )
 corpus = data.Corpus(args.data)
+
 
 # Starting from sequential data, batchify arranges the dataset into columns.
 # For instance, with the alphabet as the sequence and batch size 4, we'd get
@@ -107,7 +116,7 @@ corpus = data.Corpus(args.data)
 # batch processing.
 
 
-def batchify(data, bsz):
+def batchify(data: torch.Tensor, bsz):
     """
     Args:
     - data
@@ -163,6 +172,14 @@ def repackage_hidden(h):
 
 
 def get_batch(source, i):
+    """
+    Args:
+    Notice that dim=0 is the word index along with time
+    - source    : Tensor[torch.int64] of shape (batch_size, num_batches)
+    - i (int): is how many batches this function shift to get sample
+    Returns:
+    - data     : Tensor[torch.int64] of shape (seq_len, batch_size)
+    """
     seq_len = min(args.bptt, len(source) - 1 - i)
     data = source[i : i + seq_len]
     target = source[i + 1 : i + 1 + seq_len].view(-1)

@@ -10,6 +10,7 @@ class Dictionary(object):
         self.idx2word = []
 
     def add_word(self, word):
+        """add the order of they are found as word id"""
         if word not in self.word2idx:
             self.idx2word.append(word)
             self.word2idx[word] = len(self.idx2word) - 1
@@ -27,7 +28,12 @@ class Corpus(object):
         self.test = self.tokenize(os.path.join(path, "test.txt"))
 
     def tokenize(self, path):
-        """Tokenizes a text file."""
+        """Tokenizes a text file.
+        Args:
+        - path: file path
+        Returns:
+        - ids: Tensor[torch.int64] of shape (lines*words, )  :a tensor of words ids
+        """
         assert os.path.exists(path)
         # Add words to the dictionary
         with open(path, "r", encoding="utf8") as f:
