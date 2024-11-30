@@ -295,7 +295,7 @@ def _generate_prfndim_by_depth(
     return exprs, visited
 
 
-def generate_prfndim_by_depth(
+def generate_by_depth(
     depth: int,
     max_arity: int,
     max_c: int,
@@ -358,13 +358,15 @@ if __name__ == "__main__":
         for dim in range(1, args.max_arity + 1)
     ]
     eq_domain[1] = np.arange(10).reshape(10, 1)
-    ret = generate_prfndim_by_depth(
+
+    ret = generate_by_depth(
         args.depth,
         args.max_arity,
         args.max_c,
         args.max_r,
         eq_domain,
     )
+
     df = pd.DataFrame(ret, columns=["expr"])
     df.to_csv(output_path, index=False)
     end_time = time.time()
