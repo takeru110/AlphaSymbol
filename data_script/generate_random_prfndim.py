@@ -169,7 +169,7 @@ def generate_random_prfndim(
     max_r_args,
     eq_domain,
     output_path: Optional[Path],
-    from_csv,
+    init_csv: Optional[Path],
 ) -> list[Expr]:
     if output_path is not None:
         global OUTPUT_FILE
@@ -181,12 +181,9 @@ def generate_random_prfndim(
     ret_exprs: list[Expr] = []
     gen_exprs, outputs = init_exprs(max_p_arity, eq_domain)
 
-    if from_csv:
-        init_file = Path(
-            "/home/takeru/AlphaSymbol/data/prfndim/d4-a3-c2-r3.csv"
-        )
+    if init_csv is not None:
         gen_exprs_from_file, outputs_from_file = init_exprs_from_csv(
-            init_file, max_p_arity, eq_domain
+            init_csv, max_p_arity, eq_domain
         )
 
         for i in range(0, max_p_arity + 1):
@@ -206,9 +203,9 @@ def generate_random_prfndim(
     for iter in range(max_count):
         # gen_exprs[arity]: list of Expr with arity
         gen_exprs, outputs = init_exprs(max_p_arity, eq_domain)
-        if from_csv:
+        if init_csv is not None:
             gen_exprs_from_file, outputs_from_file = init_exprs_from_csv(
-                init_file, max_p_arity, eq_domain
+                init_csv, max_p_arity, eq_domain
             )
             for i in range(0, max_p_arity + 1):
                 gen_exprs[i].extend(gen_exprs_from_file[i])
@@ -320,7 +317,7 @@ if __name__ == "__main__":
     parser.add_argument("--sample_max", type=int, default=10)
     parser.add_argument("-o", "--output", default=None, type=str)
     parser.add_argument("--log_level", type=str, default="INFO")
-    parser.add_argument("--init_csv", action="store_true")
+    parser.add_argument("--init_csv", type=str, default=None)
 
     args = parser.parse_args()
 
@@ -337,6 +334,7 @@ if __name__ == "__main__":
     eq_domain[1] = np.array(range(10)).reshape(10, 1)
 
     output_path = None if args.output is None else Path(args.output)
+    init_csv_path = None if args.init_csv is None else Path(args.init_csv)
 
     exprs = generate_random_prfndim(
         args.iter,
@@ -346,5 +344,5 @@ if __name__ == "__main__":
         args.max_r_args,
         eq_domain,
         output_path,
-        args.init_csv,
+        init_csv_path,
     )
