@@ -3,6 +3,7 @@ import logging
 import time
 from itertools import product
 from pathlib import Path
+from typing import Optional
 
 import numpy as np
 import numpy.typing as npt
@@ -10,40 +11,40 @@ import pandas as pd
 
 from prfndim.prfndim import C, Expr, OverflowError, P, R, S, Z, expr_list_to_str
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s-%(levelname)s-%(message)s",
-)
-
-BATCH_SIZE = 10000
-OUTPUT_FILE = Path("./data/prfndim/depth-batch.csv")
-counter = 0
-data_buffer = []
+BATCH_SIZE = 100
+OUTPUT_FILE: Optional[Path] = None
+buffer_counter = 0
+saved_expr_counter = 0
+data_buffer: list[Expr] = []
 
 
 def add_data(new_data: Expr):
-    global data_buffer, counter
+    if OUTPUT_FILE is None:
+        return
+    global data_buffer, buffer_counter
 
     # データをバッファに追加
     data_buffer.append(new_data)
-    counter = len(data_buffer)
-    logging.debug(f"counter = {counter}")
+    buffer_counter = len(data_buffer)
 
     # バッチサイズを超えた場合、CSVファイルに追記してバッファをクリア
-    if counter >= BATCH_SIZE:
+    if buffer_counter >= BATCH_SIZE:
         save_to_csv(data_buffer)
         data_buffer.clear()
 
 
 def save_to_csv(data):
+    global saved_expr_counter
     # データをDataFrameに変換
     df = pd.DataFrame(data)
+    saved_expr_counter += len(data)
 
     # ファイルが存在しない場合は新規作成、存在する場合は追記
-    if not OUTPUT_FILE.exists():
-        df.to_csv(OUTPUT_FILE, mode="w", index=False)
-    else:
-        df.to_csv(OUTPUT_FILE, mode="a", index=False, header=False)
+    assert OUTPUT_FILE.exists(), f"Output file is not created: {OUTPUT_FILE}"
+    df.to_csv(OUTPUT_FILE, mode="a", index=False, header=False)
+    logging.info(
+        "Output file is updated. There are %d exprs", saved_expr_counter
+    )
 
 
 def output_bytes_not_const(
@@ -301,7 +302,16 @@ def generate_by_depth(
     max_c: int,
     max_r: int,
     eq_domain: list[npt.NDArray],
+    output_file: Optional[Path] = None,
 ) -> list[Expr]:
+    if output_file is not None:
+        global OUTPUT_FILE
+        if output_file.exists():
+            output_file.unlink()
+        output_file.touch()
+
+        OUTPUT_FILE = output_file
+
     visited: list[set[bytes]] = [set() for _ in range(max_arity + 1)]
     exprs, _ = _generate_prfndim_by_depth(
         depth,
@@ -317,6 +327,9 @@ def generate_by_depth(
         for fix_depth_arity in fix_depth
         for expr in fix_depth_arity
     ]
+    if OUTPUT_FILE is not None:
+        save_to_csv(data_buffer)
+        data_buffer.clear()
     return ret
 
 
@@ -334,7 +347,7 @@ if __name__ == "__main__":
     parser.add_argument("--max_c", type=int, help="Max arity of C expressions")
     parser.add_argument("--max_r", type=int, help="Max arity of R expressions")
     parser.add_argument(
-        "--output", type=str, help="Output CSV file path", default=OUTPUT_FILE
+        "--output", type=str, help="Output CSV file path", default=None
     )
 
     parser.add_argument(
@@ -351,8 +364,19 @@ if __name__ == "__main__":
         help="Max value of sample to decide expressions are equal",
     )
 
+    parser.add_argument(
+        "--log_level",
+        default="INFO",
+        type=str,
+    )
+
     args = parser.parse_args()
-    output_path = args.output
+    logging.basicConfig(
+        level=getattr(logging, args.log_level),
+        format="%(asctime)s-%(levelname)s-%(message)s",
+        force=True,
+    )
+    output_path = Path(args.output)
     eq_domain = [np.zeros((1))] + [
         np.random.randint(1, args.sample_max + 1, size=(args.sample_num, dim))
         for dim in range(1, args.max_arity + 1)
@@ -365,9 +389,7 @@ if __name__ == "__main__":
         args.max_c,
         args.max_r,
         eq_domain,
+        output_file=output_path,
     )
-
-    df = pd.DataFrame(ret, columns=["expr"])
-    df.to_csv(output_path, index=False)
     end_time = time.time()
     logging.info(f"Time: {end_time - start_time}")
