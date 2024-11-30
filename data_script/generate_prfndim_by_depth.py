@@ -1,3 +1,4 @@
+import argparse
 import logging
 import time
 from itertools import product
@@ -12,7 +13,7 @@ from prfndim.prfndim import C, Expr, OverflowError, P, R, S, Z, expr_list_to_str
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s-%(levelname)s-%(message)s",
-    )
+)
 
 BATCH_SIZE = 10000
 OUTPUT_FILE = Path("./data/prfndim/depth-batch.csv")
@@ -320,30 +321,51 @@ def generate_prfndim_by_depth(
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(
+        description="Generate all valid prfndim expressions by depth"
+    )
     start_time = time.time()
-    depth = 3
-    max_arity = 2
-    max_c = 3
-    max_r = 5
+    parser.add_argument(
+        "--depth", type=int, help="Max depth of expressions for searching"
+    )
+    parser.add_argument(
+        "--max_arity", type=int, help="Max arity of expressions"
+    )
+    parser.add_argument("--max_c", type=int, help="Max arity of C expressions")
+    parser.add_argument("--max_r", type=int, help="Max arity of R expressions")
+    parser.add_argument(
+        "--output", type=str, help="Output CSV file path", default=OUTPUT_FILE
+    )
 
-    sample_max = 10
-    sample_num = 5
+    parser.add_argument(
+        "--sample_num",
+        default=30,
+        type=int,
+        help="Number of samples to decide expressions are equal",
+    )
+
+    parser.add_argument(
+        "--sample_max",
+        default=10,
+        type=int,
+        help="Max value of sample to decide expressions are equal",
+    )
+
+    args = parser.parse_args()
+    output_path = args.output
     eq_domain = [np.zeros((1))] + [
-        np.random.randint(1, sample_max + 1, size=(sample_num, dim))
-        for dim in range(1, max_arity + 1)
+        np.random.randint(1, args.sample_max + 1, size=(args.sample_num, dim))
+        for dim in range(1, args.max_arity + 1)
     ]
     eq_domain[1] = np.arange(10).reshape(10, 1)
     ret = generate_prfndim_by_depth(
-        depth,
-        max_arity,
-        max_c,
-        max_r,
+        args.depth,
+        args.max_arity,
+        args.max_c,
+        args.max_r,
         eq_domain,
     )
     df = pd.DataFrame(ret, columns=["expr"])
-    df.to_csv(
-        f"./temp/d{depth}-a{max_arity}-c{max_c}-r{max_r}.csv",
-        index=False,
-    )
+    df.to_csv(output_path, index=False)
     end_time = time.time()
     logging.info(f"Time: {end_time - start_time}")
