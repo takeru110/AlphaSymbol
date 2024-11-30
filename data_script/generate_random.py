@@ -161,7 +161,7 @@ def if_not_visited_then_update_not_const(
     return exprs, outputs, True
 
 
-def generate_random_prfndim(
+def generate_random(
     max_count,
     max_generate_count,
     max_p_arity,
@@ -336,7 +336,7 @@ if __name__ == "__main__":
     output_path = None if args.output is None else Path(args.output)
     init_csv_path = None if args.init_csv is None else Path(args.init_csv)
 
-    exprs = generate_random_prfndim(
+    exprs = generate_random(
         args.iter,
         args.sampling,
         args.max_p_arity,
