@@ -2,7 +2,7 @@ import logging
 
 import numpy as np
 
-from data_script.generate_prfndim_by_depth import (
+from data_script.generate_by_depth import (
     _generate_prfndim_by_depth,
     c_pattern,
     get_r_arity,
@@ -117,7 +117,7 @@ def test_one_depth_exprs():
     ]
     exprs, visited = one_depth_exprs(max_arity, eq_domain)
     expr = C(S(), P(1, 1))
-    output_bytes, _= output_bytes_not_const(expr, eq_domain)
+    output_bytes, _ = output_bytes_not_const(expr, eq_domain)
     logging.debug("output_bytes: %s", output_bytes)
     assert output_bytes in visited[1]
 
