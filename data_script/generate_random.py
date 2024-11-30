@@ -1,6 +1,8 @@
+import argparse
 import logging
 import random
 from pathlib import Path
+from typing import Optional
 
 import numpy as np
 import numpy.typing as npt
@@ -8,7 +10,43 @@ import pandas as pd
 
 from prfndim.prfndim import C, Expr, OverflowError, P, R, S, Z
 
-logging.basicConfig(level=logging.DEBUG)
+BATCH_SIZE = 20
+
+OUTPUT_FILE = None
+data_buffer: list[Expr] = []
+saved_expr_counter = 0
+counter = 0
+
+
+def add_data(new_data: Expr):
+    if OUTPUT_FILE is None:
+        return
+    global data_buffer, counter
+
+    # データをバッファに追加
+    data_buffer.append(new_data)
+    counter = len(data_buffer)
+
+    # バッチサイズを超えた場合、CSVファイルに追記してバッファをクリア
+    if counter >= BATCH_SIZE:
+        save_to_csv(data_buffer)
+        data_buffer.clear()
+
+
+def save_to_csv(data):
+    global saved_expr_counter
+    if OUTPUT_FILE is None:
+        return
+    # データをDataFrameに変換
+    df = pd.DataFrame(data)
+    saved_expr_counter += len(data)
+    logging.info(
+        "Output file is updated. There are %d exprs", saved_expr_counter
+    )
+
+    # ファイルが存在しない場合は新規作成、存在する場合は追記
+    assert OUTPUT_FILE.exists(), "Output file does not exist"
+    df.to_csv(OUTPUT_FILE, mode="a", index=False, header=False)
 
 
 def output_bytes_not_const(expr: Expr, eq_domain: list[npt.NDArray]) -> bytes:
@@ -123,27 +161,40 @@ def if_not_visited_then_update_not_const(
     return exprs, outputs, True
 
 
-def generate_random_prfndim(
+def generate_random(
     max_count,
     max_generate_count,
     max_p_arity,
     max_c_args,
     max_r_args,
     eq_domain,
-    from_csv,
+    output_path: Optional[Path],
+    init_csv: Optional[Path],
 ) -> list[Expr]:
-    ret_exprs: list[Expr] = []
-    init_file = Path("/home/takeru/AlphaSymbol/data/prfndim/d4-a3-c2-r3.csv")
+    if output_path is not None:
+        global OUTPUT_FILE
+        if output_path.exists():
+            output_path.unlink()
+        output_path.touch()
+        OUTPUT_FILE = output_path
 
+    ret_exprs: list[Expr] = []
     gen_exprs, outputs = init_exprs(max_p_arity, eq_domain)
-    if from_csv:
+
+    if init_csv is not None:
         gen_exprs_from_file, outputs_from_file = init_exprs_from_csv(
-            init_file, max_p_arity, eq_domain
+            init_csv, max_p_arity, eq_domain
         )
 
         for i in range(0, max_p_arity + 1):
             gen_exprs[i].extend(gen_exprs_from_file[i])
             outputs[i].update(outputs_from_file[i])
+
+    ret_exprs.extend([expr for exprs in gen_exprs for expr in exprs])
+
+    for exprs in gen_exprs:
+        for expr in exprs:
+            add_data(expr)
 
     init_list: list[Expr] = []
     for i in range(0, max_p_arity + 1):
@@ -152,9 +203,9 @@ def generate_random_prfndim(
     for iter in range(max_count):
         # gen_exprs[arity]: list of Expr with arity
         gen_exprs, outputs = init_exprs(max_p_arity, eq_domain)
-        if from_csv:
+        if init_csv is not None:
             gen_exprs_from_file, outputs_from_file = init_exprs_from_csv(
-                init_file, max_p_arity, eq_domain
+                init_csv, max_p_arity, eq_domain
             )
             for i in range(0, max_p_arity + 1):
                 gen_exprs[i].extend(gen_exprs_from_file[i])
@@ -235,72 +286,63 @@ def generate_random_prfndim(
                     counter += 1 if is_updated else 0
 
         new_list = []
+
         for i in range(0, max_p_arity + 1):
             new_list.extend(gen_exprs[i])
 
+        for item in set(new_list) - set(init_list):
+            add_data(item)
+
         ret_exprs.extend(list(set(new_list) - set(init_list)))
-        logging.info(f"Iter {iter}: {len(new_list) - len(init_list)} is added")
+        logging.debug(f"Iter {iter}: {len(new_list) - len(init_list)} is added")
+
+    save_to_csv(data_buffer)
+    data_buffer.clear()
+
     ret_exprs.extend(init_list)
     return ret_exprs
 
 
 if __name__ == "__main__":
-    sample_num = 5
-    sample_max = 10
+    parser = argparse.ArgumentParser(
+        description="Generate expressions randomly"
+    )
 
-    max_count = 10000
-    max_generate_count = 5
-    max_p_arity = 4
-    max_c_args = 4
-    max_r_args = 9
+    parser.add_argument("--iter", type=int)
+    parser.add_argument("--sampling", type=int)
+    parser.add_argument("-p", "--max_p_arity", type=int)
+    parser.add_argument("-c", "--max_c_args", type=int)
+    parser.add_argument("-r", "--max_r_args", type=int)
+    parser.add_argument("--sample_num", type=int, default=10)
+    parser.add_argument("--sample_max", type=int, default=10)
+    parser.add_argument("-o", "--output", default=None, type=str)
+    parser.add_argument("--log_level", type=str, default="INFO")
+    parser.add_argument("--init_csv", type=str, default=None)
+
+    args = parser.parse_args()
+
+    logging.basicConfig(
+        level=getattr(logging, args.log_level),
+        format="%(asctime)s-%(levelname)s-%(message)s",
+        force=True,
+    )
 
     eq_domain = [np.zeros((1))] + [
-        np.random.randint(1, sample_max + 1, size=(sample_num, dim))
-        for dim in range(1, sample_max + 1)
+        np.random.randint(1, args.sample_max + 1, size=(args.sample_num, dim))
+        for dim in range(1, args.sample_max + 1)
     ]
     eq_domain[1] = np.array(range(10)).reshape(10, 1)
 
-    exprs = generate_random_prfndim(
-        max_count,
-        max_generate_count,
-        max_p_arity,
-        max_c_args,
-        max_r_args,
+    output_path = None if args.output is None else Path(args.output)
+    init_csv_path = None if args.init_csv is None else Path(args.init_csv)
+
+    exprs = generate_random(
+        args.iter,
+        args.sampling,
+        args.max_p_arity,
+        args.max_c_args,
+        args.max_r_args,
         eq_domain,
-        False,
+        output_path,
+        init_csv_path,
     )
-
-    df = pd.DataFrame(exprs)
-    df.columns = ["expr"]
-
-    df_unique = df.drop_duplicates(subset=["expr"])
-
-    outputs_li = []
-    inputs_li = []
-    len_li = []
-    arity_li = []
-    for index, row in df_unique.iterrows():
-        expr = row["expr"]
-        if expr.arity is None:
-            inputs = np.full((sample_num, 1), 0)
-        else:
-            inputs = eq_domain[expr.arity]
-        outputs = tuple(expr.eval(*args) for args in inputs)
-        inputs_li.append(
-            tuple(tuple(int(arg) for arg in args) for args in inputs)
-        )
-        outputs_li.append(tuple(int(output) for output in outputs))
-        len_li.append(len(str(expr)))
-        arity_li.append(expr.arity)
-    df_unique.loc[:, "inputs"] = inputs_li
-    df_unique.loc[:, "outputs"] = outputs_li
-    df_unique.loc[:, "len"] = len_li
-    df_unique.loc[:, "arity"] = arity_li
-
-    df_unique_output = df_unique.drop_duplicates(subset=["arity", "outputs"])
-    df_unique_output = df_unique_output.sort_values(
-        by=["arity", "len"]
-    ).reset_index(drop=True)
-    print(df_unique_output)
-
-    df_unique_output.to_csv("./data/prfndim/unique_output.csv", index=True)
