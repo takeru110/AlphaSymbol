@@ -2,6 +2,7 @@ import argparse
 import logging
 import random
 from pathlib import Path
+from typing import Optional
 
 import numpy as np
 import numpy.typing as npt
@@ -9,16 +10,18 @@ import pandas as pd
 
 from prfndim.prfndim import C, Expr, OverflowError, P, R, S, Z
 
-BATCH_SIZE = 10000
+BATCH_SIZE = 20
 
-OUTPUT_FILE = Path("./temp/random-batch.csv")
-data_buffer = []
+OUTPUT_FILE = None
+data_buffer: list[Expr] = []
+saved_expr_counter = 0
 counter = 0
-batch_counter = 0
 
 
 def add_data(new_data: Expr):
-    global data_buffer, counter, batch_counter
+    if OUTPUT_FILE is None:
+        return
+    global data_buffer, counter
 
     # データをバッファに追加
     data_buffer.append(new_data)
@@ -27,20 +30,23 @@ def add_data(new_data: Expr):
     # バッチサイズを超えた場合、CSVファイルに追記してバッファをクリア
     if counter >= BATCH_SIZE:
         save_to_csv(data_buffer)
-        batch_counter += 1
-        logging.info(f"batch_counter = {batch_counter}")
         data_buffer.clear()
 
 
 def save_to_csv(data):
+    global saved_expr_counter
+    if OUTPUT_FILE is None:
+        return
     # データをDataFrameに変換
     df = pd.DataFrame(data)
+    saved_expr_counter += len(data)
+    logging.info(
+        "Output file is updated. There are %d exprs", saved_expr_counter
+    )
 
     # ファイルが存在しない場合は新規作成、存在する場合は追記
-    if not OUTPUT_FILE.exists():
-        df.to_csv(OUTPUT_FILE, mode="w", index=False)
-    else:
-        df.to_csv(OUTPUT_FILE, mode="a", index=False, header=False)
+    assert OUTPUT_FILE.exists(), "Output file does not exist"
+    df.to_csv(OUTPUT_FILE, mode="a", index=False, header=False)
 
 
 def output_bytes_not_const(expr: Expr, eq_domain: list[npt.NDArray]) -> bytes:
@@ -162,13 +168,23 @@ def generate_random_prfndim(
     max_c_args,
     max_r_args,
     eq_domain,
+    output_path: Optional[Path],
     from_csv,
 ) -> list[Expr]:
-    ret_exprs: list[Expr] = []
-    init_file = Path("/home/takeru/AlphaSymbol/data/prfndim/d4-a3-c2-r3.csv")
+    if output_path is not None:
+        global OUTPUT_FILE
+        if output_path.exists():
+            output_path.unlink()
+        output_path.touch()
+        OUTPUT_FILE = output_path
 
+    ret_exprs: list[Expr] = []
     gen_exprs, outputs = init_exprs(max_p_arity, eq_domain)
+
     if from_csv:
+        init_file = Path(
+            "/home/takeru/AlphaSymbol/data/prfndim/d4-a3-c2-r3.csv"
+        )
         gen_exprs_from_file, outputs_from_file = init_exprs_from_csv(
             init_file, max_p_arity, eq_domain
         )
@@ -176,6 +192,12 @@ def generate_random_prfndim(
         for i in range(0, max_p_arity + 1):
             gen_exprs[i].extend(gen_exprs_from_file[i])
             outputs[i].update(outputs_from_file[i])
+
+    ret_exprs.extend([expr for exprs in gen_exprs for expr in exprs])
+
+    for exprs in gen_exprs:
+        for expr in exprs:
+            add_data(expr)
 
     init_list: list[Expr] = []
     for i in range(0, max_p_arity + 1):
@@ -271,11 +293,15 @@ def generate_random_prfndim(
         for i in range(0, max_p_arity + 1):
             new_list.extend(gen_exprs[i])
 
-        for item in new_list:
+        for item in set(new_list) - set(init_list):
             add_data(item)
 
         ret_exprs.extend(list(set(new_list) - set(init_list)))
         logging.debug(f"Iter {iter}: {len(new_list) - len(init_list)} is added")
+
+    save_to_csv(data_buffer)
+    data_buffer.clear()
+
     ret_exprs.extend(init_list)
     return ret_exprs
 
@@ -292,8 +318,9 @@ if __name__ == "__main__":
     parser.add_argument("-r", "--max_r_args", type=int)
     parser.add_argument("--sample_num", type=int, default=10)
     parser.add_argument("--sample_max", type=int, default=10)
-    parser.add_argument("-o", "--output", type=str)
+    parser.add_argument("-o", "--output", default=None, type=str)
     parser.add_argument("--log_level", type=str, default="INFO")
+    parser.add_argument("--init_csv", action="store_true")
 
     args = parser.parse_args()
 
@@ -303,13 +330,13 @@ if __name__ == "__main__":
         force=True,
     )
 
-    output_path = Path(args.output)
-
     eq_domain = [np.zeros((1))] + [
         np.random.randint(1, args.sample_max + 1, size=(args.sample_num, dim))
         for dim in range(1, args.sample_max + 1)
     ]
     eq_domain[1] = np.array(range(10)).reshape(10, 1)
+
+    output_path = None if args.output is None else Path(args.output)
 
     exprs = generate_random_prfndim(
         args.iter,
@@ -318,8 +345,6 @@ if __name__ == "__main__":
         args.max_c_args,
         args.max_r_args,
         eq_domain,
-        False,
+        output_path,
+        args.init_csv,
     )
-
-    df = pd.DataFrame(exprs, columns=["expr"])
-    df.to_csv(output_path, index=False)
