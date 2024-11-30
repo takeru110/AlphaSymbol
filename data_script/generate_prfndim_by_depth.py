@@ -13,11 +13,11 @@ logging.basicConfig(level=logging.DEBUG)
 
 BATCH_SIZE = 10000
 OUTPUT_FILE = Path("./data/prfndim/depth-batch.csv")
-conter = 0
+counter = 0
 data_buffer = []
 
 
-def add_data(new_data):
+def add_data(new_data: Expr):
     global data_buffer, counter
 
     # データをバッファに追加
@@ -318,10 +318,10 @@ def generate_prfndim_by_depth(
 
 if __name__ == "__main__":
     start_time = time.time()
-    depth = 5
-    max_arity = 3
-    max_c = 2
-    max_r = 3
+    depth = 3
+    max_arity = 2
+    max_c = 3
+    max_r = 5
 
     sample_max = 10
     sample_num = 5
@@ -337,40 +337,10 @@ if __name__ == "__main__":
         max_r,
         eq_domain,
     )
-    ret = list(set(ret))
-    input = list(range(10))
     df = pd.DataFrame(ret, columns=["expr"])
-    inputs = []
-    outputs = []
-    arities = []
-    len_expr = []
-    depth_list = []
-    for index, row in df.iterrows():
-        expr: Expr = row["expr"]
-        len_expr.append(len(str(expr)))
-        depth_list.append(expr.depth)
-        if expr.arity == None:
-            arities.append(0)
-            inputs.append([0])
-            outputs.append([expr.eval(0)])
-
-        else:
-            arities.append(expr.arity)
-            inputs.append(
-                [[int(num) for num in vec] for vec in eq_domain[expr.arity]]
-            )
-            outputs.append([int(expr.eval(*x)) for x in eq_domain[expr.arity]])
-    df["arity"] = arities
-    df["inputs"] = inputs
-    df["outputs"] = outputs
-    df["len_expr"] = len_expr
-    df["depth"] = depth_list
-
-    df = df.sort_values(by=["arity", "len_expr"])
     df.to_csv(
-        # f"./data/prfndim/unique_outputs/d{depth}-a{max_arity}-c{max_c}-r{max_r}.csv",
         f"./temp/d{depth}-a{max_arity}-c{max_c}-r{max_r}.csv",
-        index=True,
+        index=False,
     )
     end_time = time.time()
     logging.info(f"Time: {end_time - start_time}")
