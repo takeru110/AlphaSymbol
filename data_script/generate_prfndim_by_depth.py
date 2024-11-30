@@ -9,7 +9,10 @@ import pandas as pd
 
 from prfndim.prfndim import C, Expr, OverflowError, P, R, S, Z, expr_list_to_str
 
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s-%(levelname)s-%(message)s",
+    )
 
 BATCH_SIZE = 10000
 OUTPUT_FILE = Path("./data/prfndim/depth-batch.csv")
