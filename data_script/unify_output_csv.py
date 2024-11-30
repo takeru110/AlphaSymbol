@@ -60,9 +60,7 @@ def init_seen(max_arity: int) -> list[set[bytes]]:
     return ret
 
 
-def remove_duplicates_from_csv(
-    input_file: Path, output_file: Path, max_arity, eq_domain
-):
+def unify_output_csv(input_file: Path, output_file: Path, max_arity, eq_domain):
     logging.info(
         "Started removing output-duplicated expressions from %s", input_file
     )
@@ -132,4 +130,4 @@ if __name__ == "__main__":
         for dim in range(1, max_arity + 1)
     ]
 
-    remove_duplicates_from_csv(input_file, output_file, max_arity, eq_domain)
+    unify_output_csv(input_file, output_file, max_arity, eq_domain)

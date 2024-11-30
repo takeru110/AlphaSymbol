@@ -9,7 +9,7 @@ logging.basicConfig(
 )
 
 
-def remove_duplicates_from_csv(input_file: Path, output_file: Path):
+def unify_expr_csv(input_file: Path, output_file: Path):
     logging.info("Started removing duplicated expressions from %s", input_file)
     seen = set()  # 既に出現した行を記録するためのset
     with (
@@ -41,4 +41,4 @@ if __name__ == "__main__":
     # 使用例
     input_file = Path(args.input_file)
     output_file = Path(args.output_file)
-    remove_duplicates_from_csv(input_file, output_file)
+    unify_expr_csv(input_file, output_file)
