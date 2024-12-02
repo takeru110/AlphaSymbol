@@ -1,5 +1,6 @@
 """add some columns of status to csv file which have expr column"""
 
+import argparse
 import logging
 import math
 import sys
@@ -57,8 +58,14 @@ def add_status(df: pd.DataFrame, eq_domain) -> pd.DataFrame:
 
 
 if __name__ == "__main__":
-    path = Path.cwd() / "data_script" / "test_extra_status.csv"
-    output_path = Path.cwd() / "data_script" / "test_extra_status_output.csv"
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-i", "--input_file")
+    parser.add_argument("-o", "--output_file")
+    parser.parse_args()
+    args = parser.parse_args()
+
+    path = args.input_file
+    output_path = args.output_file
 
     df = pd.read_csv(path)
     eq_domain = generate_eq_domain(sample_max=10, sample_num=10, max_arity=5)
