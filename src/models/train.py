@@ -86,27 +86,18 @@ def train(data_path: Path, models_output_dir: Path, config_dir: Path):
     tgt_vocab_size = len(tgt_vocab)
 
     model = TransformerModel(
-        src_vocab_size,
-        tgt_vocab_size,
-        src_max_len,
-        tgt_max_len,
-        d_model=128,
-        nhead=4,
-        num_encoder_layers=3,
-        num_decoder_layers=3,
-        dim_feedforward=512,
-        dropout=0.1,
+        src_vocab_size, tgt_vocab_size, src_max_len, tgt_max_len
     )
 
     criterion = nn.CrossEntropyLoss(ignore_index=src_vocab["<pad>"])
     optimizer = optim.Adam(model.parameters(), lr=0.0001)
 
     # Training loop
-    num_epochs = 1000
+    num_epochs = 10
     best_loss = float("inf")
 
     models_output = (
-        models_output_dir / f"model_{num_epochs}epochs_{timestamp}.pth"
+        models_output_dir / "model_{num_epochs}epochs_{timestamp}.pth"
     )
 
     for epoch in range(num_epochs):
