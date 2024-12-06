@@ -97,7 +97,7 @@ def train(data_path: Path, models_output_dir: Path, config_dir: Path):
     best_loss = float("inf")
 
     models_output = (
-        models_output_dir / "model_{num_epochs}epochs_{timestamp}.pth"
+        models_output_dir / f"model_{num_epochs}epochs_{timestamp}.pth"
     )
 
     for epoch in range(num_epochs):
