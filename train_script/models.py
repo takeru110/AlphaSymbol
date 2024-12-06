@@ -70,6 +70,10 @@ class TransformerModel(nn.Module):
         src = src + self.src_pos_enc(src)
         tgt = tgt + self.tgt_pos_enc(tgt)
         tgt_mask = nn.Transformer.generate_square_subsequent_mask(tgt.size(0))
-        output = self.transformer(src, tgt, tgt_mask=tgt_mask)
+        if self.training:
+            output = self.transformer(src, tgt, tgt_mask=tgt_mask)
+        else:
+            self.transformer.eval()
+            output = self.transformer(src, tgt, src_mask=None, tgt_mask=None)
         output = self.fc_out(output)
         return output
