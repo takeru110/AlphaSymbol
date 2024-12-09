@@ -57,11 +57,7 @@ class LitTransformer(L.LightningModule):
         src = src + self.src_pos_enc(src)
         tgt = tgt + self.tgt_pos_enc(tgt)
         tgt_mask = nn.Transformer.generate_square_subsequent_mask(tgt.size(0))
-        if self.training:
-            output = self.transformer(src, tgt, tgt_mask=tgt_mask)
-        else:
-            self.transformer.eval()
-            output = self.transformer(src, tgt, src_mask=None, tgt_mask=None)
+        output = self.transformer(src, tgt, tgt_mask=tgt_mask)
         output = self.fc_out(output)  # (T, N, C)
         return output
 
@@ -74,6 +70,15 @@ class LitTransformer(L.LightningModule):
         output = output.permute(1, 2, 0)  # (N, C, T)
         loss = self.loss_fn(output, tgt_output)
         return loss
+
+    def predict_step(self, batch, batch_idx):
+        src = self.src_embedding(src) * torch.sqrt(
+            torch.tensor(self.d_model, dtype=torch.float32)
+        )
+        tgt = self.tgt_embedding(tgt) * torch.sqrt(
+            torch.tensor(self.d_model, dtype=torch.float32)
+        )
+        self.transformer(src, tgt, src_mask=None, tgt_mask=None)
 
     def configure_optimizers(self):
         return optim.Adam(self.parameters(), lr=self.learning_rate)
