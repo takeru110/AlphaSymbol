@@ -71,15 +71,6 @@ class LitTransformer(L.LightningModule):
         loss = self.loss_fn(output, tgt_output)
         return loss
 
-    def predict_step(self, batch, batch_idx):
-        src = self.src_embedding(src) * torch.sqrt(
-            torch.tensor(self.d_model, dtype=torch.float32)
-        )
-        tgt = self.tgt_embedding(tgt) * torch.sqrt(
-            torch.tensor(self.d_model, dtype=torch.float32)
-        )
-        self.transformer(src, tgt, src_mask=None, tgt_mask=None)
-
     def configure_optimizers(self):
         return optim.Adam(self.parameters(), lr=self.learning_rate)
 
