@@ -20,23 +20,33 @@ def tokenize(string: str, vocab: dict[str, int]) -> list[int]:
 
 
 class TransformerDataset(Dataset):
-    def __init__(
-        self, dataframe, src_vocab, tgt_vocab, src_max_len, tgt_max_len
-    ):
-        self.dataframe = dataframe
-        self.src_vocab = src_vocab
-        self.tgt_vocab = tgt_vocab
-        self.src_max_len = src_max_len
-        self.tgt_max_len = tgt_max_len
+    def __init__(self, df: pd.DataFrame):
+        """
+        Args
+        df: Should have columns "expr", "input" and "output.
+        """
+        self.df = df
+        self.df["tgt_str"] = df["expr"].apply(lambda x: x.replace(" ", ""))
+        self.df["src_str"] = df.apply(get_tgt, axis=1)
+        self.src_vocab = build_vocab(df["src_str"])
+        self.tgt_vocab = build_vocab(df["tgt_str"])
+        self.src_max_len = df["src_str"].apply(len).max()
+        self.tgt_max_len = df["tgt_str"].apply(len).max()
+        self.config = {
+            "src_vocab": self.src_vocab,
+            "tgt_vocab": self.tgt_vocab,
+            "src_max_len": int(self.src_max_len),
+            "tgt_max_len": int(self.tgt_max_len),
+        }
 
     def __len__(self):
-        return len(self.dataframe)
+        return len(self.df)
 
     def pad_sequence(self, seq, vocab, max_len):
         return seq + [vocab["<pad>"]] * (max_len - len(seq))
 
     def __getitem__(self, idx):
-        row = self.dataframe.iloc[idx]
+        row = self.df.iloc[idx]
         src_tokens = tokenize(row["src_str"], self.src_vocab)
         tgt_tokens = tokenize(row["tgt_str"], self.tgt_vocab)
         src_padded = self.pad_sequence(
@@ -51,45 +61,33 @@ class TransformerDataset(Dataset):
 def train(data_path: Path, models_output_dir: Path, config_dir: Path):
     # make dataset
     df = pd.read_csv(data_path)
-    df_data = pd.DataFrame(columns=["src", "tgt"])
 
-    # src_str like [0]:0,[1]:0,[2]:0,[3]:1,[4]:2,[5]:3,[6]:4,[7]:5,[8]:6,[9]:7
-    # tgt_str like C(R(P(1,1),P(2,1),Z()),R(P(1,1),P(2,1),Z()))
-    df_data["tgt_str"] = df["expr"].apply(lambda x: x.replace(" ", ""))
-    df_data["src_str"] = df.apply(get_tgt, axis=1)
-
-    src_vocab = build_vocab(df_data["src_str"])
-    tgt_vocab = build_vocab(df_data["tgt_str"])
-    src_max_len = df_data["src_str"].apply(len).max()
-    tgt_max_len = df_data["tgt_str"].apply(len).max()
-    config = {
-        "src_vocab": src_vocab,
-        "tgt_vocab": tgt_vocab,
-        "src_max_len": int(src_max_len),
-        "tgt_max_len": int(tgt_max_len),
-    }
+    dataset = TransformerDataset(df)
+    # self.src_str like [0]:0,[1]:0,[2]:0,[3]:1,[4]:2,[5]:3,[6]:4,[7]:5,[8]:6,[9]:7
+    # self.tgt_str like C(R(P(1,1),P(2,1),Z()),R(P(1,1),P(2,1),Z()))
 
     timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
 
     config_path = config_dir / f"config_{timestamp}.yaml"
     with open(config_path, "w") as yaml_file:
-        yaml.dump(config, yaml_file, default_flow_style=False)
-
-    dataset = TransformerDataset(
-        df_data, src_vocab, tgt_vocab, src_max_len, tgt_max_len
-    )
+        yaml.dump(dataset.config, yaml_file, default_flow_style=False)
 
     dataloader = DataLoader(dataset, batch_size=4, shuffle=True)
 
-    # Initialize model, loss function, and optimizer
-    src_vocab_size = len(src_vocab)
-    tgt_vocab_size = len(tgt_vocab)
-
     model = TransformerModel(
-        src_vocab_size, tgt_vocab_size, src_max_len, tgt_max_len
+        src_vocab_size=len(dataset.src_vocab),
+        tgt_vocab_size=len(dataset.tgt_vocab),
+        src_max_len=dataset.src_max_len,
+        tgt_max_len=dataset.tgt_max_len,
+        d_model=64,
+        nhead=4,
+        num_encoder_layers=6,
+        num_decoder_layers=6,
+        dim_feedforward=512,
+        dropout=0.1,
     )
 
-    criterion = nn.CrossEntropyLoss(ignore_index=src_vocab["<pad>"])
+    criterion = nn.CrossEntropyLoss(ignore_index=dataset.src_vocab["<pad>"])
     optimizer = optim.Adam(model.parameters(), lr=0.0001)
 
     # Training loop
@@ -108,8 +106,8 @@ def train(data_path: Path, models_output_dir: Path, config_dir: Path):
             tgt_output = tgt_batch[:, 1:]
 
             optimizer.zero_grad()
-            output = model(src_batch, tgt_input)
-            output = output.permute(1, 2, 0)  # (N, C, T)
+            output = model(src_batch, tgt_input)  # (T, N, C)
+            output = output.permute(1, 2, 0)  # (N, C, T) for CrossEntropyLoss
             loss = criterion(output, tgt_output)
             loss.backward()
             optimizer.step()
