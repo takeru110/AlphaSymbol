@@ -23,6 +23,7 @@ class LitTransformer(L.LightningModule):
         learning_rate=3e-4,
     ):
         super().__init__()
+        self.save_hyperparameters()
         self.src_embedding = nn.Embedding(src_vocab_size, d_model)
         self.tgt_embedding = nn.Embedding(tgt_vocab_size, d_model)
         self.transformer = nn.Transformer(
@@ -74,6 +75,7 @@ class LitTransformer(L.LightningModule):
         output = self(src_batch, tgt_input)  # (T, N, C)
         output = output.permute(1, 2, 0)  # (N, C, T)
         loss = self.loss_fn(output, tgt_output)
+        self.log("train_loss", loss, prog_bar=True)
         return loss
 
     def configure_optimizers(self):
@@ -81,6 +83,7 @@ class LitTransformer(L.LightningModule):
 
 
 if __name__ == "__main__":
+    # data_path = "/home/takeru/AlphaSymbol/data/prfndim/d3-a5-c3-r5.csv"
     data_path = "/home/takeru/AlphaSymbol/data/prfndim/d3-a2-c3-r3-status.csv"
     models_output_dir = "./temp/"
     config_dir = "./temp/"
