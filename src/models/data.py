@@ -5,7 +5,7 @@ import torch
 from torch.utils.data import DataLoader, Dataset
 
 
-def build_vocab(strings: Iterable[str]):
+def build_vocab(strings: Iterable[str]) -> dict[str, int]:
     vocab = {"<pad>": 0, "<sos>": 1, "<eos>": 2}
     idx = 3
     for sentence in strings:
@@ -61,8 +61,8 @@ class TransformerDataset(Dataset):
         self.df["src_str"] = df.apply(get_tgt, axis=1)
         self.src_vocab = build_vocab(df["src_str"])
         self.tgt_vocab = build_vocab(df["tgt_str"])
-        self.src_max_len = df["src_str"].apply(len).max()
-        self.tgt_max_len = df["tgt_str"].apply(len).max()
+        self.src_max_len = int(df["src_str"].apply(len).max())
+        self.tgt_max_len = int(df["tgt_str"].apply(len).max())
         self.config = {
             "src_vocab": self.src_vocab,
             "tgt_vocab": self.tgt_vocab,
