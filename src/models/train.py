@@ -1,9 +1,13 @@
 from datetime import datetime
 from pathlib import Path
 
+import hydra
 import lightning as L
 import pandas as pd
 import torch
+import yaml
+from hydra.core.hydra_config import HydraConfig
+from omegaconf import DictConfig
 from torch import Tensor, nn, optim, utils
 
 from data import TransformerDataset
@@ -29,6 +33,8 @@ class LitTransformer(L.LightningModule):
         self.save_hyperparameters()
         self.src_embedding = nn.Embedding(src_vocab_size, d_model)
         self.tgt_embedding = nn.Embedding(tgt_vocab_size, d_model)
+        self.src_max_len = src_max_len
+        self.tgt_max_len = tgt_max_len
         self.transformer = nn.Transformer(
             d_model,
             nhead,
@@ -85,29 +91,37 @@ class LitTransformer(L.LightningModule):
         return optim.Adam(self.parameters(), lr=self.learning_rate)
 
 
-if __name__ == "__main__":
-    # data_path = "/home/takeru/AlphaSymbol/data/prfndim/d3-a5-c3-r5.csv"
-    data_path = "/home/takeru/AlphaSymbol/data/prfndim/d3-a2-c3-r3-status.csv"
-    models_output_dir = "./temp/"
-    config_dir = "./temp/"
+@hydra.main(version_base=None, config_path=".", config_name="training_config")
+def main(cfg: DictConfig):
+    csv_path = cfg.csv_path
 
-    timestamp = datetime.now().strftime("%Y-%m%d-%H%M-%S")
-    log_dir = Path(f"./logs/{timestamp}")
-    log_dir.mkdir(parents=True)
+    log_dir = Path(HydraConfig.get().run.dir)
 
-    df = pd.read_csv(data_path)
+    df = pd.read_csv(csv_path)
     dataset = TransformerDataset(df)
     dataloadr = utils.data.DataLoader(dataset, batch_size=4, shuffle=True)
+
+    with open(log_dir / "src_vocab.yaml", "w") as f:
+        yaml.dump(dataset.src_vocab, f, default_flow_style=True)
+    with open(log_dir / "tgt_vocab.yaml", "w") as f:
+        yaml.dump(dataset.tgt_vocab, f, default_flow_style=True)
 
     lightning_module = LitTransformer(
         src_vocab_size=len(dataset.src_vocab),
         tgt_vocab_size=len(dataset.tgt_vocab),
         src_max_len=dataset.src_max_len,
         tgt_max_len=dataset.tgt_max_len,
-        learning_rate=0.0001,
+        learning_rate=eval(cfg.learning_rate),
     )
 
     trainer = L.Trainer(
-        default_root_dir=log_dir, max_epochs=10, accelerator="gpu", devices=1
+        default_root_dir=log_dir,
+        max_epochs=cfg.max_epochs,
+        accelerator="gpu",
+        devices=1,
     )
     trainer.fit(lightning_module, dataloadr)
+
+
+if __name__ == "__main__":
+    main()
