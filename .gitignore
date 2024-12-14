@@ -165,3 +165,7 @@ cython_debug/
 /log
 /temp
 /Makefile
+/logs
+/lightning_logs
+/data
+/models

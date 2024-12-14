@@ -1,3 +1,6 @@
+from datetime import datetime
+from pathlib import Path
+
 import lightning as L
 import pandas as pd
 import torch
@@ -87,6 +90,11 @@ if __name__ == "__main__":
     data_path = "/home/takeru/AlphaSymbol/data/prfndim/d3-a2-c3-r3-status.csv"
     models_output_dir = "./temp/"
     config_dir = "./temp/"
+
+    timestamp = datetime.now().strftime("%Y-%m%d-%H%M-%S")
+    log_dir = Path(f"./logs/{timestamp}")
+    log_dir.mkdir(parents=True)
+
     df = pd.read_csv(data_path)
     dataset = TransformerDataset(df)
     dataloadr = utils.data.DataLoader(dataset, batch_size=4, shuffle=True)
@@ -99,5 +107,7 @@ if __name__ == "__main__":
         learning_rate=0.0001,
     )
 
-    trainer = L.Trainer(max_epochs=100, accelerator="gpu", devices=1)
+    trainer = L.Trainer(
+        default_root_dir=log_dir, max_epochs=10, accelerator="gpu", devices=1
+    )
     trainer.fit(lightning_module, dataloadr)
