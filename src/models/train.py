@@ -99,7 +99,7 @@ def main(cfg: DictConfig):
 
     df = pd.read_csv(csv_path)
     dataset = TransformerDataset(df)
-    dataloadr = utils.data.DataLoader(dataset, batch_size=4, shuffle=True)
+    dataloadr = utils.data.DataLoader(dataset, batch_size=cfg.batch_size, shuffle=True)
 
     with open(log_dir / "src_vocab.yaml", "w") as f:
         yaml.dump(dataset.src_vocab, f, default_flow_style=True)
