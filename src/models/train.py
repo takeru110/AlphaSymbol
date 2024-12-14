@@ -56,12 +56,13 @@ class LitTransformer(L.LightningModule):
         tgt = tgt.permute(1, 0, 2)  # (T, N, E)
         src = src + self.src_pos_enc(src)
         tgt = tgt + self.tgt_pos_enc(tgt)
-        tgt_mask = nn.Transformer.generate_square_subsequent_mask(tgt.size(0))
         if self.training:
+            tgt_mask = nn.Transformer.generate_square_subsequent_mask(
+                tgt.size(0)
+            )
             output = self.transformer(src, tgt, tgt_mask=tgt_mask)
         else:
-            self.transformer.eval()
-            output = self.transformer(src, tgt, src_mask=None, tgt_mask=None)
+            output = self.transformer(src, tgt)
         output = self.fc_out(output)  # (T, N, C)
         return output
 
@@ -79,20 +80,21 @@ class LitTransformer(L.LightningModule):
         return optim.Adam(self.parameters(), lr=self.learning_rate)
 
 
-data_path = "/home/takeru/AlphaSymbol/data/prfndim/d3-a2-c3-r3-status.csv"
-models_output_dir = "./temp/"
-config_dir = "./temp/"
-df = pd.read_csv(data_path)
-dataset = TransformerDataset(df)
-dataloadr = utils.data.DataLoader(dataset, batch_size=4, shuffle=True)
+if __name__ == "__main__":
+    data_path = "/home/takeru/AlphaSymbol/data/prfndim/d3-a2-c3-r3-status.csv"
+    models_output_dir = "./temp/"
+    config_dir = "./temp/"
+    df = pd.read_csv(data_path)
+    dataset = TransformerDataset(df)
+    dataloadr = utils.data.DataLoader(dataset, batch_size=4, shuffle=True)
 
-lightning_module = LitTransformer(
-    src_vocab_size=len(dataset.src_vocab),
-    tgt_vocab_size=len(dataset.tgt_vocab),
-    src_max_len=dataset.src_max_len,
-    tgt_max_len=dataset.tgt_max_len,
-    learning_rate=0.0001,
-)
+    lightning_module = LitTransformer(
+        src_vocab_size=len(dataset.src_vocab),
+        tgt_vocab_size=len(dataset.tgt_vocab),
+        src_max_len=dataset.src_max_len,
+        tgt_max_len=dataset.tgt_max_len,
+        learning_rate=0.0001,
+    )
 
-trainer = L.Trainer(max_epochs=100, accelerator="gpu", devices=1)
-trainer.fit(lightning_module, dataloadr)
+    trainer = L.Trainer(max_epochs=100, accelerator="gpu", devices=1)
+    trainer.fit(lightning_module, dataloadr)
