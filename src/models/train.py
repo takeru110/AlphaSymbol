@@ -21,6 +21,8 @@ class LitTransformer(L.LightningModule):
         tgt_vocab_size,
         src_max_len,
         tgt_max_len,
+        src_vocab,
+        tgt_vocab,
         d_model=512,
         nhead=8,
         num_encoder_layers=6,
@@ -48,7 +50,9 @@ class LitTransformer(L.LightningModule):
         self.src_pos_enc = PositionalEncoding(d_model, src_max_len)
         self.tgt_pos_enc = PositionalEncoding(d_model, tgt_max_len)
         self.learning_rate = learning_rate
-        self.loss_fn = nn.CrossEntropyLoss()
+        self.src_vocab = src_vocab
+        self.tgt_vocab = tgt_vocab
+        self.loss_fn = nn.CrossEntropyLoss(ignore_index=tgt_vocab["<pad>"])
 
     def forward(self, src, tgt):
         """
@@ -99,12 +103,9 @@ def main(cfg: DictConfig):
 
     df = pd.read_csv(csv_path)
     dataset = TransformerDataset(df)
-    dataloadr = utils.data.DataLoader(dataset, batch_size=cfg.batch_size, shuffle=True)
-
-    with open(log_dir / "src_vocab.yaml", "w") as f:
-        yaml.dump(dataset.src_vocab, f, default_flow_style=True)
-    with open(log_dir / "tgt_vocab.yaml", "w") as f:
-        yaml.dump(dataset.tgt_vocab, f, default_flow_style=True)
+    dataloadr = utils.data.DataLoader(
+        dataset, batch_size=cfg.batch_size, shuffle=True
+    )
 
     lightning_module = LitTransformer(
         src_vocab_size=len(dataset.src_vocab),
@@ -112,6 +113,8 @@ def main(cfg: DictConfig):
         src_max_len=dataset.src_max_len,
         tgt_max_len=dataset.tgt_max_len,
         learning_rate=eval(cfg.learning_rate),
+        src_vocab=dataset.src_vocab,
+        tgt_vocab=dataset.tgt_vocab,
     )
 
     trainer = L.Trainer(
