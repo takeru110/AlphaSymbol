@@ -48,7 +48,7 @@ class LitTransformer(L.LightningModule):
         self.src_pos_enc = PositionalEncoding(d_model, src_max_len)
         self.tgt_pos_enc = PositionalEncoding(d_model, tgt_max_len)
         self.learning_rate = learning_rate
-        self.loss_fn = nn.CrossEntropyLoss()
+        self.loss_fn = nn.CrossEntropyLoss(ignore_index=self.tgt_vocab["<pad>"])
 
     def forward(self, src, tgt):
         """
@@ -99,7 +99,9 @@ def main(cfg: DictConfig):
 
     df = pd.read_csv(csv_path)
     dataset = TransformerDataset(df)
-    dataloadr = utils.data.DataLoader(dataset, batch_size=cfg.batch_size, shuffle=True)
+    dataloadr = utils.data.DataLoader(
+        dataset, batch_size=cfg.batch_size, shuffle=True
+    )
 
     with open(log_dir / "src_vocab.yaml", "w") as f:
         yaml.dump(dataset.src_vocab, f, default_flow_style=True)
