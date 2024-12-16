@@ -61,8 +61,8 @@ class TransformerDataset(Dataset):
         self.df["src_str"] = df.apply(get_tgt, axis=1)
         self.src_vocab = build_vocab(df["src_str"])
         self.tgt_vocab = build_vocab(df["tgt_str"])
-        self.src_max_len = int(df["src_str"].apply(len).max())
-        self.tgt_max_len = int(df["tgt_str"].apply(len).max())
+        self.src_max_len = int(df["src_str"].apply(len).max() + 2)
+        self.tgt_max_len = int(df["tgt_str"].apply(len).max() + 2)
         self.config = {
             "src_vocab": self.src_vocab,
             "tgt_vocab": self.tgt_vocab,
@@ -74,6 +74,7 @@ class TransformerDataset(Dataset):
         return len(self.df)
 
     def pad_sequence(self, seq, vocab, max_len):
+        assert max_len >= len(seq), "max_len should be greater than len(seq)"
         return seq + [vocab["<pad>"]] * (max_len - len(seq))
 
     def __getitem__(self, idx):
@@ -81,9 +82,9 @@ class TransformerDataset(Dataset):
         src_tokens = tokenize(row["src_str"], self.src_vocab)
         tgt_tokens = tokenize(row["tgt_str"], self.tgt_vocab)
         src_padded = self.pad_sequence(
-            src_tokens[: self.src_max_len], self.src_vocab, self.src_max_len
+            src_tokens, self.src_vocab, self.src_max_len
         )
         tgt_padded = self.pad_sequence(
-            tgt_tokens[: self.tgt_max_len], self.tgt_vocab, self.tgt_max_len
+            tgt_tokens, self.tgt_vocab, self.tgt_max_len
         )
         return torch.tensor(src_padded), torch.tensor(tgt_padded)
