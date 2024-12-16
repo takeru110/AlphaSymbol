@@ -33,8 +33,14 @@ class LitTransformer(L.LightningModule):
     ):
         super().__init__()
         self.save_hyperparameters()
-        self.src_embedding = nn.Embedding(src_vocab_size, d_model)
-        self.tgt_embedding = nn.Embedding(tgt_vocab_size, d_model)
+        self.src_pos_enc = PositionalEncoding(d_model, src_max_len)
+        self.tgt_pos_enc = PositionalEncoding(d_model, tgt_max_len - 1)
+        self.src_embedding = nn.Embedding(
+            src_vocab_size, d_model, padding_idx=src_vocab["<pad>"]
+        )
+        self.tgt_embedding = nn.Embedding(
+            tgt_vocab_size, d_model, padding_idx=tgt_vocab["<pad>"]
+        )
         self.src_max_len = src_max_len
         self.tgt_max_len = tgt_max_len
         self.transformer = nn.Transformer(
@@ -47,8 +53,6 @@ class LitTransformer(L.LightningModule):
         )
         self.fc_out = nn.Linear(d_model, tgt_vocab_size)
         self.d_model = d_model
-        self.src_pos_enc = PositionalEncoding(d_model, src_max_len)
-        self.tgt_pos_enc = PositionalEncoding(d_model, tgt_max_len)
         self.learning_rate = learning_rate
         self.src_vocab = src_vocab
         self.tgt_vocab = tgt_vocab
@@ -103,8 +107,13 @@ def main(cfg: DictConfig):
 
     df = pd.read_csv(csv_path)
     dataset = TransformerDataset(df)
-    dataloadr = utils.data.DataLoader(
-        dataset, batch_size=cfg.batch_size, shuffle=True
+    num_samples = 2048
+    weights = [1.0 / len(dataset)] * len(dataset)
+    sampler = torch.utils.data.WeightedRandomSampler(
+        weights, num_samples, replacement=True
+    )
+    dataloadr = torch.utils.data.DataLoader(
+        dataset, batch_size=cfg.batch_size, sampler=sampler
     )
 
     lightning_module = LitTransformer(
