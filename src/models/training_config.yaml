@@ -1,7 +1,8 @@
 hydra:
   run:
     dir: "./logs/${now:%Y-%m%d-%H%M-%S}/"
-csv_path: "/home/takeru/AlphaSymbol/data/prfndim/d3-a2-c3-r3-status.csv"
-max_epochs: 100
-learning_rate: "10**(-5)"
-batch_size: 8 
+csv_path: /home/takeru/AlphaSymbol/data/prfndim/d3-a2-c3-r3-status.csv
+#"/home/takeru/AlphaSymbol/data/prfndim/d3-a5-c3-r5.csv"
+max_epochs: 16
+learning_rate: "8*10**(-5)"
+batch_size: 16
