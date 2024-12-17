@@ -9,6 +9,7 @@ import yaml
 from hydra.core.hydra_config import HydraConfig
 from omegaconf import DictConfig
 from torch import Tensor, nn, optim, utils
+from torch.utils.data import DataLoader, Dataset
 
 from data import TransformerDataset
 from models import PositionalEncoding
@@ -95,6 +96,17 @@ class LitTransformer(L.LightningModule):
         self.log("train_loss", loss, prog_bar=True)
         return loss
 
+    def validation_step(self, batch, batch_idx):
+        # src_batch: (N, S), tgt_batch: (N, T)
+        src_batch, tgt_batch = batch
+        tgt_input = tgt_batch[:, :-1]
+        tgt_output = tgt_batch[:, 1:]
+        output = self(src_batch, tgt_input)  # (T, N, C)
+        output = output.permute(1, 2, 0)  # (N, C, T)
+        loss = self.loss_fn(output, tgt_output)
+        self.log("val_loss", loss, prog_bar=True)
+        return loss
+
     def configure_optimizers(self):
         return optim.Adam(self.parameters(), lr=self.learning_rate)
 
@@ -106,24 +118,35 @@ def main(cfg: DictConfig):
     log_dir = Path(HydraConfig.get().run.dir)
 
     df = pd.read_csv(csv_path)
-    dataset = TransformerDataset(df)
-    num_samples = 2048
-    weights = [1.0 / len(dataset)] * len(dataset)
-    sampler = torch.utils.data.WeightedRandomSampler(
-        weights, num_samples, replacement=True
+    raw_dataset = TransformerDataset(df)
+
+    dataset: Dataset = utils.data.ConcatDataset([raw_dataset] * 100)
+
+    train_size = int(0.7 * len(dataset))
+    val_size = int(0.15 * len(dataset))
+    test_size = len(dataset) - train_size - val_size
+    train_dataset, val_dataset, test_dataset = utils.data.random_split(
+        dataset, [train_size, val_size, test_size]
     )
-    dataloadr = torch.utils.data.DataLoader(
-        dataset, batch_size=cfg.batch_size, sampler=sampler
+
+    train_loader: DataLoader = DataLoader(
+        train_dataset, batch_size=cfg.batch_size
+    )
+
+    val_loader: DataLoader = DataLoader(val_dataset, batch_size=cfg.batch_size)
+
+    test_loader: DataLoader = DataLoader(
+        test_dataset, batch_size=cfg.batch_size
     )
 
     lightning_module = LitTransformer(
-        src_vocab_size=len(dataset.src_vocab),
-        tgt_vocab_size=len(dataset.tgt_vocab),
-        src_max_len=dataset.src_max_len,
-        tgt_max_len=dataset.tgt_max_len,
+        src_vocab_size=len(raw_dataset.src_vocab),
+        tgt_vocab_size=len(raw_dataset.tgt_vocab),
+        src_max_len=raw_dataset.src_max_len,
+        tgt_max_len=raw_dataset.tgt_max_len,
         learning_rate=eval(cfg.learning_rate),
-        src_vocab=dataset.src_vocab,
-        tgt_vocab=dataset.tgt_vocab,
+        src_vocab=raw_dataset.src_vocab,
+        tgt_vocab=raw_dataset.tgt_vocab,
     )
 
     trainer = L.Trainer(
@@ -132,7 +155,7 @@ def main(cfg: DictConfig):
         accelerator="gpu",
         devices=1,
     )
-    trainer.fit(lightning_module, dataloadr)
+    trainer.fit(lightning_module, train_loader, val_loader)
 
 
 if __name__ == "__main__":
