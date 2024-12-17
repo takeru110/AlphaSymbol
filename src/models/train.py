@@ -75,13 +75,8 @@ class LitTransformer(L.LightningModule):
         tgt = tgt.permute(1, 0, 2)  # (T, N, E)
         src = src + self.src_pos_enc(src)
         tgt = tgt + self.tgt_pos_enc(tgt)
-        if self.training:
-            tgt_mask = nn.Transformer.generate_square_subsequent_mask(
-                tgt.size(0)
-            )
-            output = self.transformer(src, tgt, tgt_mask=tgt_mask)
-        else:
-            output = self.transformer(src, tgt)
+        tgt_mask = nn.Transformer.generate_square_subsequent_mask(tgt.size(0))
+        output = self.transformer(src, tgt, tgt_mask=tgt_mask)
         output = self.fc_out(output)  # (T, N, C)
         return output
 
