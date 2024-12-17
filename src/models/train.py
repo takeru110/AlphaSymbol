@@ -155,7 +155,7 @@ def main(cfg: DictConfig):
         accelerator="gpu",
         devices=1,
     )
-    trainer.fit(lightning_module, train_loader, val_loader)
+    trainer.fit(lightning_module, train_loader, train_loader)
 
 
 if __name__ == "__main__":
