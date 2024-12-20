@@ -15,13 +15,12 @@ BATCH_SIZE = 20
 OUTPUT_FILE = None
 data_buffer: list[Expr] = []
 saved_expr_counter = 0
-counter = 0
 
 
 def add_data(new_data: Expr):
     if OUTPUT_FILE is None:
         return
-    global data_buffer, counter
+    global data_buffer, counner
 
     # データをバッファに追加
     data_buffer.append(new_data)
@@ -121,7 +120,7 @@ def if_not_visited_then_update_const(
     expr: Expr,
     max_dim: int,
     eq_domain: list[npt.NDArray],
-) -> tuple[list[list[Expr]], list[set[bytes]], bool]:
+) -> tuple[list[set[bytes]], bool]:
     assert expr.arity is None
     is_visited = False
     for dim in range(1, max_dim + 1):
@@ -129,18 +128,13 @@ def if_not_visited_then_update_const(
             # when OverflowError occurs, it occurs in all iteration
             out_bytes = output_bytes_const(expr, dim, eq_domain)
         except OverflowError:
-            return exprs, outputs, False
+            return outputs, False
         if out_bytes in outputs[dim]:
             continue
         outputs[dim].add(out_bytes)
         is_visited = True
-
-    if not is_visited:
-        exprs[0].append(expr)
-        is_updated = True
-    else:
-        is_updated = False
-    return exprs, outputs, is_updated
+    is_updated = not is_visited
+    return outputs, is_updated
 
 
 def if_not_visited_then_update_not_const(
@@ -148,17 +142,16 @@ def if_not_visited_then_update_not_const(
     outputs: list[set[bytes]],
     expr: Expr,
     eq_domain: list[npt.NDArray],
-) -> tuple[list[list[Expr]], list[set[bytes]], bool]:
+) -> tuple[list[set[bytes]], bool]:
     assert expr.arity is not None
     try:
         out_bytes = output_bytes_not_const(expr, eq_domain)
     except OverflowError:
-        return exprs, outputs, False
+        return outputs, False
     if out_bytes in outputs[expr.arity]:
-        return exprs, outputs, False
-    exprs[expr.arity].append(expr)
+        return outputs, False
     outputs[expr.arity].add(out_bytes)
-    return exprs, outputs, True
+    return outputs, True
 
 
 def generate_random(
@@ -170,7 +163,7 @@ def generate_random(
     eq_domain,
     output_path: Optional[Path],
     init_csv: Optional[Path],
-) -> list[Expr]:
+):
     if output_path is not None:
         global OUTPUT_FILE
         if output_path.exists():
@@ -178,42 +171,20 @@ def generate_random(
         output_path.touch()
         OUTPUT_FILE = output_path
 
-    ret_exprs: list[Expr] = []
-    gen_exprs, outputs = init_exprs(max_p_arity, eq_domain)
+    # gen_exprs[arity]: list of Expr with arity
+    # new exprs is generated combining exprs in gen_exprs
 
-    if init_csv is not None:
-        gen_exprs_from_file, outputs_from_file = init_exprs_from_csv(
+    if init_csv is None:
+        gen_exprs, outputs = init_exprs(max_p_arity, eq_domain)
+    else:
+        gen_exprs, outputs = init_exprs_from_csv(
             init_csv, max_p_arity, eq_domain
         )
 
-        for i in range(0, max_p_arity + 1):
-            gen_exprs[i].extend(gen_exprs_from_file[i])
-            outputs[i].update(outputs_from_file[i])
-
-    ret_exprs.extend([expr for exprs in gen_exprs for expr in exprs])
-
-    for exprs in gen_exprs:
-        for expr in exprs:
-            add_data(expr)
-
-    init_list: list[Expr] = []
-    for i in range(0, max_p_arity + 1):
-        init_list.extend(gen_exprs[i])
-
     for iter in range(max_count):
-        # gen_exprs[arity]: list of Expr with arity
-        gen_exprs, outputs = init_exprs(max_p_arity, eq_domain)
-        if init_csv is not None:
-            gen_exprs_from_file, outputs_from_file = init_exprs_from_csv(
-                init_csv, max_p_arity, eq_domain
-            )
-            for i in range(0, max_p_arity + 1):
-                gen_exprs[i].extend(gen_exprs_from_file[i])
-                outputs[i].update(outputs_from_file[i])
-
+        new_exprs: list[Expr] = []
         # visited[arity] set of output of Expr with arity
-        counter = 0
-        while counter < max_generate_count:
+        while len(new_exprs) < max_generate_count:
             if random.random() < 0.5:
                 base_arity: int = random.randint(
                     1, min(max_p_arity, max_c_args - 1)
@@ -226,23 +197,22 @@ def generate_random(
                 )
                 new_expr_c = C(base, *args)
                 if new_expr_c.arity is None:
-                    gen_exprs, outputs, is_updated = (
-                        if_not_visited_then_update_const(
-                            gen_exprs,
-                            outputs,
-                            new_expr_c,
-                            max_p_arity,
-                            eq_domain,
-                        )
+                    outputs, is_new = if_not_visited_then_update_const(
+                        gen_exprs,
+                        outputs,
+                        new_expr_c,
+                        max_p_arity,
+                        eq_domain,
                     )
-                    counter += 1 if is_updated else 0
+                    if is_new:
+                        new_exprs.append(new_expr_c)
+
                 else:
-                    gen_exprs, outputs, is_updated = (
-                        if_not_visited_then_update_not_const(
-                            gen_exprs, outputs, new_expr_c, eq_domain
-                        )
+                    outputs, is_new = if_not_visited_then_update_not_const(
+                        gen_exprs, outputs, new_expr_c, eq_domain
                     )
-                    counter += 1 if is_updated else 0
+                    if is_new:
+                        new_exprs.append(new_expr_c)
             else:
                 while True:
                     try:
@@ -267,40 +237,28 @@ def generate_random(
                         continue
                 new_expr_r = R(term, *steps, *bases)
                 if new_expr_r.arity is None:
-                    gen_exprs, outputs, is_updated = (
-                        if_not_visited_then_update_const(
-                            gen_exprs,
-                            outputs,
-                            new_expr_r,
-                            max_p_arity,
-                            eq_domain,
-                        )
+                    outputs, is_updated = if_not_visited_then_update_const(
+                        gen_exprs,
+                        outputs,
+                        new_expr_r,
+                        max_p_arity,
+                        eq_domain,
                     )
-                    counter += 1 if is_updated else 0
+                    if is_updated:
+                        new_exprs.append(new_expr_r)
                 else:
-                    gen_exprs, outputs, is_updated = (
-                        if_not_visited_then_update_not_const(
-                            gen_exprs, outputs, new_expr_r, eq_domain
-                        )
+                    outputs, is_updated = if_not_visited_then_update_not_const(
+                        gen_exprs, outputs, new_expr_r, eq_domain
                     )
-                    counter += 1 if is_updated else 0
+                    if is_updated:
+                        new_exprs.append(new_expr_r)
 
-        new_list = []
-
-        for i in range(0, max_p_arity + 1):
-            new_list.extend(gen_exprs[i])
-
-        for item in set(new_list) - set(init_list):
+        for item in set(new_exprs):
             add_data(item)
-
-        ret_exprs.extend(list(set(new_list) - set(init_list)))
-        logging.debug(f"Iter {iter}: {len(new_list) - len(init_list)} is added")
+        logging.debug(f"Iter {iter}: {len(new_exprs)} is added")
 
     save_to_csv(data_buffer)
     data_buffer.clear()
-
-    ret_exprs.extend(init_list)
-    return ret_exprs
 
 
 if __name__ == "__main__":
