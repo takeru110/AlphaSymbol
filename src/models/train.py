@@ -115,7 +115,9 @@ def main(cfg: DictConfig):
     df = pd.read_csv(csv_path)
     raw_dataset = TransformerDataset(df)
 
-    dataset: Dataset = utils.data.ConcatDataset([raw_dataset] * 100)
+    dataset: Dataset = (
+        raw_dataset  # utils.data.ConcatDataset([raw_dataset] * 100)
+    )
 
     train_size = int(0.7 * len(dataset))
     val_size = int(0.15 * len(dataset))
@@ -142,6 +144,12 @@ def main(cfg: DictConfig):
         learning_rate=eval(cfg.learning_rate),
         src_vocab=raw_dataset.src_vocab,
         tgt_vocab=raw_dataset.tgt_vocab,
+        d_model=cfg.transformer.d_model,
+        nhead=cfg.transformer.nhead,
+        num_encoder_layers=cfg.transformer.num_encoder_layers,
+        num_decoder_layers=cfg.transformer.num_decoder_layers,
+        dim_feedforward=cfg.transformer.dim_feedforward,
+        dropout=cfg.transformer.dropout,
     )
 
     trainer = L.Trainer(
