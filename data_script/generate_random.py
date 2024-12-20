@@ -20,14 +20,13 @@ saved_expr_counter = 0
 def add_data(new_data: Expr):
     if OUTPUT_FILE is None:
         return
-    global data_buffer, counner
+    global data_buffer
 
     # データをバッファに追加
     data_buffer.append(new_data)
-    counter = len(data_buffer)
 
     # バッチサイズを超えた場合、CSVファイルに追記してバッファをクリア
-    if counter >= BATCH_SIZE:
+    if len(data_buffer) >= BATCH_SIZE:
         save_to_csv(data_buffer)
         data_buffer.clear()
 
@@ -155,8 +154,7 @@ def if_not_visited_then_update_not_const(
 
 
 def generate_random(
-    max_count,
-    max_generate_count,
+    sample_num,
     max_p_arity,
     max_c_args,
     max_r_args,
@@ -180,82 +178,78 @@ def generate_random(
         gen_exprs, outputs = init_exprs_from_csv(
             init_csv, max_p_arity, eq_domain
         )
-
-    for iter in range(max_count):
-        new_exprs: list[Expr] = []
-        # visited[arity] set of output of Expr with arity
-        while len(new_exprs) < max_generate_count:
-            if random.random() < 0.5:
-                base_arity: int = random.randint(
-                    1, min(max_p_arity, max_c_args - 1)
+    new_exprs: list[Expr] = []
+    # visited[arity] set of output of Expr with arity
+    while len(new_exprs) < sample_num:
+        if random.random() < 0.5:
+            base_arity: int = random.randint(
+                1, min(max_p_arity, max_c_args - 1)
+            )
+            arg_arity: int = random.randint(1, max_p_arity)
+            base: Expr = random.choice(gen_exprs[base_arity])
+            args = tuple(
+                random.choice(gen_exprs[arg_arity] + gen_exprs[0])
+                for _ in range(base_arity)
+            )
+            new_expr_c = C(base, *args)
+            if new_expr_c.arity is None:
+                outputs, is_new = if_not_visited_then_update_const(
+                    gen_exprs,
+                    outputs,
+                    new_expr_c,
+                    max_p_arity,
+                    eq_domain,
                 )
-                arg_arity: int = random.randint(1, max_p_arity)
-                base: Expr = random.choice(gen_exprs[base_arity])
-                args = tuple(
-                    random.choice(gen_exprs[arg_arity] + gen_exprs[0])
-                    for _ in range(base_arity)
-                )
-                new_expr_c = C(base, *args)
-                if new_expr_c.arity is None:
-                    outputs, is_new = if_not_visited_then_update_const(
-                        gen_exprs,
-                        outputs,
-                        new_expr_c,
-                        max_p_arity,
-                        eq_domain,
-                    )
-                    if is_new:
-                        new_exprs.append(new_expr_c)
+                if is_new:
+                    new_exprs.append(new_expr_c)
 
-                else:
-                    outputs, is_new = if_not_visited_then_update_not_const(
-                        gen_exprs, outputs, new_expr_c, eq_domain
-                    )
-                    if is_new:
-                        new_exprs.append(new_expr_c)
             else:
-                while True:
-                    try:
-                        term_arity = random.randint(1, (max_r_args - 1) // 2)
-                        step_arity = random.randint(
-                            term_arity + 1, min(term_arity + 1, max_p_arity)
-                        )
-                        base_arity = random.randint(
-                            0, step_arity - term_arity - 1
-                        )
-                        term: Expr = random.choice(gen_exprs[term_arity])
-                        steps: tuple[Expr, ...] = tuple(
-                            random.choice(gen_exprs[step_arity])
-                            for _ in range(term_arity)
-                        )
-                        bases: tuple[Expr, ...] = tuple(
-                            random.choice(gen_exprs[base_arity] + gen_exprs[0])
-                            for _ in range(term_arity)
-                        )
-                        break
-                    except ValueError:
-                        continue
-                new_expr_r = R(term, *steps, *bases)
-                if new_expr_r.arity is None:
-                    outputs, is_updated = if_not_visited_then_update_const(
-                        gen_exprs,
-                        outputs,
-                        new_expr_r,
-                        max_p_arity,
-                        eq_domain,
+                outputs, is_new = if_not_visited_then_update_not_const(
+                    gen_exprs, outputs, new_expr_c, eq_domain
+                )
+                if is_new:
+                    new_exprs.append(new_expr_c)
+        else:
+            while True:
+                try:
+                    term_arity = random.randint(1, (max_r_args - 1) // 2)
+                    step_arity = random.randint(
+                        term_arity + 1, min(term_arity + 1, max_p_arity)
                     )
-                    if is_updated:
-                        new_exprs.append(new_expr_r)
-                else:
-                    outputs, is_updated = if_not_visited_then_update_not_const(
-                        gen_exprs, outputs, new_expr_r, eq_domain
+                    base_arity = random.randint(0, step_arity - term_arity - 1)
+                    term: Expr = random.choice(gen_exprs[term_arity])
+                    steps: tuple[Expr, ...] = tuple(
+                        random.choice(gen_exprs[step_arity])
+                        for _ in range(term_arity)
                     )
-                    if is_updated:
-                        new_exprs.append(new_expr_r)
+                    bases: tuple[Expr, ...] = tuple(
+                        random.choice(gen_exprs[base_arity] + gen_exprs[0])
+                        for _ in range(term_arity)
+                    )
+                    break
+                except ValueError:
+                    continue
+            new_expr_r = R(term, *steps, *bases)
+            if new_expr_r.arity is None:
+                outputs, is_updated = if_not_visited_then_update_const(
+                    gen_exprs,
+                    outputs,
+                    new_expr_r,
+                    max_p_arity,
+                    eq_domain,
+                )
+                if is_updated:
+                    new_exprs.append(new_expr_r)
+            else:
+                outputs, is_updated = if_not_visited_then_update_not_const(
+                    gen_exprs, outputs, new_expr_r, eq_domain
+                )
+                if is_updated:
+                    new_exprs.append(new_expr_r)
 
-        for item in set(new_exprs):
-            add_data(item)
-        logging.debug(f"Iter {iter}: {len(new_exprs)} is added")
+    for item in new_exprs:
+        add_data(item)
+    logging.debug(f"Iter {iter}: {len(new_exprs)} is added")
 
     save_to_csv(data_buffer)
     data_buffer.clear()
@@ -266,8 +260,7 @@ if __name__ == "__main__":
         description="Generate expressions randomly"
     )
 
-    parser.add_argument("--iter", type=int)
-    parser.add_argument("--sampling", type=int)
+    parser.add_argument("--sample", type=int)
     parser.add_argument("-p", "--max_p_arity", type=int)
     parser.add_argument("-c", "--max_c_args", type=int)
     parser.add_argument("-r", "--max_r_args", type=int)
@@ -295,8 +288,7 @@ if __name__ == "__main__":
     init_csv_path = None if args.init_csv is None else Path(args.init_csv)
 
     exprs = generate_random(
-        args.iter,
-        args.sampling,
+        args.sample,
         args.max_p_arity,
         args.max_c_args,
         args.max_r_args,
