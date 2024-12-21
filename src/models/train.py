@@ -113,9 +113,7 @@ def main(cfg: DictConfig):
     log_dir = Path(HydraConfig.get().run.dir)
 
     df = pd.read_csv(csv_path)
-    raw_dataset = TransformerDataset(df)
-
-    dataset: Dataset = utils.data.ConcatDataset([raw_dataset] * 100)
+    dataset = TransformerDataset(df)
 
     train_size = int(0.7 * len(dataset))
     val_size = int(0.15 * len(dataset))
@@ -135,13 +133,19 @@ def main(cfg: DictConfig):
     )
 
     lightning_module = LitTransformer(
-        src_vocab_size=len(raw_dataset.src_vocab),
-        tgt_vocab_size=len(raw_dataset.tgt_vocab),
-        src_max_len=raw_dataset.src_max_len,
-        tgt_max_len=raw_dataset.tgt_max_len,
+        src_vocab_size=len(dataset.src_vocab),
+        tgt_vocab_size=len(dataset.tgt_vocab),
+        src_max_len=dataset.src_max_len,
+        tgt_max_len=dataset.tgt_max_len,
         learning_rate=eval(cfg.learning_rate),
-        src_vocab=raw_dataset.src_vocab,
-        tgt_vocab=raw_dataset.tgt_vocab,
+        src_vocab=dataset.src_vocab,
+        tgt_vocab=dataset.tgt_vocab,
+        d_model=cfg.transformer.d_model,
+        nhead=cfg.transformer.nhead,
+        num_encoder_layers=cfg.transformer.num_encoder_layers,
+        num_decoder_layers=cfg.transformer.num_decoder_layers,
+        dim_feedforward=cfg.transformer.dim_feedforward,
+        dropout=cfg.transformer.dropout,
     )
 
     trainer = L.Trainer(
