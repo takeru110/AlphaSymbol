@@ -60,7 +60,13 @@ def init_seen(max_arity: int) -> list[set[bytes]]:
     return ret
 
 
-def unify_output_csv(input_file: Path, output_file: Path, max_arity, eq_domain):
+def unify_output_csv(
+    input_file: Path,
+    output_file: Path,
+    max_arity,
+    eq_domain,
+    buffer_size: int = 1000,
+):
     logging.info(
         "Started removing output-duplicated expressions from %s", input_file
     )
@@ -86,7 +92,7 @@ def unify_output_csv(input_file: Path, output_file: Path, max_arity, eq_domain):
                     unique_counter += 1
             except OverflowError:
                 pass
-            if unique_counter % 1000 == 0:
+            if unique_counter % buffer_size == 0:
                 seen = init_seen(max_arity)
             if expr_counter % 10000 == 0:
                 logging.info(f"{expr_counter}th expr is processed")
@@ -118,16 +124,24 @@ if __name__ == "__main__":
         type=str,
         help="output csv file",
     )
+    parser.add_argument(
+        "--buffer_size",
+        type=int,
+        default=1000,
+        help="buffer size to store outputs",
+    )
 
     args = parser.parse_args()
     sample_num = args.sample_num
     max_arity: int = args.max_arity
-    input_file: str = Path(args.input_file)
-    output_file: str = Path(args.output_file)
+    input_file: Path = Path(args.input_file)
+    output_file: Path = Path(args.output_file)
 
     eq_domain: list[NDArray] = [np.zeros((1))] + [
         np.random.randint(0, 10, size=(sample_num, dim))
         for dim in range(1, max_arity + 1)
     ]
 
-    unify_output_csv(input_file, output_file, max_arity, eq_domain)
+    unify_output_csv(
+        input_file, output_file, max_arity, eq_domain, args.buffer_size
+    )
