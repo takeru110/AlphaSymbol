@@ -121,7 +121,7 @@ def if_not_visited_then_update_const(
     eq_domain: list[npt.NDArray],
 ) -> tuple[list[set[bytes]], bool]:
     assert expr.arity is None
-    is_visited = False
+    is_visited = True
     for dim in range(1, max_dim + 1):
         try:
             # when OverflowError occurs, it occurs in all iteration
@@ -131,9 +131,9 @@ def if_not_visited_then_update_const(
         if out_bytes in outputs[dim]:
             continue
         outputs[dim].add(out_bytes)
-        is_visited = True
-    is_updated = not is_visited
-    return outputs, is_updated
+        is_visited = False
+    is_new = not is_visited
+    return outputs, is_new
 
 
 def if_not_visited_then_update_not_const(
