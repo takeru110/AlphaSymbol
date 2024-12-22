@@ -42,7 +42,7 @@ def save_to_csv(data):
 
     # ファイルが存在しない場合は新規作成、存在する場合は追記
     assert OUTPUT_FILE.exists(), f"Output file is not created: {OUTPUT_FILE}"
-    df.to_csv(OUTPUT_FILE, mode="a", index=False)
+    df.to_csv(OUTPUT_FILE, mode="a", index=False, header=False)
     logging.info(
         "Output file is updated. There are %d exprs", saved_expr_counter
     )
@@ -312,6 +312,8 @@ def generate_by_depth(
         output_file.touch()
 
         OUTPUT_FILE = output_file
+        with open(OUTPUT_FILE, "w") as f:
+            f.write("expr\n")
 
     visited: list[set[bytes]] = [set() for _ in range(max_arity + 1)]
     exprs, _ = _generate_prfndim_by_depth(

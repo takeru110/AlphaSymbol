@@ -11,10 +11,11 @@ from data_script.status_columns import status_columns
 
 max_value = 10
 sample_num = 10
+random_choice_num = 10000
 depth = 3
 max_arity = 3
-max_c = 3
-max_r = 3
+max_c = 5
+max_r = 7
 
 
 eq_domain = [np.zeros((sample_num, 1))] + [
@@ -41,7 +42,7 @@ generate_by_depth(
 )
 
 generate_random(
-    sample_num=sample_num,
+    sample_num=random_choice_num,
     max_p_arity=max_arity,
     max_c_args=max_c,
     max_r_args=max_r,
