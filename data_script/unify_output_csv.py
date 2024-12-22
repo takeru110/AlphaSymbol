@@ -67,6 +67,11 @@ def unify_output_csv(
     eq_domain,
     buffer_size: int = 1000,
 ):
+    """Remove duplicated output exprs from a CSV file
+
+    Notes:
+    - DataFrame should be sorted by arity, len for better output
+    """
     logging.info(
         "Started removing output-duplicated expressions from %s", input_file
     )

@@ -2,10 +2,12 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
-from add_status import add_in_out, add_status
 from generate_by_depth import generate_by_depth
 from generate_random import generate_random
 from unify_output_csv import unify_output_csv
+
+from data_script.input_output_columns import input_output_columns
+from data_script.status_columns import status_columns
 
 max_value = 10
 sample_num = 10
@@ -50,21 +52,20 @@ generate_random(
 
 df_random = pd.read_csv(after_gen_random)
 df_depth = pd.read_csv(after_gen_depth)
-
-
 df_cat = pd.concat([df_random, df_depth], axis=0)
 
-df_status = add_status(df_cat)
-df_status.to_csv(after_status, index=False)
+df_status = status_columns(df_cat)
+df_sorted = df_status.sort_values(by=["arity", "len", "depth"])
+df_sorted.to_csv(after_status, index=False)
 
 unify_output_csv(
     input_file=after_status,
     output_file=after_unify,
     max_arity=max_arity,
     eq_domain=eq_domain,
-    buffer_size=100000,
+    buffer_size=10000,
 )
 
 df_unify = pd.read_csv(after_unify)
-df_in_out = add_in_out(df_unify, eq_domain)
+df_in_out = input_output_columns(df_unify, eq_domain)
 df_in_out.to_csv(after_in_out, index=False)

@@ -40,8 +40,8 @@ def get_input(arity: int, eq_domain: list[npt.NDArray]) -> list[tuple[int]]:
     return ans
 
 
-def add_status(df: pd.DataFrame) -> pd.DataFrame:
-    df.fillna(0)
+def status_columns(df: pd.DataFrame) -> pd.DataFrame:
+    """Add status len, arity, and depth columns to df"""
     df["expr_Expr"] = df["expr"].apply(lambda x: eval(x))
     df["arity"] = df["expr_Expr"].apply(
         lambda x: 0 if x.arity is None else x.arity
@@ -50,11 +50,10 @@ def add_status(df: pd.DataFrame) -> pd.DataFrame:
     df["depth"] = df["expr_Expr"].apply(lambda x: x.depth)
 
     df = df.drop(columns=["expr_Expr"])
-    df = df.sort_values(by=["arity", "len"])
     return df
 
 
-def add_in_out(df: pd.DataFrame, eq_domain) -> pd.DataFrame:
+def input_output_columns(df: pd.DataFrame, eq_domain) -> pd.DataFrame:
     df.fillna(0)
     df["input"] = df["arity"].apply(lambda x: get_input(x, eq_domain))
     df["output"] = df["expr"].apply(lambda x: get_output(eval(x), eq_domain))
@@ -73,8 +72,5 @@ if __name__ == "__main__":
 
     df = pd.read_csv(path)
     eq_domain = generate_eq_domain(sample_max=10, sample_num=10, max_arity=5)
-
-    df_status = add_status(df)
-    df_in_out = add_in_out(df_status, eq_domain)
-
-    df_in_out.to_csv(output_path, index=False)
+    df_status = status_columns(df)
+    df_status.to_csv(output_path, index=False)
