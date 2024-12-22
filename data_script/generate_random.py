@@ -36,7 +36,9 @@ def save_to_csv(data):
     if OUTPUT_FILE is None:
         return
     # データをDataFrameに変換
-    df = pd.DataFrame(data)
+    df = pd.DataFrame()
+    df["expr"] = data
+
     saved_expr_counter += len(data)
     logging.info(
         "Output file is updated. There are %d exprs", saved_expr_counter
@@ -44,7 +46,7 @@ def save_to_csv(data):
 
     # ファイルが存在しない場合は新規作成、存在する場合は追記
     assert OUTPUT_FILE.exists(), "Output file does not exist"
-    df.to_csv(OUTPUT_FILE, mode="a", index=False, header=False)
+    df.to_csv(OUTPUT_FILE, mode="a", index=False)
 
 
 def output_bytes_not_const(expr: Expr, eq_domain: list[npt.NDArray]) -> bytes:
