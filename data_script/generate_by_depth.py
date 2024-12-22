@@ -36,12 +36,13 @@ def add_data(new_data: Expr):
 def save_to_csv(data):
     global saved_expr_counter
     # データをDataFrameに変換
-    df = pd.DataFrame(data)
+    df = pd.DataFrame()
+    df["expr"] = data
     saved_expr_counter += len(data)
 
     # ファイルが存在しない場合は新規作成、存在する場合は追記
     assert OUTPUT_FILE.exists(), f"Output file is not created: {OUTPUT_FILE}"
-    df.to_csv(OUTPUT_FILE, mode="a", index=False, header=False)
+    df.to_csv(OUTPUT_FILE, mode="a", index=False)
     logging.info(
         "Output file is updated. There are %d exprs", saved_expr_counter
     )
