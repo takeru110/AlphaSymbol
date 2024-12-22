@@ -1,8 +1,14 @@
 hydra:
   run:
     dir: "./logs/${now:%Y-%m%d-%H%M-%S}/"
-csv_path: /home/takeru/AlphaSymbol/data/prfndim/d3-a2-c3-r3-status.csv
-#"/home/takeru/AlphaSymbol/data/prfndim/d3-a5-c3-r5.csv"
-max_epochs: 5
+csv_path: /home/takeru/AlphaSymbol/data/prfndim/d3-a5-c3-r5.csv
+max_epochs: 2
 learning_rate: "8*10**(-5)"
-batch_size: 16
+batch_size: 32
+transformer:
+  d_model: 512
+  nhead: 8
+  num_encoder_layers: 6
+  num_decoder_layers: 6
+  dim_feedforward: 2048
+  dropout: 0.1
