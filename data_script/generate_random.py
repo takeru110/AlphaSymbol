@@ -46,7 +46,7 @@ def save_to_csv(data):
 
     # ファイルが存在しない場合は新規作成、存在する場合は追記
     assert OUTPUT_FILE.exists(), "Output file does not exist"
-    df.to_csv(OUTPUT_FILE, mode="a", index=False)
+    df.to_csv(OUTPUT_FILE, mode="a", index=False, header=False)
 
 
 def output_bytes_not_const(expr: Expr, eq_domain: list[npt.NDArray]) -> bytes:
@@ -170,6 +170,8 @@ def generate_random(
             output_path.unlink()
         output_path.touch()
         OUTPUT_FILE = output_path
+        with open(OUTPUT_FILE, "w") as f:
+            f.write("expr\n")
 
     # gen_exprs[arity]: list of Expr with arity
     # new exprs is generated combining exprs in gen_exprs
