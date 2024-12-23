@@ -17,7 +17,7 @@ logging.basicConfig(
 
 def output_bytes_not_const(expr: Expr, eq_domain: list[NDArray]) -> bytes:
     assert expr.arity is not None
-    ans: NDArray = np.array(tuple(expr.eval(*x) for x in eq_domain[expr.arity]))
+    ans: NDArray = np.array([expr.eval(*x) for x in eq_domain[expr.arity]])
     return ans.tobytes()
 
 
@@ -25,9 +25,8 @@ def output_bytes_const(
     expr: Expr, input_size: int, eq_domain: list[NDArray]
 ) -> bytes:
     assert input_size >= 1
-    return np.array(
-        expr.eval(0) for _ in range(len(eq_domain[input_size]))
-    ).tobytes()
+    ans = np.array([expr.eval(0) for _ in range(len(eq_domain[input_size]))])
+    return ans.tobytes()
 
 
 def expr_is_unseen(
@@ -47,10 +46,13 @@ def update_seen(
 ):
     if expr.arity is not None:
         seen[expr.arity].add(output_bytes_not_const(expr, eq_domain))
-    for input_size in range(1, max_arity):
+        return
+
+    for input_size in range(1, max_arity + 1):
         output_bytes = output_bytes_const(expr, input_size, eq_domain)
         if output_bytes not in seen[input_size]:
             seen[input_size].add(output_bytes)
+    return
 
 
 def init_seen(max_arity: int) -> list[set[bytes]]:
@@ -83,11 +85,8 @@ def unify_output_csv(
     ):
         reader = csv.reader(infile)
         writer = csv.writer(outfile)
-
         writer.writerow(next(reader))  # copy and pass header
-
         unique_counter = 0
-
         for expr_counter, row in enumerate(reader, start=1):
             expr: Expr = eval(row[0])
             try:
