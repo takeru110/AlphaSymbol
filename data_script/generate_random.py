@@ -51,9 +51,7 @@ def save_to_csv(data):
 
 def output_bytes_not_const(expr: Expr, eq_domain: list[npt.NDArray]) -> bytes:
     assert expr.arity is not None
-    ans: npt.NDArray = np.array(
-        tuple(expr.eval(*x) for x in eq_domain[expr.arity])
-    )
+    ans: npt.NDArray = np.array([expr.eval(*x) for x in eq_domain[expr.arity]])
     return ans.tobytes()
 
 
@@ -61,9 +59,8 @@ def output_bytes_const(
     expr: Expr, input_size: int, eq_domain: list[npt.NDArray]
 ) -> bytes:
     assert input_size >= 1
-    return np.array(
-        expr.eval(0) for _ in range(len(eq_domain[input_size]))
-    ).tobytes()
+    ans = np.array([expr.eval(0) for _ in range(len(eq_domain[input_size]))])
+    return ans.tobytes()
 
 
 def init_exprs(
