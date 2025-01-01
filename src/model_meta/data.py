@@ -22,10 +22,10 @@ class PREDataModule(pl.LightningDataModule):
         super().__init__()
         self.data_path = data_path
         self.batch_size = batch_size
-        self.pad_idx = max_value + 1
-        self.sos_idx = max_value + 2
-        self.eos_idx = max_value + 3
-        self.token_num = max_value + 4
+        self.src_pad_idx = max_value + 1
+        self.src_sos_idx = max_value + 2
+        self.src_eos_idx = max_value + 3
+        self.src_token_num = max_value + 4
 
     def prepare_data(self):
         self.df = pd.read_csv(self.data_path)
@@ -37,15 +37,15 @@ class PREDataModule(pl.LightningDataModule):
             input, output = eval(input), eval(output)
             point_li = []
             for x, y in zip(input, output):
-                point_li.append([self.sos_idx, *x, y, self.eos_idx])
+                point_li.append([self.src_sos_idx, *x, y, self.src_eos_idx])
             seq_idx.append(point_li)
 
         # pad source data
-        max_input_size = max([len(seq[0]) for seq in seq_idx])
+        self.max_input_size = max([len(seq[0]) for seq in seq_idx])
         for i, seq in enumerate(seq_idx):
             current_len = len(seq[0])
             for p in seq:
-                p.extend([self.pad_idx] * (max_input_size - current_len))
+                p.extend([self.src_pad_idx] * (self.max_input_size - current_len))
         seq_idx = torch.tensor(seq_idx)
 
         # process target data
@@ -54,10 +54,10 @@ class PREDataModule(pl.LightningDataModule):
         for target in self.df["expr"]:
             tgt_tokens.append(["<sos>"] + list(target) + ["<eos>"])
 
-        tgt_input_size = max([len(seq) for seq in tgt_tokens])
+        self.tgt_input_size = max([len(seq) for seq in tgt_tokens])
 
         for seq in tgt_tokens:
-            seq.extend(["<pad>"] * (tgt_input_size - len(seq)))
+            seq.extend(["<pad>"] * (self.tgt_input_size - len(seq)))
 
         tgt_idx = [[self.tgt_vocab[token] for token in seq] for seq in tgt_tokens]
         tgt_idx = torch.tensor(tgt_idx)
