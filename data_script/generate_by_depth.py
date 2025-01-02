@@ -362,7 +362,7 @@ if __name__ == "__main__":
 
     parser.add_argument(
         "--sample_max",
-        default=10,
+        default=20,
         type=int,
         help="Max value of sample to decide expressions are equal",
     )

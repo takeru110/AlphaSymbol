@@ -19,6 +19,19 @@ class LitTransformer(pl.LightningModule):
         tgt_padding_idx,
         emb_expansion_factor,
     ):
+        """
+        Initialize the LitTransformer model.
+
+        Args:
+        - src_token_num (int): Number of tokens in the source vocabulary.
+        - tgt_token_num (int): Number of tokens in the target vocabulary.
+        - token_embed_dim (int): Dimension of the token embeddings.
+        - max_src_dim (int): Maximum dimension of the source input.
+        - max_tgt_dim (int): Maximum dimension of the target input.
+        - src_padding_idx (int): Padding index for the source tokens.
+        - tgt_padding_idx (int): Padding index for the target tokens.
+        - emb_expansion_factor (int): Factor to expand the embedding dimension.
+        """
         super().__init__()
         self.save_hyperparameters()
         self.learning_rate = 3e-4
@@ -76,7 +89,9 @@ class LitTransformer(pl.LightningModule):
         tgt_mask = nn.Transformer.generate_square_subsequent_mask(
             tgt_embeddings.size(0)
         )
-        output = self.transformer(src_embeddings, tgt_embeddings, tgt_mask=tgt_mask)
+        output = self.transformer(
+            src_embeddings, tgt_embeddings, tgt_mask=tgt_mask
+        )
         output = self.fc_out(output)  # (T, N, C)
         return output
 
@@ -96,7 +111,13 @@ class LitTransformer(pl.LightningModule):
 
 if __name__ == "__main__":
     csv_path = "/home/takeru/AlphaSymbol/data/prfndim/d3-a2-c3-r3-status.csv"
-    data_module = PREDataModule(data_path=csv_path, batch_size=4, max_value=100)
+    csv_path = (
+        "/home/takeru/AlphaSymbol/data/prfndim/depth_random_16000_extract.csv"
+    )
+    csv_path = "/home/takeru/AlphaSymbol/temp/add_in_out.csv"
+    data_module = PREDataModule(
+        data_path=csv_path, batch_size=64, max_value=100
+    )
     data_module.prepare_data()
     data_module.setup()
     model = LitTransformer(

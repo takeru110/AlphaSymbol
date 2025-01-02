@@ -122,15 +122,11 @@ def main(cfg: DictConfig):
         dataset, [train_size, val_size, test_size]
     )
 
-    train_loader: DataLoader = DataLoader(
-        train_dataset, batch_size=cfg.batch_size
-    )
+    train_loader: DataLoader = DataLoader(train_dataset, batch_size=cfg.batch_size)
 
     val_loader: DataLoader = DataLoader(val_dataset, batch_size=cfg.batch_size)
 
-    test_loader: DataLoader = DataLoader(
-        test_dataset, batch_size=cfg.batch_size
-    )
+    test_loader: DataLoader = DataLoader(test_dataset, batch_size=cfg.batch_size)
 
     lightning_module = LitTransformer(
         src_vocab_size=len(dataset.src_vocab),

@@ -10,37 +10,32 @@ from data_script.input_output_columns import input_output_columns
 from data_script.status_columns import status_columns
 
 max_value = 10
-sample_num = 10
-random_choice_num = 1000000
-depth = 3
+
+# the number of input and output pair for calc output duplication
+sample_num_unique_output = 10
+
+sample_num = 20  # >=10 the number of input and output pair
+random_choice_num = 10000
 max_arity = 5
 max_c = 5
-max_r = 7
+max_r = 5
 buffer_size = 10000
 
 
-eq_domain = [np.zeros((sample_num, 1))] + [
-    np.random.randint(1, max_value + 1, size=(sample_num, dim))
+eq_domain = [np.zeros((sample_num_unique_output, 1))] + [
+    np.random.randint(1, max_value + 1, size=(sample_num_unique_output, dim))
     for dim in range(1, max_arity + 1)
 ]
-eq_domain[1] = np.arange(10).reshape(10, 1)
+
+eq_domain[1][:10, :] = np.arange(10).reshape(10, 1)
 
 temp_dir = Path("/home/takeru/AlphaSymbol/temp/")
-after_gen_depth = temp_dir / "generate_by_depth.csv"
+after_gen_depth = "/home/takeru/AlphaSymbol/data/prfndim/d3-a5-c3-r5.csv"
 after_gen_random = temp_dir / "generate_random.csv"
 after_status = temp_dir / "add_status.csv"
 after_unify = temp_dir / "unify_output.csv"
 after_in_out = temp_dir / "add_in_out.csv"
 
-
-generate_by_depth(
-    depth=depth,
-    max_arity=max_arity,
-    max_c=max_c,
-    max_r=max_r,
-    eq_domain=eq_domain,
-    output_file=after_gen_depth,
-)
 
 generate_random(
     sample_num=random_choice_num,
@@ -68,6 +63,12 @@ unify_output_csv(
     buffer_size=buffer_size,
 )
 
+eq_domain_for_data = [np.zeros((sample_num, 1))] + [
+    np.random.randint(1, max_value + 1, size=(sample_num, dim))
+    for dim in range(1, max_arity + 1)
+]
+eq_domain_for_data[1][:10, :] = np.arange(10).reshape(10, 1)
+
 df_unify = pd.read_csv(after_unify)
-df_in_out = input_output_columns(df_unify, eq_domain)
+df_in_out = input_output_columns(df_unify, eq_domain_for_data)
 df_in_out.to_csv(after_in_out, index=False)

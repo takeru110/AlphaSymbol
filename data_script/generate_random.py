@@ -10,7 +10,7 @@ import pandas as pd
 
 from prfndim.prfndim import C, Expr, OverflowError, P, R, S, Z
 
-BATCH_SIZE = 20
+BATCH_SIZE = 10000
 
 OUTPUT_FILE = None
 data_buffer: list[Expr] = []
