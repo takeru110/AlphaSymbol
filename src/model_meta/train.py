@@ -29,6 +29,18 @@ class LitTransformer(pl.LightningModule):
         tgt_padding_idx,
         emb_expansion_factor,
     ):
+        """
+        Initialize the LitTransformer model.
+        Args:
+        - src_token_num (int): Number of tokens in the source vocabulary.
+        - tgt_token_num (int): Number of tokens in the target vocabulary.
+        - token_embed_dim (int): Dimension of the token embeddings.
+        - max_src_dim (int): Maximum dimension of the source input.
+        - max_tgt_dim (int): Maximum dimension of the target input.
+        - src_padding_idx (int): Padding index for the source tokens.
+        - tgt_padding_idx (int): Padding index for the target tokens.
+        - emb_expansion_factor (int): Factor to expand the embedding dimension.
+        """
         super().__init__()
         self.save_hyperparameters()
         self.learning_rate = 3e-4
