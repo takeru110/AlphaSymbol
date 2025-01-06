@@ -1,10 +1,20 @@
+import logging
+
+import hydra
 import lightning as pl
 import torch
 import torch.nn.functional as F
+from omegaconf import DictConfig
 from torch import Tensor, nn, optim, utils
 
 from src.model_meta.data import PREDataModule
 from src.model_meta.models import PositionalEncoding
+
+logging.basicConfig(
+    level=logging.DEBUG,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    handlers=[logging.FileHandler("train.log"), logging.StreamHandler()],
+)
 
 
 class LitTransformer(pl.LightningModule):
@@ -18,6 +28,7 @@ class LitTransformer(pl.LightningModule):
         src_padding_idx,
         tgt_padding_idx,
         emb_expansion_factor,
+        t_config,
     ):
         """
         Initialize the LitTransformer model.
@@ -30,6 +41,7 @@ class LitTransformer(pl.LightningModule):
         - src_padding_idx (int): Padding index for the source tokens.
         - tgt_padding_idx (int): Padding index for the target tokens.
         - emb_expansion_factor (int): Factor to expand the embedding dimension.
+        - t_config (DictConfig): Configuration for the transformer model.
         """
         super().__init__()
         self.save_hyperparameters()
@@ -50,11 +62,11 @@ class LitTransformer(pl.LightningModule):
         self.pos_enc = PositionalEncoding(self.hidden_size, max_tgt_dim)
         self.transformer = nn.Transformer(
             d_model=self.hidden_size,
-            nhead=8,
-            num_encoder_layers=6,
-            num_decoder_layers=6,
-            dim_feedforward=2048,
-            dropout=0.1,
+            nhead=t_config.nhead,
+            num_encoder_layers=t_config.num_encoder_layers,
+            num_decoder_layers=t_config.num_decoder_layers,
+            dim_feedforward=t_config.dim_feedforward,
+            dropout=t_config.dropout,
         )
         self.fc_out = nn.Linear(self.hidden_size, tgt_token_num)
 
@@ -104,24 +116,44 @@ class LitTransformer(pl.LightningModule):
         self.log("train_loss", loss, prog_bar=True)
         return loss
 
+    def validation_step(self, batch, batch_idx):
+        src_batch, tgt_batch = batch
+        tgt_input = tgt_batch[:, :-1]
+        tgt_output = tgt_batch[:, 1:]
+        output = self(src_batch, tgt_input)  # (T, N, C)
+        output = output.permute(1, 2, 0)  # (N, C, T)
+        loss = self.loss_fn(output, tgt_output)
+        self.log("val_loss", loss, prog_bar=True)
+        return loss
+
     def configure_optimizers(self):
         return optim.Adam(self.parameters(), lr=self.learning_rate)
 
 
-if __name__ == "__main__":
-    csv_path = "/home/takeru/AlphaSymbol/data/prfndim/d3-a2-c3-r3-status.csv"
-    data_module = PREDataModule(data_path=csv_path, batch_size=4, max_value=100)
-    data_module.prepare_data()
-    data_module.setup()
+@hydra.main(version_base=None, config_path=".", config_name="training_config")
+def main(cfg: DictConfig):
+    data_module = PREDataModule(
+        data_path=cfg.data_path,
+        batch_size=cfg.batch_size,
+        max_value=cfg.max_value,
+        num_workers=cfg.num_workers,
+        test_ratio=cfg.test_ratio,
+        val_ratio=cfg.val_ratio,
+    )
     model = LitTransformer(
         src_token_num=data_module.src_token_num,
         tgt_token_num=len(data_module.tgt_vocab),
-        token_embed_dim=64,
-        max_src_dim=data_module.max_input_size,
+        token_embed_dim=cfg.token_embed_dim,
+        max_src_dim=data_module.point_vector_size,
         max_tgt_dim=data_module.tgt_input_size,
         src_padding_idx=data_module.src_pad_idx,
         tgt_padding_idx=data_module.tgt_vocab["<pad>"],
-        emb_expansion_factor=2,
+        emb_expansion_factor=cfg.emb_expansion_factor,
+        t_config=cfg.transformer,
     )
-    trainer = pl.Trainer(accelerator="gpu", devices=1, max_epochs=10)
+    trainer = pl.Trainer(accelerator="gpu", devices=1, max_epochs=cfg.max_epoch)
     trainer.fit(model, data_module)
+
+
+if __name__ == "__main__":
+    main()

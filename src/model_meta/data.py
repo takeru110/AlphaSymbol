@@ -12,7 +12,15 @@ class PREDataModule(pl.LightningDataModule):
     This model is the data module for model of Meta AI.
     """
 
-    def __init__(self, data_path, batch_size, max_value):
+    def __init__(
+        self,
+        data_path,
+        batch_size,
+        max_value,
+        num_workers=0,
+        test_ratio=0.2,
+        val_ratio=0.25,
+    ):
         """
         Args:
         - data_path (str): path to the CSV file
@@ -26,53 +34,77 @@ class PREDataModule(pl.LightningDataModule):
         self.src_sos_idx = max_value + 2
         self.src_eos_idx = max_value + 3
         self.src_token_num = max_value + 4
-
-    def prepare_data(self):
+        self.num_workers = num_workers
+        self.test_ratio = test_ratio
+        self.val_ratio = val_ratio
         self.df = pd.read_csv(self.data_path)
+        self.setup_attrs()
 
-    def setup(self, stage=None):
+    def src_add_ends(self, point: list[int]) -> list[int]:
+        return [self.src_sos_idx] + point + [self.src_eos_idx]
+
+    def src_pad_point(self, point: list[int], max_len: int) -> list[int]:
+        return point + [self.src_pad_idx] * (max_len - len(point))
+
+    def tgt_add_ends(self, list_char: list[str]) -> list[str]:
+        """add <sos> and <eos> to the target token list
+        Args:
+            list_char (list[str]): list of characters
+        """
+        return ["<sos>"] + list_char + ["<eos>"]
+
+    def tgt_pad(self, list_char: list[str], max_len: int) -> list[str]:
+        """pad the target token list
+        Args:
+            list_char (list[str]): list of characters
+            max_len (int): the maximum length of the target list
+        """
+        return list_char + ["<pad>"] * (max_len - len(list_char))
+
+    def setup_attrs(self, stage=None):
         # process source data
         seq_idx = []
-        for input, output in zip(self.df["input"], self.df["output"]):
-            input, output = eval(input), eval(output)
+        for input_str, output_str in zip(self.df["input"], self.df["output"]):
+            input, output = eval(input_str), eval(output_str)
             point_li = []
             for x, y in zip(input, output):
-                point_li.append([self.src_sos_idx, *x, y, self.src_eos_idx])
+                point_li.append([*x, y])
             seq_idx.append(point_li)
 
         # pad source data
-        self.max_input_size = max([len(seq[0]) for seq in seq_idx])
-        for i, seq in enumerate(seq_idx):
-            current_len = len(seq[0])
-            for p in seq:
-                p.extend([self.src_pad_idx] * (self.max_input_size - current_len))
-        seq_idx = torch.tensor(seq_idx)
+        # + 2 means the length of <sos> and <tgt>
+        self.point_vector_size = max([len(seq[0]) for seq in seq_idx]) + 2
+        for seq in seq_idx:
+            for i, p in enumerate(seq):
+                p_with_ends = self.src_add_ends(p)
+                seq[i] = self.src_pad_point(p_with_ends, self.point_vector_size)
+        src_tensor = torch.tensor(seq_idx)
+        self.point_num = len(src_tensor[0])
 
         # process target data
         self.tgt_vocab = self.build_vocab(self.df["expr"])
         tgt_tokens = []
         for target in self.df["expr"]:
-            tgt_tokens.append(["<sos>"] + list(target) + ["<eos>"])
+            tgt_tokens.append(list(target))
 
-        self.tgt_input_size = max([len(seq) for seq in tgt_tokens])
+        # + 2 means the length of <sos> and <tgt>
+        self.tgt_input_size = max([len(seq) for seq in tgt_tokens]) + 2
+        for i, seq in enumerate(tgt_tokens):
+            seq_ends = self.tgt_add_ends(seq)
+            tgt_tokens[i] = self.tgt_pad(seq_ends, self.tgt_input_size)
 
-        for seq in tgt_tokens:
-            seq.extend(["<pad>"] * (self.tgt_input_size - len(seq)))
-
-        tgt_idx = [[self.tgt_vocab[token] for token in seq] for seq in tgt_tokens]
-        tgt_idx = torch.tensor(tgt_idx)
-
-        # combine source and target data
-        self.point_num = len(seq_idx[0])
+        tgt_idx = [
+            [self.tgt_vocab[token] for token in seq] for seq in tgt_tokens
+        ]
+        tgt_tensor = torch.tensor(tgt_idx)
 
         # Split the data into training, validation, and test sets
-        dataset = TensorDataset(seq_idx, tgt_idx)
-
+        dataset = TensorDataset(src_tensor, tgt_tensor)
         train_val_seq, test_seq = train_test_split(
-            dataset, test_size=0.2, random_state=42
+            dataset, test_size=self.test_ratio, random_state=42
         )
         train_seq, val_seq = train_test_split(
-            train_val_seq, test_size=0.25, random_state=42
+            train_val_seq, test_size=self.val_ratio, random_state=42
         )  # 0.25 * 0.8 = 0.2
 
         self.train_seq = train_seq
@@ -90,10 +122,23 @@ class PREDataModule(pl.LightningDataModule):
         return vocab
 
     def train_dataloader(self):
-        return DataLoader(self.train_seq, batch_size=self.batch_size, shuffle=True)
+        return DataLoader(
+            self.train_seq,
+            batch_size=self.batch_size,
+            shuffle=True,
+            num_workers=self.num_workers,
+        )
 
     def val_dataloader(self):
-        return DataLoader(self.val_seq, batch_size=self.batch_size)
+        return DataLoader(
+            self.val_seq,
+            batch_size=self.batch_size,
+            num_workers=self.num_workers,
+        )
 
     def test_dataloader(self):
-        return DataLoader(self.test_seq, batch_size=self.batch_size)
+        return DataLoader(
+            self.test_seq,
+            batch_size=self.batch_size,
+            num_workers=self.num_workers,
+        )
