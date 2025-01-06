@@ -28,6 +28,7 @@ class LitTransformer(pl.LightningModule):
         src_padding_idx,
         tgt_padding_idx,
         emb_expansion_factor,
+        t_config,
     ):
         """
         Initialize the LitTransformer model.
@@ -40,6 +41,7 @@ class LitTransformer(pl.LightningModule):
         - src_padding_idx (int): Padding index for the source tokens.
         - tgt_padding_idx (int): Padding index for the target tokens.
         - emb_expansion_factor (int): Factor to expand the embedding dimension.
+        - t_config (DictConfig): Configuration for the transformer model.
         """
         super().__init__()
         self.save_hyperparameters()
@@ -60,11 +62,11 @@ class LitTransformer(pl.LightningModule):
         self.pos_enc = PositionalEncoding(self.hidden_size, max_tgt_dim)
         self.transformer = nn.Transformer(
             d_model=self.hidden_size,
-            nhead=8,
-            num_encoder_layers=6,
-            num_decoder_layers=6,
-            dim_feedforward=2048,
-            dropout=0.1,
+            nhead=t_config.nhead,
+            num_encoder_layers=t_config.num_encoder_layers,
+            num_decoder_layers=t_config.num_decoder_layers,
+            dim_feedforward=t_config.dim_feedforward,
+            dropout=t_config.dropout,
         )
         self.fc_out = nn.Linear(self.hidden_size, tgt_token_num)
 
@@ -120,26 +122,28 @@ class LitTransformer(pl.LightningModule):
 
 @hydra.main(version_base=None, config_path=".", config_name="training_config")
 def main(cfg: DictConfig):
-    csv_path = "/home/takeru/AlphaSymbol/data/prfndim/d3-a2-c3-r3-status.csv"
-    csv_path = "/home/takeru/AlphaSymbol/temp/add_in_out_extract100.csv"
-    csv_path = "/home/takeru/AlphaSymbol/temp/add_in_out_extract1000.csv"
-    csv_path = "/home/takeru/AlphaSymbol/temp/add_in_out.csv"
     data_module = PREDataModule(
-        data_path=csv_path, batch_size=32, max_value=2000, num_workers=31
+        data_path=cfg.data_path,
+        batch_size=cfg.batch_size,
+        max_value=cfg.max_value,
+        num_workers=cfg.num_workers,
+        test_ratio=cfg.test_ratio,
+        val_ratio=cfg.val_ratio,
     )
     data_module.prepare_data()
     data_module.setup()
     model = LitTransformer(
         src_token_num=data_module.src_token_num,
         tgt_token_num=len(data_module.tgt_vocab),
-        token_embed_dim=64,
+        token_embed_dim=cfg.token_embed_dim,
         max_src_dim=data_module.max_input_size,
         max_tgt_dim=data_module.tgt_input_size,
         src_padding_idx=data_module.src_pad_idx,
         tgt_padding_idx=data_module.tgt_vocab["<pad>"],
-        emb_expansion_factor=2,
+        emb_expansion_factor=cfg.emb_expansion_factor,
+        t_config=cfg.transformer,
     )
-    trainer = pl.Trainer(accelerator="gpu", devices=1, max_epochs=10)
+    trainer = pl.Trainer(accelerator="gpu", devices=1, max_epochs=cfg.max_epoch)
     trainer.fit(model, data_module)
 
 

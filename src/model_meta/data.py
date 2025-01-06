@@ -12,7 +12,15 @@ class PREDataModule(pl.LightningDataModule):
     This model is the data module for model of Meta AI.
     """
 
-    def __init__(self, data_path, batch_size, max_value, num_workers=0):
+    def __init__(
+        self,
+        data_path,
+        batch_size,
+        max_value,
+        num_workers=0,
+        test_ratio=0.2,
+        val_ratio=0.25,
+    ):
         """
         Args:
         - data_path (str): path to the CSV file
@@ -27,6 +35,8 @@ class PREDataModule(pl.LightningDataModule):
         self.src_eos_idx = max_value + 3
         self.src_token_num = max_value + 4
         self.num_workers = num_workers
+        self.test_ratio = test_ratio
+        self.val_ratio = val_ratio
 
     def prepare_data(self):
         self.df = pd.read_csv(self.data_path)
@@ -74,10 +84,10 @@ class PREDataModule(pl.LightningDataModule):
         dataset = TensorDataset(seq_idx, tgt_idx)
 
         train_val_seq, test_seq = train_test_split(
-            dataset, test_size=0.2, random_state=42
+            dataset, test_size=self.test_ratio, random_state=42
         )
         train_seq, val_seq = train_test_split(
-            train_val_seq, test_size=0.25, random_state=42
+            train_val_seq, test_size=self.val_ratio, random_state=42
         )  # 0.25 * 0.8 = 0.2
 
         self.train_seq = train_seq
