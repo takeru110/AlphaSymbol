@@ -38,14 +38,30 @@ class PREDataModule(pl.LightningDataModule):
         self.test_ratio = test_ratio
         self.val_ratio = val_ratio
         self.df = pd.read_csv(self.data_path)
+        self.setup_attrs()
 
-    def add_ends(self, point: list[int]) -> list[int]:
+    def src_add_ends(self, point: list[int]) -> list[int]:
         return [self.src_sos_idx] + point + [self.src_eos_idx]
 
-    def pad_point(self, point: list[int], max_len: int) -> list[int]:
+    def src_pad_point(self, point: list[int], max_len: int) -> list[int]:
         return point + [self.src_pad_idx] * (max_len - len(point))
 
-    def setup(self, stage=None):
+    def tgt_add_ends(self, list_char: list[str]) -> list[str]:
+        """add <sos> and <eos> to the target token list
+        Args:
+            list_char (list[str]): list of characters
+        """
+        return ["<sos>"] + list_char + ["<eos>"]
+
+    def tgt_pad(self, list_char: list[str], max_len: int) -> list[str]:
+        """pad the target token list
+        Args:
+            list_char (list[str]): list of characters
+            max_len (int): the maximum length of the target list
+        """
+        return list_char + ["<pad>"] * (max_len - len(list_char))
+
+    def setup_attrs(self, stage=None):
         # process source data
         seq_idx = []
         for input_str, output_str in zip(self.df["input"], self.df["output"]):
@@ -56,35 +72,34 @@ class PREDataModule(pl.LightningDataModule):
             seq_idx.append(point_li)
 
         # pad source data
-        self.max_input_size = max([len(seq[0]) for seq in seq_idx])
+        # + 2 means the length of <sos> and <tgt>
+        self.point_vector_size = max([len(seq[0]) for seq in seq_idx]) + 2
         for seq in seq_idx:
-            for p in seq:
-                p = self.add_ends(p)
-                p = self.pad_point(p, self.max_input_size)
-        seq_idx = torch.tensor(seq_idx)
+            for i, p in enumerate(seq):
+                p_with_ends = self.src_add_ends(p)
+                seq[i] = self.src_pad_point(p_with_ends, self.point_vector_size)
+        src_tensor = torch.tensor(seq_idx)
+        self.point_num = len(src_tensor[0])
 
         # process target data
         self.tgt_vocab = self.build_vocab(self.df["expr"])
         tgt_tokens = []
         for target in self.df["expr"]:
-            tgt_tokens.append(["<sos>"] + list(target) + ["<eos>"])
+            tgt_tokens.append(list(target))
 
-        self.tgt_input_size = max([len(seq) for seq in tgt_tokens])
-
-        for seq in tgt_tokens:
-            seq.extend(["<pad>"] * (self.tgt_input_size - len(seq)))
+        # + 2 means the length of <sos> and <tgt>
+        self.tgt_input_size = max([len(seq) for seq in tgt_tokens]) + 2
+        for i, seq in enumerate(tgt_tokens):
+            seq_ends = self.tgt_add_ends(seq)
+            tgt_tokens[i] = self.tgt_pad(seq_ends, self.tgt_input_size)
 
         tgt_idx = [
             [self.tgt_vocab[token] for token in seq] for seq in tgt_tokens
         ]
-        tgt_idx = torch.tensor(tgt_idx)
-
-        # combine source and target data
-        self.point_num = len(seq_idx[0])
+        tgt_tensor = torch.tensor(tgt_idx)
 
         # Split the data into training, validation, and test sets
-        dataset = TensorDataset(seq_idx, tgt_idx)
-
+        dataset = TensorDataset(src_tensor, tgt_tensor)
         train_val_seq, test_seq = train_test_split(
             dataset, test_size=self.test_ratio, random_state=42
         )

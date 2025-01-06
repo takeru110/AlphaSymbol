@@ -140,12 +140,11 @@ def main(cfg: DictConfig):
         test_ratio=cfg.test_ratio,
         val_ratio=cfg.val_ratio,
     )
-    data_module.setup()
     model = LitTransformer(
         src_token_num=data_module.src_token_num,
         tgt_token_num=len(data_module.tgt_vocab),
         token_embed_dim=cfg.token_embed_dim,
-        max_src_dim=data_module.max_input_size,
+        max_src_dim=data_module.point_vector_size,
         max_tgt_dim=data_module.tgt_input_size,
         src_padding_idx=data_module.src_pad_idx,
         tgt_padding_idx=data_module.tgt_vocab["<pad>"],
