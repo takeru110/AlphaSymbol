@@ -1,10 +1,20 @@
+import logging
+
+import hydra
 import lightning as pl
 import torch
 import torch.nn.functional as F
+from omegaconf import DictConfig
 from torch import Tensor, nn, optim, utils
 
 from src.model_meta.data import PREDataModule
 from src.model_meta.models import PositionalEncoding
+
+logging.basicConfig(
+    level=logging.DEBUG,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    handlers=[logging.FileHandler("train.log"), logging.StreamHandler()],
+)
 
 
 class LitTransformer(pl.LightningModule):
@@ -76,7 +86,9 @@ class LitTransformer(pl.LightningModule):
         tgt_mask = nn.Transformer.generate_square_subsequent_mask(
             tgt_embeddings.size(0)
         )
-        output = self.transformer(src_embeddings, tgt_embeddings, tgt_mask=tgt_mask)
+        output = self.transformer(
+            src_embeddings, tgt_embeddings, tgt_mask=tgt_mask
+        )
         output = self.fc_out(output)  # (T, N, C)
         return output
 
@@ -94,9 +106,15 @@ class LitTransformer(pl.LightningModule):
         return optim.Adam(self.parameters(), lr=self.learning_rate)
 
 
-if __name__ == "__main__":
+@hydra.main(version_base=None, config_path=".", config_name="training_config")
+def main(cfg: DictConfig):
     csv_path = "/home/takeru/AlphaSymbol/data/prfndim/d3-a2-c3-r3-status.csv"
-    data_module = PREDataModule(data_path=csv_path, batch_size=4, max_value=100)
+    csv_path = "/home/takeru/AlphaSymbol/temp/add_in_out_extract100.csv"
+    csv_path = "/home/takeru/AlphaSymbol/temp/add_in_out_extract1000.csv"
+    csv_path = "/home/takeru/AlphaSymbol/temp/add_in_out.csv"
+    data_module = PREDataModule(
+        data_path=csv_path, batch_size=32, max_value=2000, num_workers=31
+    )
     data_module.prepare_data()
     data_module.setup()
     model = LitTransformer(
@@ -111,3 +129,7 @@ if __name__ == "__main__":
     )
     trainer = pl.Trainer(accelerator="gpu", devices=1, max_epochs=10)
     trainer.fit(model, data_module)
+
+
+if __name__ == "__main__":
+    main()

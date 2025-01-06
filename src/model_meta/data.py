@@ -12,7 +12,7 @@ class PREDataModule(pl.LightningDataModule):
     This model is the data module for model of Meta AI.
     """
 
-    def __init__(self, data_path, batch_size, max_value):
+    def __init__(self, data_path, batch_size, max_value, num_workers=0):
         """
         Args:
         - data_path (str): path to the CSV file
@@ -26,6 +26,7 @@ class PREDataModule(pl.LightningDataModule):
         self.src_sos_idx = max_value + 2
         self.src_eos_idx = max_value + 3
         self.src_token_num = max_value + 4
+        self.num_workers = num_workers
 
     def prepare_data(self):
         self.df = pd.read_csv(self.data_path)
@@ -45,7 +46,9 @@ class PREDataModule(pl.LightningDataModule):
         for i, seq in enumerate(seq_idx):
             current_len = len(seq[0])
             for p in seq:
-                p.extend([self.src_pad_idx] * (self.max_input_size - current_len))
+                p.extend(
+                    [self.src_pad_idx] * (self.max_input_size - current_len)
+                )
         seq_idx = torch.tensor(seq_idx)
 
         # process target data
@@ -59,7 +62,9 @@ class PREDataModule(pl.LightningDataModule):
         for seq in tgt_tokens:
             seq.extend(["<pad>"] * (self.tgt_input_size - len(seq)))
 
-        tgt_idx = [[self.tgt_vocab[token] for token in seq] for seq in tgt_tokens]
+        tgt_idx = [
+            [self.tgt_vocab[token] for token in seq] for seq in tgt_tokens
+        ]
         tgt_idx = torch.tensor(tgt_idx)
 
         # combine source and target data
@@ -90,10 +95,23 @@ class PREDataModule(pl.LightningDataModule):
         return vocab
 
     def train_dataloader(self):
-        return DataLoader(self.train_seq, batch_size=self.batch_size, shuffle=True)
+        return DataLoader(
+            self.train_seq,
+            batch_size=self.batch_size,
+            shuffle=True,
+            num_workers=self.num_workers,
+        )
 
     def val_dataloader(self):
-        return DataLoader(self.val_seq, batch_size=self.batch_size)
+        return DataLoader(
+            self.val_seq,
+            batch_size=self.batch_size,
+            num_workers=self.num_workers,
+        )
 
     def test_dataloader(self):
-        return DataLoader(self.test_seq, batch_size=self.batch_size)
+        return DataLoader(
+            self.test_seq,
+            batch_size=self.batch_size,
+            num_workers=self.num_workers,
+        )
