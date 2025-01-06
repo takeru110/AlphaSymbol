@@ -116,6 +116,16 @@ class LitTransformer(pl.LightningModule):
         self.log("train_loss", loss, prog_bar=True)
         return loss
 
+    def validation_step(self, batch, batch_idx):
+        src_batch, tgt_batch = batch
+        tgt_input = tgt_batch[:, :-1]
+        tgt_output = tgt_batch[:, 1:]
+        output = self(src_batch, tgt_input)  # (T, N, C)
+        output = output.permute(1, 2, 0)  # (N, C, T)
+        loss = self.loss_fn(output, tgt_output)
+        self.log("val_loss", loss, prog_bar=True)
+        return loss
+
     def configure_optimizers(self):
         return optim.Adam(self.parameters(), lr=self.learning_rate)
 
