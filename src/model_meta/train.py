@@ -140,7 +140,6 @@ def main(cfg: DictConfig):
         test_ratio=cfg.test_ratio,
         val_ratio=cfg.val_ratio,
     )
-    data_module.prepare_data()
     data_module.setup()
     model = LitTransformer(
         src_token_num=data_module.src_token_num,

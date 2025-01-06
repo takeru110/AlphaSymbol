@@ -37,8 +37,6 @@ class PREDataModule(pl.LightningDataModule):
         self.num_workers = num_workers
         self.test_ratio = test_ratio
         self.val_ratio = val_ratio
-
-    def prepare_data(self):
         self.df = pd.read_csv(self.data_path)
 
     def setup(self, stage=None):
