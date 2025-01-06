@@ -39,24 +39,28 @@ class PREDataModule(pl.LightningDataModule):
         self.val_ratio = val_ratio
         self.df = pd.read_csv(self.data_path)
 
+    def add_ends(self, point: list[int]) -> list[int]:
+        return [self.src_sos_idx] + point + [self.src_eos_idx]
+
+    def pad_point(self, point: list[int], max_len: int) -> list[int]:
+        return point + [self.src_pad_idx] * (max_len - len(point))
+
     def setup(self, stage=None):
         # process source data
         seq_idx = []
-        for input, output in zip(self.df["input"], self.df["output"]):
-            input, output = eval(input), eval(output)
+        for input_str, output_str in zip(self.df["input"], self.df["output"]):
+            input, output = eval(input_str), eval(output_str)
             point_li = []
             for x, y in zip(input, output):
-                point_li.append([self.src_sos_idx, *x, y, self.src_eos_idx])
+                point_li.append([*x, y])
             seq_idx.append(point_li)
 
         # pad source data
         self.max_input_size = max([len(seq[0]) for seq in seq_idx])
-        for i, seq in enumerate(seq_idx):
-            current_len = len(seq[0])
+        for seq in seq_idx:
             for p in seq:
-                p.extend(
-                    [self.src_pad_idx] * (self.max_input_size - current_len)
-                )
+                p = self.add_ends(p)
+                p = self.pad_point(p, self.max_input_size)
         seq_idx = torch.tensor(seq_idx)
 
         # process target data
