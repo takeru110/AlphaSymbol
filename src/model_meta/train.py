@@ -1,9 +1,11 @@
 import logging
+from pathlib import Path
 
 import hydra
 import lightning as pl
 import torch
 import torch.nn.functional as F
+from hydra.core.hydra_config import HydraConfig
 from omegaconf import DictConfig
 from torch import Tensor, nn, optim, utils
 
@@ -132,6 +134,7 @@ class LitTransformer(pl.LightningModule):
 
 @hydra.main(version_base=None, config_path=".", config_name="training_config")
 def main(cfg: DictConfig):
+    log_dir = Path(HydraConfig.get().run.dir)
     data_module = PREDataModule(
         data_path=cfg.data_path,
         batch_size=cfg.batch_size,
@@ -151,7 +154,12 @@ def main(cfg: DictConfig):
         emb_expansion_factor=cfg.emb_expansion_factor,
         t_config=cfg.transformer,
     )
-    trainer = pl.Trainer(accelerator="gpu", devices=1, max_epochs=cfg.max_epoch)
+    trainer = pl.Trainer(
+        accelerator="gpu",
+        devices=1,
+        max_epochs=cfg.max_epoch,
+        default_root_dir=log_dir,
+    )
     trainer.fit(model, data_module)
 
 
