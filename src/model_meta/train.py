@@ -1,4 +1,6 @@
+import copy
 import logging
+import pickle
 from pathlib import Path
 
 import hydra
@@ -160,6 +162,15 @@ def main(cfg: DictConfig):
         max_epochs=cfg.max_epoch,
         default_root_dir=log_dir,
     )
+
+    with open(f"{log_dir}/data_module.pkl", "wb") as f:
+        data_module_for_save = copy.copy(data_module)
+        data_module_for_save.df = None  # This attr is too large.
+        data_module_for_save.train_seq = None
+        data_module_for_save.val_seq = None
+        data_module_for_save.test_seq = None
+        pickle.dump(data_module_for_save, f)
+
     trainer.fit(model, data_module)
 
 
