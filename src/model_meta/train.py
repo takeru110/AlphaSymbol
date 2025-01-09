@@ -8,6 +8,7 @@ import lightning as pl
 import torch
 import torch.nn.functional as F
 from hydra.core.hydra_config import HydraConfig
+from lightning.pytorch.callbacks import ModelCheckpoint
 from omegaconf import DictConfig
 from torch import Tensor, nn, optim, utils
 
@@ -158,7 +159,17 @@ def main(cfg: DictConfig):
         t_config=cfg.transformer,
         learning_rate=eval(cfg.learning_rate),
     )
+
+    checkpoint_callback = ModelCheckpoint(
+        monitor="val_loss",  # Metric to monitor
+        dirpath=log_dir,  # Directory to save checkpoints
+        filename="best_model-{epoch:02d}-{val_loss:.2f}",  # File naming
+        save_top_k=1,  # Save only the best model
+        mode="min",  # Minimize the monitored metric
+    )
+
     trainer = pl.Trainer(
+        callbacks=[checkpoint_callback],
         accelerator="gpu",
         devices=1,
         max_epochs=cfg.max_epoch,
