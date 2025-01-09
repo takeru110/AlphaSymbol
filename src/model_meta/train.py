@@ -33,6 +33,7 @@ class LitTransformer(pl.LightningModule):
         tgt_padding_idx,
         emb_expansion_factor,
         t_config,
+        learning_rate=3e-4,
     ):
         """
         Initialize the LitTransformer model.
@@ -49,7 +50,7 @@ class LitTransformer(pl.LightningModule):
         """
         super().__init__()
         self.save_hyperparameters()
-        self.learning_rate = 3e-4
+        self.learning_rate = learning_rate
         self.src_embedding = nn.Embedding(
             src_token_num, token_embed_dim, padding_idx=src_padding_idx
         )
@@ -155,6 +156,7 @@ def main(cfg: DictConfig):
         tgt_padding_idx=data_module.tgt_vocab["<pad>"],
         emb_expansion_factor=cfg.emb_expansion_factor,
         t_config=cfg.transformer,
+        learning_rate=eval(cfg.learning_rate),
     )
     trainer = pl.Trainer(
         accelerator="gpu",
