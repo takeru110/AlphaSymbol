@@ -1,4 +1,5 @@
 import logging
+import pickle
 from pathlib import Path
 
 import hydra
@@ -160,6 +161,10 @@ def main(cfg: DictConfig):
         max_epochs=cfg.max_epoch,
         default_root_dir=log_dir,
     )
+
+    with open(f"{log_dir}/data_module.pkl", "wb") as f:
+        pickle.dump(data_module, f)
+
     trainer.fit(model, data_module)
 
 
