@@ -43,8 +43,10 @@ class PREDataModule(pl.LightningDataModule):
     def src_add_ends(self, point: list[int]) -> list[int]:
         return [self.src_sos_idx] + point + [self.src_eos_idx]
 
-    def src_pad_point(self, point: list[int], max_len: int) -> list[int]:
-        return point + [self.src_pad_idx] * (max_len - len(point))
+    def src_pad_point(self, point: list[int]) -> list[int]:
+        return point + [self.src_pad_idx] * (
+            self.point_vector_size - len(point)
+        )
 
     def tgt_add_ends(self, list_char: list[str]) -> list[str]:
         """add <sos> and <eos> to the target token list
@@ -53,13 +55,13 @@ class PREDataModule(pl.LightningDataModule):
         """
         return ["<sos>"] + list_char + ["<eos>"]
 
-    def tgt_pad(self, list_char: list[str], max_len: int) -> list[str]:
+    def tgt_pad(self, list_char: list[str]) -> list[str]:
         """pad the target token list
         Args:
             list_char (list[str]): list of characters
             max_len (int): the maximum length of the target list
         """
-        return list_char + ["<pad>"] * (max_len - len(list_char))
+        return list_char + ["<pad>"] * (self.tgt_input_size - len(list_char))
 
     def setup_attrs(self, stage=None):
         # process source data
@@ -77,7 +79,7 @@ class PREDataModule(pl.LightningDataModule):
         for seq in seq_idx:
             for i, p in enumerate(seq):
                 p_with_ends = self.src_add_ends(p)
-                seq[i] = self.src_pad_point(p_with_ends, self.point_vector_size)
+                seq[i] = self.src_pad_point(p_with_ends)
         src_tensor = torch.tensor(seq_idx)
         self.point_num = len(src_tensor[0])
 
@@ -91,7 +93,7 @@ class PREDataModule(pl.LightningDataModule):
         self.tgt_input_size = max([len(seq) for seq in tgt_tokens]) + 2
         for i, seq in enumerate(tgt_tokens):
             seq_ends = self.tgt_add_ends(seq)
-            tgt_tokens[i] = self.tgt_pad(seq_ends, self.tgt_input_size)
+            tgt_tokens[i] = self.tgt_pad(seq_ends)
 
         tgt_idx = [
             [self.tgt_vocab[token] for token in seq] for seq in tgt_tokens
