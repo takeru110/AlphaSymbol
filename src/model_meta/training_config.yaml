@@ -11,6 +11,7 @@ val_ratio: 0.25 # val / (val + test)
 num_workers: 31
 token_embed_dim: 64
 emb_expansion_factor: 2
+learning_rate: "8*10**(-5)"
   
 transformer:
   nhead: 8
