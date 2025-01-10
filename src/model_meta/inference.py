@@ -20,9 +20,9 @@ def id2token(id, vocab):
     return None
 
 
-model_path = "/home/takeru/AlphaSymbol/logs/2025-0109-1845-03/lightning_logs/version_0/checkpoints/epoch=4-step=60.ckpt"
+model_path = "/home/takeru/AlphaSymbol/logs/2025-0110-1251-29/best_model-epoch=04-val_loss=0.18.ckpt"
 data_module_path = (
-    "/home/takeru/AlphaSymbol/logs/2025-0109-1845-03/data_module.pkl"
+    "/home/takeru/AlphaSymbol/logs/2025-0110-1251-29/data_module.pkl"
 )
 
 model = LitTransformer.load_from_checkpoint(model_path)
@@ -61,4 +61,4 @@ with torch.no_grad():
 expression = "".join(current_token_list)
 print(expression)
 pre = eval(expression)
-print([pre.eval(x) for x in xs])
+print([pre.eval(*x) for x in xs])
