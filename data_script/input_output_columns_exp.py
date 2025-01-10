@@ -8,8 +8,11 @@ from typing import Optional
 import numpy as np
 import numpy.typing as npt
 import pandas as pd
+from tqdm import tqdm
 
 from prfndim.prfndim import C, Expr, OverflowError, P, R, S, Z
+
+logging.basicConfig(stream=sys.stdout, level=logging.INFO)
 
 
 def generate_uniform_integer(n_min: int, n_max: int) -> int:
@@ -65,9 +68,13 @@ def input_output_columns_exp(
     Returns:
         pd.DataFrame: DataFrame with input and output columns.
     """
+
     inputs = []
     outputs = []
-    for expr_str in df["expr"]:
+    n_points_list = []
+    logging.info("Generating inputs and outputs")
+    logging.info(f"Processing {len(df)} rows")
+    for expr_str in tqdm(df["expr"], desc="Processing"):
         expr = eval(expr_str)
         input_dim = (
             expr.arity
@@ -99,9 +106,12 @@ def input_output_columns_exp(
 
         inputs.append(x_list)
         outputs.append(row_outputs)
+        n_points_list.append(n_points_)
 
     df["input"] = inputs
     df["output"] = outputs
+    df["n_points"] = n_points_list
+    logging.info("Finished generating inputs and outputs")
     return df
 
 
