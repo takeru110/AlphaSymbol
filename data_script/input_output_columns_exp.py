@@ -71,6 +71,7 @@ def input_output_columns_exp(
 
     inputs = []
     outputs = []
+    n_points_list = []
     logging.info("Generating inputs and outputs")
     logging.info(f"Processing {len(df)} rows")
     for expr_str in tqdm(df["expr"], desc="Processing"):
@@ -105,9 +106,11 @@ def input_output_columns_exp(
 
         inputs.append(x_list)
         outputs.append(row_outputs)
+        n_points_list.append(n_points_)
 
     df["input"] = inputs
     df["output"] = outputs
+    df["n_points"] = n_points_list
     logging.info("Finished generating inputs and outputs")
     return df
 
