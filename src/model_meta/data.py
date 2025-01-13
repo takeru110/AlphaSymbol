@@ -4,7 +4,36 @@ import lightning as pl
 import pandas as pd
 import torch
 from sklearn.model_selection import train_test_split
-from torch.utils.data import DataLoader, TensorDataset
+from torch.utils.data import DataLoader, Dataset, TensorDataset
+
+
+class CustomDataset(Dataset):
+    def __init__(self, seq_idx, tgt_idx):
+        """
+        Args:
+            seq_idx (list): List of input sequences.
+            tgt_idx (list): List of target sequences.
+        """
+        self.seq_idx = seq_idx
+        self.tgt_idx = tgt_idx
+
+    def __len__(self):
+        """Returns the total number of samples."""
+        return len(self.seq_idx)
+
+    def __getitem__(self, idx):
+        """
+        Dynamically loads and converts a single sample to tensor.
+
+        Args:
+            idx (int): Index of the sample to fetch.
+
+        Returns:
+            tuple: (input_tensor, target_tensor)
+        """
+        input_data = torch.tensor(self.seq_idx[idx], dtype=torch.int64)
+        target_data = torch.tensor(self.tgt_idx[idx], dtype=torch.int64)
+        return input_data, target_data
 
 
 class PREDataModule(pl.LightningDataModule):
@@ -80,8 +109,7 @@ class PREDataModule(pl.LightningDataModule):
             for i, p in enumerate(seq):
                 p_with_ends = self.src_add_ends(p)
                 seq[i] = self.src_pad_point(p_with_ends)
-        src_tensor = torch.tensor(seq_idx)
-        self.point_num = len(src_tensor[0])
+        self.point_num = len(seq_idx[0])
 
         # process target data
         self.tgt_vocab = self.build_vocab(self.df["expr"])
@@ -98,10 +126,9 @@ class PREDataModule(pl.LightningDataModule):
         tgt_idx = [
             [self.tgt_vocab[token] for token in seq] for seq in tgt_tokens
         ]
-        tgt_tensor = torch.tensor(tgt_idx)
 
         # Split the data into training, validation, and test sets
-        dataset = TensorDataset(src_tensor, tgt_tensor)
+        dataset = CustomDataset(seq_idx, tgt_idx)
         train_val_seq, test_seq = train_test_split(
             dataset, test_size=self.test_ratio, random_state=42
         )
@@ -124,12 +151,13 @@ class PREDataModule(pl.LightningDataModule):
         return vocab
 
     def train_dataloader(self):
-        return DataLoader(
+        data_loader = DataLoader(
             self.train_seq,
             batch_size=self.batch_size,
-            shuffle=True,
+            shuffle=False,
             num_workers=self.num_workers,
         )
+        return data_loader
 
     def val_dataloader(self):
         return DataLoader(
