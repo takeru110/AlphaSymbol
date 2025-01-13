@@ -82,6 +82,7 @@ class PREDataModule(pl.LightningDataModule):
         data_path,
         batch_size,
         max_value,
+        max_n_tokens_in_batch,
         num_workers=0,
         test_ratio=0.2,
         val_ratio=0.25,
@@ -103,6 +104,7 @@ class PREDataModule(pl.LightningDataModule):
         self.test_ratio = test_ratio
         self.val_ratio = val_ratio
         self.df = pd.read_csv(self.data_path)
+        self.max_n_tokens_in_batch = max_n_tokens_in_batch
         self.setup_attrs()
 
     def src_add_ends(self, point: list[int]) -> list[int]:
@@ -210,8 +212,7 @@ class PREDataModule(pl.LightningDataModule):
     def train_dataloader(self):
         data_loader = DataLoader(
             self.train_data,
-            batch_size=self.batch_size,
-            shuffle=False,
+            batch_sampler=self.batch_sampler_list(self.train_data),
             num_workers=self.num_workers,
             collate_fn=lambda x: collate_fn(
                 x, self.src_pad_idx, self.tgt_vocab["<pad>"]
@@ -222,8 +223,7 @@ class PREDataModule(pl.LightningDataModule):
     def val_dataloader(self):
         return DataLoader(
             self.val_data,
-            batch_size=self.batch_size,
-            shuffle=True,
+            batch_sampler=self.batch_sampler_list(self.val_data),
             num_workers=self.num_workers,
             collate_fn=lambda x: collate_fn(
                 x, self.src_pad_idx, self.tgt_vocab["<pad>"]
@@ -233,13 +233,44 @@ class PREDataModule(pl.LightningDataModule):
     def test_dataloader(self):
         return DataLoader(
             self.test_data,
-            batch_size=self.batch_size,
-            shuffle=True,
+            batch_sampler=self.batch_sampler_list(self.test_data),
             num_workers=self.num_workers,
             collate_fn=lambda x: collate_fn(
                 x, self.src_pad_idx, self.tgt_vocab["<pad>"]
             ),
         )
+
+    def batch_sampler_list(self, dataset):
+        max_n_token = self.max_n_tokens_in_batch
+        token_num_list = [len(ps) for ps, _ in list(dataset)]
+        grouped_token_num_list = []
+        indices_list = []
+
+        current_group = []
+        current_indices = []
+        current_sum = 0
+
+        for i, tokens in enumerate(token_num_list):
+            if (
+                current_sum + tokens > max_n_token and current_group
+            ):  # If adding tokens exceeds max_n_token
+                grouped_token_num_list.append(current_group)
+                indices_list.append(current_indices)
+                current_group = []
+                current_indices = []
+                current_sum = 0
+
+            current_group.append(tokens)
+            current_indices.append(i)
+            current_sum += tokens
+
+        # Add the last group if not empty
+        if current_group:
+            grouped_token_num_list[-1].extend(current_group)
+            indices_list[-1].extend(current_indices)
+
+        random.shuffle(indices_list)
+        return indices_list
 
 
 def collate_fn(batch, src_pad_id, tgt_pad_id):
