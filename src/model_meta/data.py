@@ -1,3 +1,4 @@
+import random
 from typing import Iterable
 
 import lightning as pl
@@ -8,14 +9,49 @@ from torch.utils.data import DataLoader, Dataset, TensorDataset
 
 
 class CustomDataset(Dataset):
-    def __init__(self, seq_idx, tgt_idx):
+    def __init__(
+        self, seq_idx, tgt_idx, src_pad_idx, tgt_pad_idx, few_pad_batches=False
+    ):
         """
         Args:
             seq_idx (list): List of input sequences.
             tgt_idx (list): List of target sequences.
         """
-        self.seq_idx = seq_idx
-        self.tgt_idx = tgt_idx
+        self.seq_idx, self.tgt_idx = (
+            self.align_and_shuffle(seq_idx, tgt_idx, src_pad_idx, tgt_pad_idx)
+            if few_pad_batches
+            else (
+                seq_idx,
+                tgt_idx,
+            )
+        )
+
+    def align_and_shuffle(self, seq, tgt, src_pad_idx, tgt_pad_idx):
+        # Combine source and target into a single list of tuples
+        data = list(zip(seq, tgt))
+
+        # Sort by length of the source and shuffle within groups of the same length
+        sorted_data = sorted(
+            data, key=lambda x: len(x[0])
+        )  # Sort by length of source
+        grouped = {}
+        for item in sorted_data:
+            length = len(item[0])
+            grouped.setdefault(length, []).append(item)
+
+        # Shuffle each group randomly
+        shuffled_data = []
+        for group in grouped.values():
+            random.shuffle(group)
+            shuffled_data.extend(group)
+
+        # Split the sorted and shuffled data back into source and target
+        sorted_source, sorted_target = zip(*shuffled_data)
+
+        # Convert back to lists
+        sorted_source = list(sorted_source)
+        sorted_target = list(sorted_target)
+        return sorted_source, sorted_target
 
     def __len__(self):
         """Returns the total number of samples."""
@@ -127,18 +163,39 @@ class PREDataModule(pl.LightningDataModule):
             [self.tgt_vocab[token] for token in seq] for seq in tgt_tokens
         ]
 
-        # Split the data into training, validation, and test sets
-        dataset = CustomDataset(seq_idx, tgt_idx)
-        train_val_seq, test_seq = train_test_split(
-            dataset, test_size=self.test_ratio, random_state=42
-        )
-        train_seq, val_seq = train_test_split(
-            train_val_seq, test_size=self.val_ratio, random_state=42
-        )  # 0.25 * 0.8 = 0.2
+        data_list = list(zip(seq_idx, tgt_idx))
+        random.shuffle(data_list)
+        shuffled_seq_idx, shuffled_tgt_idx = zip(*data_list)
 
-        self.train_seq = train_seq
-        self.val_seq = val_seq
-        self.test_seq = test_seq
+        # Split the data into training, validation, and test sets
+        # devider means "train | val | test"
+        data_len = len(shuffled_seq_idx)
+        train_val_devider_idx = int(data_len - self.test_ratio * data_len)
+
+        self.train_data = CustomDataset(
+            shuffled_seq_idx[:train_val_devider_idx],
+            shuffled_tgt_idx[:train_val_devider_idx],
+            self.src_pad_idx,
+            self.tgt_vocab["<pad>"],
+            few_pad_batches=True,
+        )
+
+        val_test_seq_idx = shuffled_seq_idx[train_val_devider_idx:]
+        val_test_tgt_idx = shuffled_tgt_idx[train_val_devider_idx:]
+        val_test_len = len(val_test_seq_idx)
+        test_val_devider_idx = int(self.val_ratio * val_test_len)
+        self.val_data = CustomDataset(
+            val_test_seq_idx[:test_val_devider_idx],
+            val_test_tgt_idx[:test_val_devider_idx],
+            self.src_pad_idx,
+            self.tgt_vocab["<pad>"],
+        )
+        self.test_data = CustomDataset(
+            val_test_seq_idx[test_val_devider_idx:],
+            val_test_tgt_idx[test_val_devider_idx:],
+            self.src_pad_idx,
+            self.tgt_vocab["<pad>"],
+        )
 
     def build_vocab(self, strings: Iterable[str]) -> dict[str, int]:
         vocab = {"<pad>": 0, "<sos>": 1, "<eos>": 2}
@@ -152,23 +209,58 @@ class PREDataModule(pl.LightningDataModule):
 
     def train_dataloader(self):
         data_loader = DataLoader(
-            self.train_seq,
+            self.train_data,
             batch_size=self.batch_size,
             shuffle=False,
             num_workers=self.num_workers,
+            collate_fn=lambda x: collate_fn(
+                x, self.src_pad_idx, self.tgt_vocab["<pad>"]
+            ),
         )
         return data_loader
 
     def val_dataloader(self):
         return DataLoader(
-            self.val_seq,
+            self.val_data,
             batch_size=self.batch_size,
+            shuffle=True,
             num_workers=self.num_workers,
+            collate_fn=lambda x: collate_fn(
+                x, self.src_pad_idx, self.tgt_vocab["<pad>"]
+            ),
         )
 
     def test_dataloader(self):
         return DataLoader(
-            self.test_seq,
+            self.test_data,
             batch_size=self.batch_size,
+            shuffle=True,
             num_workers=self.num_workers,
+            collate_fn=lambda x: collate_fn(
+                x, self.src_pad_idx, self.tgt_vocab["<pad>"]
+            ),
         )
+
+
+def collate_fn(batch, src_pad_id, tgt_pad_id):
+    """
+    Custom collate function to pad sequences with <pad> token.
+    """
+    src_max_points = max(len(x) for x, _ in batch)
+
+    x_padded = [
+        torch.cat(
+            [
+                x,
+                torch.ones((src_max_points - x.shape[0], x.shape[1]))
+                * src_pad_id,
+            ],
+            dim=0,
+        )
+        for x, _ in batch
+    ]
+    y_padded = [y for _, y in batch]
+
+    return torch.stack(x_padded).type(torch.int64), torch.stack(y_padded).type(
+        torch.int64
+    )
