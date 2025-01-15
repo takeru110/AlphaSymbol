@@ -80,9 +80,8 @@ class PREDataModule(pl.LightningDataModule):
     def __init__(
         self,
         data_path,
-        batch_size,
         max_value,
-        max_n_tokens_in_batch,
+        min_n_tokens_in_batch,
         num_workers=0,
         test_ratio=0.2,
         val_ratio=0.25,
@@ -90,12 +89,14 @@ class PREDataModule(pl.LightningDataModule):
         """
         Args:
         - data_path (str): path to the CSV file
-        - batch_size (str): int
         - max_value (int): the maximum value of the input and output
+        - min_n_tokens_in_batch (int): the maximum number of tokens in a batch
+        - num_workers (int): the number of workers for data loading (used in DataLoader)
+        - test_ratio (float): the ratio of (test + val) / (test + val + train)
+        - val_ratio (float): the ratio of val / (val + test)
         """
         super().__init__()
         self.data_path = data_path
-        self.batch_size = batch_size
         self.src_pad_idx = max_value + 1
         self.src_sos_idx = max_value + 2
         self.src_eos_idx = max_value + 3
@@ -104,7 +105,7 @@ class PREDataModule(pl.LightningDataModule):
         self.test_ratio = test_ratio
         self.val_ratio = val_ratio
         self.df = pd.read_csv(self.data_path)
-        self.max_n_tokens_in_batch = max_n_tokens_in_batch
+        self.min_n_tokens_in_batch = min_n_tokens_in_batch
         self.setup_attrs()
 
     def src_add_ends(self, point: list[int]) -> list[int]:
@@ -241,7 +242,7 @@ class PREDataModule(pl.LightningDataModule):
         )
 
     def batch_sampler_list(self, dataset):
-        max_n_token = self.max_n_tokens_in_batch
+        min_n_token = self.min_n_tokens_in_batch
         token_num_list = [len(ps) for ps, _ in list(dataset)]
         grouped_token_num_list = []
         indices_list = []
@@ -252,8 +253,8 @@ class PREDataModule(pl.LightningDataModule):
 
         for i, tokens in enumerate(token_num_list):
             if (
-                current_sum + tokens > max_n_token and current_group
-            ):  # If adding tokens exceeds max_n_token
+                current_sum + tokens > min_n_token and current_group
+            ):  # If adding tokens exceeds min_n_token
                 grouped_token_num_list.append(current_group)
                 indices_list.append(current_indices)
                 current_group = []

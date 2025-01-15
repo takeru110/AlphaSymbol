@@ -141,12 +141,11 @@ def main(cfg: DictConfig):
     log_dir = Path(HydraConfig.get().run.dir)
     data_module = PREDataModule(
         data_path=cfg.data_path,
-        batch_size=cfg.batch_size,
         max_value=cfg.max_value,
         num_workers=cfg.num_workers,
         test_ratio=cfg.test_ratio,
         val_ratio=cfg.val_ratio,
-        max_n_tokens_in_batch=cfg.max_n_tokens_in_batch,
+        min_n_tokens_in_batch=cfg.min_n_tokens_in_batch,
     )
     model = LitTransformer(
         src_token_num=data_module.src_token_num,
@@ -186,12 +185,6 @@ def main(cfg: DictConfig):
         pickle.dump(data_module_for_save, f)
 
     trainer.fit(model, data_module)
-
-
-def show_memory():
-    print(
-        f"{torch.cuda.memory_allocated() / 8 / 1000 / 1000}MB,{torch.cuda.memory_reserved() / 8 / 1000 / 1000} MB"
-    )
 
 
 if __name__ == "__main__":
