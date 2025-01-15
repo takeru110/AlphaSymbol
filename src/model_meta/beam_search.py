@@ -29,8 +29,8 @@ def beam_search(model, data_module, xs, ys, beam_width=3):
     - model: The trained transformer model.
     - data_module: The data module containing vocabulary and helper functions.
     - xs: The input data for evaluating the expression.
+    - ys: The output data for evaluating the expression.
     - beam_width (int): Number of candidates to keep at each step.
-    - max_length (int): Maximum length of the generated sequence.
     """
     device = model.device
 
