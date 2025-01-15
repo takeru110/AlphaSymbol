@@ -90,7 +90,7 @@ class PREDataModule(pl.LightningDataModule):
         Args:
         - data_path (str): path to the CSV file
         - max_value (int): the maximum value of the input and output
-        - min_n_tokens_in_batch (int): the maximum number of tokens in a batch
+        - min_n_tokens_in_batch (int): the minimum number of tokens in a batch
         - num_workers (int): the number of workers for data loading (used in DataLoader)
         - test_ratio (float): the ratio of (test + val) / (test + val + train)
         - val_ratio (float): the ratio of val / (val + test)
