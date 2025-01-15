@@ -2,21 +2,21 @@ hydra:
   run:
     dir: "./logs/${now:%Y-%m%d-%H%M-%S}/"
   
-data_path: "/home/takeru/AlphaSymbol/temp/add_in_out_extract1000.csv"
-max_epoch: 10
+data_path: "/home/takeru/AlphaSymbol/temp/add_in_out.csv"
+max_epoch: 500
 max_value: 2000 # max value occurd in input and output of PRE
-batch_size: 32
+min_n_tokens_in_batch: 3000
 test_ratio: 0.5 # (test + val) / (test + val + train)
 val_ratio: 0.25 # val / (val + test)
 num_workers: 31
-token_embed_dim: 64
-emb_expansion_factor: 2
-learning_rate: "8*10**(-5)"
+token_embed_dim: 16
+emb_expansion_factor: 1
+learning_rate: "3*10**(-4)"
   
 transformer:
   nhead: 8
-  num_encoder_layers: 6
+  num_encoder_layers: 4
   num_decoder_layers: 6
-  dim_feedforward: 2048
+  dim_feedforward: 512
   dropout: 0.1
   

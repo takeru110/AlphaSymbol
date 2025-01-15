@@ -1,3 +1,4 @@
+import random
 from typing import Iterable
 
 import lightning as pl
@@ -8,14 +9,49 @@ from torch.utils.data import DataLoader, Dataset, TensorDataset
 
 
 class CustomDataset(Dataset):
-    def __init__(self, seq_idx, tgt_idx):
+    def __init__(
+        self, seq_idx, tgt_idx, src_pad_idx, tgt_pad_idx, few_pad_batches=False
+    ):
         """
         Args:
             seq_idx (list): List of input sequences.
             tgt_idx (list): List of target sequences.
         """
-        self.seq_idx = seq_idx
-        self.tgt_idx = tgt_idx
+        self.seq_idx, self.tgt_idx = (
+            self.align_and_shuffle(seq_idx, tgt_idx, src_pad_idx, tgt_pad_idx)
+            if few_pad_batches
+            else (
+                seq_idx,
+                tgt_idx,
+            )
+        )
+
+    def align_and_shuffle(self, seq, tgt, src_pad_idx, tgt_pad_idx):
+        # Combine source and target into a single list of tuples
+        data = list(zip(seq, tgt))
+
+        # Sort by length of the source and shuffle within groups of the same length
+        sorted_data = sorted(
+            data, key=lambda x: len(x[0])
+        )  # Sort by length of source
+        grouped = {}
+        for item in sorted_data:
+            length = len(item[0])
+            grouped.setdefault(length, []).append(item)
+
+        # Shuffle each group randomly
+        shuffled_data = []
+        for group in grouped.values():
+            random.shuffle(group)
+            shuffled_data.extend(group)
+
+        # Split the sorted and shuffled data back into source and target
+        sorted_source, sorted_target = zip(*shuffled_data)
+
+        # Convert back to lists
+        sorted_source = list(sorted_source)
+        sorted_target = list(sorted_target)
+        return sorted_source, sorted_target
 
     def __len__(self):
         """Returns the total number of samples."""
@@ -44,8 +80,8 @@ class PREDataModule(pl.LightningDataModule):
     def __init__(
         self,
         data_path,
-        batch_size,
         max_value,
+        min_n_tokens_in_batch,
         num_workers=0,
         test_ratio=0.2,
         val_ratio=0.25,
@@ -53,12 +89,14 @@ class PREDataModule(pl.LightningDataModule):
         """
         Args:
         - data_path (str): path to the CSV file
-        - batch_size (str): int
         - max_value (int): the maximum value of the input and output
+        - min_n_tokens_in_batch (int): the minimum number of tokens in a batch
+        - num_workers (int): the number of workers for data loading (used in DataLoader)
+        - test_ratio (float): the ratio of (test + val) / (test + val + train)
+        - val_ratio (float): the ratio of val / (val + test)
         """
         super().__init__()
         self.data_path = data_path
-        self.batch_size = batch_size
         self.src_pad_idx = max_value + 1
         self.src_sos_idx = max_value + 2
         self.src_eos_idx = max_value + 3
@@ -67,6 +105,7 @@ class PREDataModule(pl.LightningDataModule):
         self.test_ratio = test_ratio
         self.val_ratio = val_ratio
         self.df = pd.read_csv(self.data_path)
+        self.min_n_tokens_in_batch = min_n_tokens_in_batch
         self.setup_attrs()
 
     def src_add_ends(self, point: list[int]) -> list[int]:
@@ -127,18 +166,39 @@ class PREDataModule(pl.LightningDataModule):
             [self.tgt_vocab[token] for token in seq] for seq in tgt_tokens
         ]
 
-        # Split the data into training, validation, and test sets
-        dataset = CustomDataset(seq_idx, tgt_idx)
-        train_val_seq, test_seq = train_test_split(
-            dataset, test_size=self.test_ratio, random_state=42
-        )
-        train_seq, val_seq = train_test_split(
-            train_val_seq, test_size=self.val_ratio, random_state=42
-        )  # 0.25 * 0.8 = 0.2
+        data_list = list(zip(seq_idx, tgt_idx))
+        random.shuffle(data_list)
+        shuffled_seq_idx, shuffled_tgt_idx = zip(*data_list)
 
-        self.train_seq = train_seq
-        self.val_seq = val_seq
-        self.test_seq = test_seq
+        # Split the data into training, validation, and test sets
+        # devider means "train | val | test"
+        data_len = len(shuffled_seq_idx)
+        train_val_devider_idx = int(data_len - self.test_ratio * data_len)
+
+        self.train_data = CustomDataset(
+            shuffled_seq_idx[:train_val_devider_idx],
+            shuffled_tgt_idx[:train_val_devider_idx],
+            self.src_pad_idx,
+            self.tgt_vocab["<pad>"],
+            few_pad_batches=True,
+        )
+
+        val_test_seq_idx = shuffled_seq_idx[train_val_devider_idx:]
+        val_test_tgt_idx = shuffled_tgt_idx[train_val_devider_idx:]
+        val_test_len = len(val_test_seq_idx)
+        test_val_devider_idx = int(self.val_ratio * val_test_len)
+        self.val_data = CustomDataset(
+            val_test_seq_idx[:test_val_devider_idx],
+            val_test_tgt_idx[:test_val_devider_idx],
+            self.src_pad_idx,
+            self.tgt_vocab["<pad>"],
+        )
+        self.test_data = CustomDataset(
+            val_test_seq_idx[test_val_devider_idx:],
+            val_test_tgt_idx[test_val_devider_idx:],
+            self.src_pad_idx,
+            self.tgt_vocab["<pad>"],
+        )
 
     def build_vocab(self, strings: Iterable[str]) -> dict[str, int]:
         vocab = {"<pad>": 0, "<sos>": 1, "<eos>": 2}
@@ -152,23 +212,87 @@ class PREDataModule(pl.LightningDataModule):
 
     def train_dataloader(self):
         data_loader = DataLoader(
-            self.train_seq,
-            batch_size=self.batch_size,
-            shuffle=False,
+            self.train_data,
+            batch_sampler=self.batch_sampler_list(self.train_data),
             num_workers=self.num_workers,
+            collate_fn=lambda x: collate_fn(
+                x, self.src_pad_idx, self.tgt_vocab["<pad>"]
+            ),
         )
         return data_loader
 
     def val_dataloader(self):
         return DataLoader(
-            self.val_seq,
-            batch_size=self.batch_size,
+            self.val_data,
+            batch_sampler=self.batch_sampler_list(self.val_data),
             num_workers=self.num_workers,
+            collate_fn=lambda x: collate_fn(
+                x, self.src_pad_idx, self.tgt_vocab["<pad>"]
+            ),
         )
 
     def test_dataloader(self):
         return DataLoader(
-            self.test_seq,
-            batch_size=self.batch_size,
+            self.test_data,
+            batch_sampler=self.batch_sampler_list(self.test_data),
             num_workers=self.num_workers,
+            collate_fn=lambda x: collate_fn(
+                x, self.src_pad_idx, self.tgt_vocab["<pad>"]
+            ),
         )
+
+    def batch_sampler_list(self, dataset):
+        min_n_token = self.min_n_tokens_in_batch
+        token_num_list = [len(ps) for ps, _ in list(dataset)]
+        grouped_token_num_list = []
+        indices_list = []
+
+        current_group = []
+        current_indices = []
+        current_sum = 0
+
+        for i, tokens in enumerate(token_num_list):
+            if (
+                current_sum + tokens > min_n_token and current_group
+            ):  # If adding tokens exceeds min_n_token
+                grouped_token_num_list.append(current_group)
+                indices_list.append(current_indices)
+                current_group = []
+                current_indices = []
+                current_sum = 0
+
+            current_group.append(tokens)
+            current_indices.append(i)
+            current_sum += tokens
+
+        # Add the last group if not empty
+        if current_group:
+            grouped_token_num_list[-1].extend(current_group)
+            indices_list[-1].extend(current_indices)
+
+        random.shuffle(indices_list)
+        return indices_list
+
+
+def collate_fn(batch, src_pad_id, tgt_pad_id):
+    """
+    Custom collate function to pad sequences with <pad> token.
+    """
+    src_max_points = max(len(x) for x, _ in batch)
+
+    x_padded = [
+        torch.cat(
+            [
+                x,
+                torch.ones((src_max_points - x.shape[0], x.shape[1]))
+                * src_pad_id,
+            ],
+            dim=0,
+        )
+        for x, _ in batch
+    ]
+    y_padded = [y for _, y in batch]
+
+    return torch.stack(x_padded).type(torch.int64), torch.stack(y_padded).type(
+        torch.int64
+    )

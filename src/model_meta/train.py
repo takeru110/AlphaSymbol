@@ -141,11 +141,11 @@ def main(cfg: DictConfig):
     log_dir = Path(HydraConfig.get().run.dir)
     data_module = PREDataModule(
         data_path=cfg.data_path,
-        batch_size=cfg.batch_size,
         max_value=cfg.max_value,
         num_workers=cfg.num_workers,
         test_ratio=cfg.test_ratio,
         val_ratio=cfg.val_ratio,
+        min_n_tokens_in_batch=cfg.min_n_tokens_in_batch,
     )
     model = LitTransformer(
         src_token_num=data_module.src_token_num,
@@ -179,9 +179,9 @@ def main(cfg: DictConfig):
     with open(f"{log_dir}/data_module.pkl", "wb") as f:
         data_module_for_save = copy.copy(data_module)
         data_module_for_save.df = None  # This attr is too large.
-        data_module_for_save.train_seq = None
-        data_module_for_save.val_seq = None
-        data_module_for_save.test_seq = None
+        data_module_for_save.train_data = None
+        data_module_for_save.val_data = None
+        data_module_for_save.test_data = None
         pickle.dump(data_module_for_save, f)
 
     trainer.fit(model, data_module)
