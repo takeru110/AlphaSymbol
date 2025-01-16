@@ -9,9 +9,11 @@ import torch
 import torch.nn.functional as F
 from hydra.core.hydra_config import HydraConfig
 from lightning.pytorch.callbacks import ModelCheckpoint
-from omegaconf import DictConfig
+from lightning.pytorch.loggers import WandbLogger
+from omegaconf import DictConfig, OmegaConf
 from torch import Tensor, nn, optim, utils
 
+import wandb
 from src.model_meta.data import PREDataModule
 from src.model_meta.models import PositionalEncoding
 
@@ -119,7 +121,7 @@ class LitTransformer(pl.LightningModule):
         output = self(src_batch, tgt_input)  # (T, N, C)
         output = output.permute(1, 2, 0)  # (N, C, T)
         loss = self.loss_fn(output, tgt_output)
-        self.log("train_loss", loss, prog_bar=True)
+        self.log("train_loss", loss, prog_bar=True, on_step=True)
         return loss
 
     def validation_step(self, batch, batch_idx):
@@ -138,6 +140,13 @@ class LitTransformer(pl.LightningModule):
 
 @hydra.main(version_base=None, config_path=".", config_name="training_config")
 def main(cfg: DictConfig):
+    entity = "takeit-Keio University Global Page"
+    wandb_logger = WandbLogger(
+        project="alpha-symbol", entity=entity, log_model="all"
+    )
+    wandb_logger.experiment.config["train_config"] = OmegaConf.to_container(
+        cfg, throw_on_missing=True
+    )
     log_dir = Path(HydraConfig.get().run.dir)
     data_module = PREDataModule(
         data_path=cfg.data_path,
@@ -174,6 +183,7 @@ def main(cfg: DictConfig):
         devices=1,
         max_epochs=cfg.max_epoch,
         default_root_dir=log_dir,
+        logger=wandb_logger,
     )
 
     with open(f"{log_dir}/data_module.pkl", "wb") as f:
