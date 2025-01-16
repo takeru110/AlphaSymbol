@@ -83,8 +83,8 @@ def input_output_columns_exp(
         )
 
         # Sample n from U[n_min, n_max]
-        n_min = 5
-        n_max = 10 * input_dim
+        n_min = 5 * input_dim
+        n_max = 20 * input_dim
 
         if n_points is None:
             n_points_ = generate_uniform_integer(n_min, n_max)
@@ -92,21 +92,23 @@ def input_output_columns_exp(
             n_points_ = n_points
 
         # Generate x n-times and evaluate output
-        x_list = [
-            generate_exp_input(n=input_dim, rate=rate, max_value=max_value)
-            for _ in range(n_points_)
-        ]
-        row_outputs = []
-        for x in x_list:
+        x_list = []
+        y_list = []
+        actual_n_points = 0
+        for i in range(n_points_):
+            x = generate_exp_input(n=input_dim, rate=rate, max_value=max_value)
             try:
-                output = expr.eval(*x)
+                y = expr.eval(*x)
             except OverflowError:
-                output = "Overflowed"
-            row_outputs.append(output)
+                continue
+
+            actual_n_points += 1
+            x_list.append(x)
+            y_list.append(y)
 
         inputs.append(x_list)
-        outputs.append(row_outputs)
-        n_points_list.append(n_points_)
+        outputs.append(y_list)
+        n_points_list.append(actual_n_points)
 
     df["input"] = inputs
     df["output"] = outputs
