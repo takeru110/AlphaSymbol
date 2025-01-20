@@ -4,25 +4,26 @@
 # This source code is licensed under the license found in the
 # LICENSE file in the root directory of this source tree.
 
+import copy
+import io
 import json
 import os
-import io
 import sys
 import time
+from collections import OrderedDict, defaultdict
 from logging import getLogger
-from collections import OrderedDict
+
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import seaborn as sns
 import torch
+import torch.nn.functional as F
 from torch import nn
 from torch.nn.utils import clip_grad_norm_
+
 from .optim import get_optimizer
 from .utils import to_cuda
-from collections import defaultdict
-import torch.nn.functional as F
-import seaborn as sns
-import matplotlib.pyplot as plt
-import copy
 
 # if torch.cuda.is_available():
 has_apex = True
@@ -69,7 +70,9 @@ class LoadParameters(object):
             if self.params.reload_checkpoint == "":
                 return
             else:
-                checkpoint_path = self.params.reload_checkpoint + "/checkpoint.pth"
+                checkpoint_path = (
+                    self.params.reload_checkpoint + "/checkpoint.pth"
+                )
                 assert os.path.isfile(checkpoint_path)
 
         logger.warning(f"Reloading checkpoint from {checkpoint_path} ...")
@@ -81,7 +84,9 @@ class LoadParameters(object):
                 weights = data[k]
                 v.load_state_dict(weights)
             except RuntimeError:  # remove the 'module.'
-                weights = {name.partition(".")[2]: v for name, v in data[k].items()}
+                weights = {
+                    name.partition(".")[2]: v for name, v in data[k].items()
+                }
                 v.load_state_dict(weights)
             # weights = data[k]
             # weights_names = copy.deepcopy(list(weights.keys()))
@@ -156,7 +161,9 @@ class Trainer(object):
                 self.stopping_criterion = (split[0][1:], False)
             else:
                 self.stopping_criterion = (split[0], True)
-            self.best_stopping_criterion = -1e12 if self.stopping_criterion[1] else 1e12
+            self.best_stopping_criterion = (
+                -1e12 if self.stopping_criterion[1] else 1e12
+            )
         else:
             self.stopping_criterion = None
             self.best_stopping_criterion = None
@@ -168,7 +175,7 @@ class Trainer(object):
             m = (m, False) if m[0] == "_" else (m, True)
             self.metrics.append(m)
         self.best_metrics = {
-            metric: (-np.infty if biggest else np.infty)
+            metric: (-np.infty if biggest else np.inf)
             for (metric, biggest) in self.metrics
         }
 
@@ -180,7 +187,11 @@ class Trainer(object):
             [("processed_e", 0)]
             + [("processed_w", 0)]
             + sum(
-                [[(x, []), (f"{x}-AVG-STOP-PROBS", [])] for x in env.TRAINING_TASKS], []
+                [
+                    [(x, []), (f"{x}-AVG-STOP-PROBS", [])]
+                    for x in env.TRAINING_TASKS
+                ],
+                [],
             )
         )
         self.last_time = time.time()
@@ -191,7 +202,9 @@ class Trainer(object):
         # file handler to export data
         if params.export_data:
             assert params.reload_data == ""
-            params.export_path_prefix = os.path.join(params.dump_path, "data.prefix")
+            params.export_path_prefix = os.path.join(
+                params.dump_path, "data.prefix"
+            )
             self.file_handler_prefix = io.open(
                 params.export_path_prefix, mode="a", encoding="utf-8"
             )
@@ -204,10 +217,13 @@ class Trainer(object):
             logger.info(params.reload_data)
             # assert params.num_workers in [0, 1] ##TODO: why have that?
             assert params.export_data is False
-            s = [x.split(",") for x in params.reload_data.split(";") if len(x) > 0]
+            s = [
+                x.split(",")
+                for x in params.reload_data.split(";")
+                if len(x) > 0
+            ]
             assert (
-                len(s)
-                >= 1
+                len(s) >= 1
                 # and all(len(x) == 4 for x in s) ##if we want multiple datasets
                 # and len(s) == len(set([x[0] for x in s]))
             )
@@ -236,7 +252,9 @@ class Trainer(object):
             if params.env_base_seed < 0:
                 params.env_base_seed = np.random.randint(1_000_000_000)
             self.dataloader = {
-                task: iter(self.env.create_train_iterator(task, self.data_path, params))
+                task: iter(
+                    self.env.create_train_iterator(task, self.data_path, params)
+                )
                 for task in params.tasks
             }
 
@@ -246,12 +264,16 @@ class Trainer(object):
             params.env_base_seed = np.random.randint(1_000_000_000)
         self.dataloader = {
             task: iter(
-                self.env.create_train_iterator(task, self.data_path, params, args)
+                self.env.create_train_iterator(
+                    task, self.data_path, params, args
+                )
             )
             for task in params.tasks
         }
         logger.info(
-            "Succesfully replaced training iterator with following args:{}".format(args)
+            "Succesfully replaced training iterator with following args:{}".format(
+                args
+            )
         )
         return
 
@@ -332,7 +354,8 @@ class Trainer(object):
                     scaled_loss.backward()
                 if params.clip_grad_norm > 0:
                     clip_grad_norm_(
-                        apex.amp.master_params(self.optimizer), params.clip_grad_norm
+                        apex.amp.master_params(self.optimizer),
+                        params.clip_grad_norm,
                     )
                 optimizer.step()
                 optimizer.zero_grad()
@@ -350,7 +373,9 @@ class Trainer(object):
             if (self.n_iter + 1) % params.accumulate_gradients == 0:
                 if params.clip_grad_norm > 0:
                     self.scaler.unscale_(optimizer)
-                    clip_grad_norm_(self.parameters["model"], params.clip_grad_norm)
+                    clip_grad_norm_(
+                        self.parameters["model"], params.clip_grad_norm
+                    )
                 self.scaler.step(optimizer)
                 self.scaler.update()
                 optimizer.zero_grad()
@@ -385,7 +410,8 @@ class Trainer(object):
 
         # learning rates
         s_lr = (" - LR: ") + " / ".join(
-            "{:.4e}".format(group["lr"]) for group in self.optimizer.param_groups
+            "{:.4e}".format(group["lr"])
+            for group in self.optimizer.param_groups
         )
 
         # processing speed
@@ -395,7 +421,7 @@ class Trainer(object):
             self.stats["processed_e"] * 1.0 / diff,
             self.stats["processed_w"] * 1.0 / diff,
         )
-        max_mem = torch.cuda.max_memory_allocated() / 1024 ** 2
+        max_mem = torch.cuda.max_memory_allocated() / 1024**2
         s_mem = " MEM: {:.2f} MB - ".format(max_mem)
         self.stats["processed_e"] = 0
         self.stats["processed_w"] = 0
@@ -404,12 +430,15 @@ class Trainer(object):
         logger.info(s_iter + s_speed + s_mem + s_stat + s_lr + s_total_eq)
 
     def get_generation_statistics(self, task):
-
         total_eqs = sum(
             x.shape[0]
-            for x in self.infos_statistics[list(self.infos_statistics.keys())[0]]
+            for x in self.infos_statistics[
+                list(self.infos_statistics.keys())[0]
+            ]
         )
-        logger.info("Generation statistics (to generate {} eqs):".format(total_eqs))
+        logger.info(
+            "Generation statistics (to generate {} eqs):".format(total_eqs)
+        )
 
         all_infos = defaultdict(list)
         for info_type, infos in self.infos_statistics.items():
@@ -428,7 +457,9 @@ class Trainer(object):
                 (
                     non_zero.item(),
                     "{:.2e}".format(
-                        (aggregated_infos[non_zero] / aggregated_infos.sum()).item()
+                        (
+                            aggregated_infos[non_zero] / aggregated_infos.sum()
+                        ).item()
                     ),
                 )
                 for non_zero in non_zeros
@@ -440,7 +471,9 @@ class Trainer(object):
         g.map_lower(sns.kdeplot, fill=True)
         g.map_diag(sns.histplot, kde=True)
         plt.savefig(
-            os.path.join(self.params.dump_path, "statistics_{}.png".format(self.epoch))
+            os.path.join(
+                self.params.dump_path, "statistics_{}.png".format(self.epoch)
+            )
         )
 
         str_errors = "Errors ({} eqs)\n ".format(total_eqs)
@@ -511,7 +544,9 @@ class Trainer(object):
                 weights = data[k]
                 v.load_state_dict(weights)
             except RuntimeError:  # remove the 'module.'
-                weights = {name.partition(".")[2]: v for name, v in data[k].items()}
+                weights = {
+                    name.partition(".")[2]: v for name, v in data[k].items()
+                }
                 v.load_state_dict(weights)
             # weights_names = copy.deepcopy(list(weights.keys()))
             # for w in weights_names:
@@ -532,7 +567,9 @@ class Trainer(object):
                 if "num_updates" not in param_group:
                     logger.warning("No 'num_updates' for optimizer.")
                     continue
-                logger.warning("Reloading 'num_updates' and 'lr' for optimizer.")
+                logger.warning(
+                    "Reloading 'num_updates' and 'lr' for optimizer."
+                )
                 param_group["num_updates"] = data["optimizer"]["param_groups"][
                     group_id
                 ]["num_updates"]
@@ -590,7 +627,9 @@ class Trainer(object):
                 best_so_far = -np.inf
             if factor * scores[_metric] > best_so_far:
                 self.best_metrics[metric] = scores[_metric]
-                logger.info("New best score for %s: %.6f" % (metric, scores[_metric]))
+                logger.info(
+                    "New best score for %s: %.6f" % (metric, scores[_metric])
+                )
                 self.save_checkpoint("best-%s" % metric)
 
     def end_epoch(self, scores):
@@ -599,7 +638,8 @@ class Trainer(object):
         """
         # stop if the stopping criterion has not improved after a certain number of epochs
         if self.stopping_criterion is not None and (
-            self.params.is_master or not self.stopping_criterion[0].endswith("_mt_bleu")
+            self.params.is_master
+            or not self.stopping_criterion[0].endswith("_mt_bleu")
         ):
             metric, biggest = self.stopping_criterion
             assert metric in scores, metric
@@ -607,7 +647,8 @@ class Trainer(object):
             if factor * scores[metric] > factor * self.best_stopping_criterion:
                 self.best_stopping_criterion = scores[metric]
                 logger.info(
-                    "New best validation score: %f" % self.best_stopping_criterion
+                    "New best validation score: %f"
+                    % self.best_stopping_criterion
                 )
                 self.decrease_counts = 0
             else:
@@ -644,10 +685,14 @@ class Trainer(object):
             )
             if self.params.is_slurm_job:
                 if int(os.environ["SLURM_PROCID"]) == 0:
-                    logger.warning("Requeuing job " + os.environ["SLURM_JOB_ID"])
+                    logger.warning(
+                        "Requeuing job " + os.environ["SLURM_JOB_ID"]
+                    )
                     os.system("scontrol requeue " + os.environ["SLURM_JOB_ID"])
                 else:
-                    logger.warning("Not the master process, no need to requeue.")
+                    logger.warning(
+                        "Not the master process, no need to requeue."
+                    )
             raise
         return batch, errors
 
@@ -657,7 +702,9 @@ class Trainer(object):
         """
         samples, _ = self.get_batch(task)
         for info in samples["infos"]:
-            samples["infos"][info] = list(map(str, samples["infos"][info].tolist()))
+            samples["infos"][info] = list(
+                map(str, samples["infos"][info].tolist())
+            )
 
         def get_dictionary_slice(idx, dico):
             x = {}
@@ -732,7 +779,9 @@ class Trainer(object):
         for seq_id in range(len(x_to_fit)):
             x1.append([])
             for seq_l in range(len(x_to_fit[seq_id])):
-                x1[seq_id].append([x_to_fit[seq_id][seq_l], y_to_fit[seq_id][seq_l]])
+                x1[seq_id].append(
+                    [x_to_fit[seq_id][seq_l], y_to_fit[seq_id][seq_l]]
+                )
 
         x1, len1 = embedder(x1)
 
@@ -770,7 +819,11 @@ class Trainer(object):
                 src_len=len1,
             )
             _, loss = decoder(
-                "predict", tensor=decoded, pred_mask=pred_mask, y=y, get_scores=False
+                "predict",
+                tensor=decoded,
+                pred_mask=pred_mask,
+                y=y,
+                get_scores=False,
             )
         else:
             with torch.cuda.amp.autocast():

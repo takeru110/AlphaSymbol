@@ -21,7 +21,7 @@ class TimedFun:
         self.fun_in = fun
         self.started = False
         self.stop_after = stop_after
-        self.best_fun_value = np.infty
+        self.best_fun_value = np.inf
         self.best_x = None
         self.loss_history = []
         self.verbose = verbose

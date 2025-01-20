@@ -5,16 +5,18 @@
 # LICENSE file in the root directory of this source tree.
 
 import traceback
-import sympy as sp
-from sympy.parsing.sympy_parser import parse_expr
-from .generators import all_operators, math_constants, Node, NodeList
-from sympy.core.rules import Transform
-import numpy as np
 from functools import partial
+
 import numexpr as ne
+import numpy as np
+import sympy as sp
 import sympytorch
 import torch
-from ..utils import timeout, MyTimeoutError
+from sympy.core.rules import Transform
+from sympy.parsing.sympy_parser import parse_expr
+
+from ..utils import MyTimeoutError, timeout
+from .generators import Node, NodeList, all_operators, math_constants
 
 
 def simplify(f, seconds):
@@ -33,7 +35,7 @@ def simplify(f, seconds):
                 return f2
         except MyTimeoutError:
             return f
-        except Exception as e:
+        except Exception:
             return f
 
     return _simplify(f)
@@ -70,13 +72,14 @@ def raise_timeout(signum, frame):
 
 class Simplifier:
     def __init__(self, generator):
-
         self.params = generator.params
         self.encoder = generator.equation_encoder
         self.operators = generator.operators
         self.max_int = generator.max_int
         self.local_dict = {
-            "n": sp.Symbol("n", real=True, nonzero=True, positive=True, integer=True),
+            "n": sp.Symbol(
+                "n", real=True, nonzero=True, positive=True, integer=True
+            ),
             "e": sp.E,
             "pi": sp.pi,
             "euler_gamma": sp.EulerGamma,
@@ -201,7 +204,8 @@ class Simplifier:
         with timeout(1):
             expr = expr.xreplace(
                 Transform(
-                    lambda x: x.round(decimals), lambda x: isinstance(x, sp.Float)
+                    lambda x: x.round(decimals),
+                    lambda x: isinstance(x, sp.Float),
                 )
             )
         return expr
@@ -214,7 +218,7 @@ class Simplifier:
 
     def apply_fn(self, tree, fn_stack=[]):
         expr = self.tree_to_sympy_expr(tree)
-        for (fn, arg) in fn_stack:
+        for fn, arg in fn_stack:
             expr = getattr(self, fn)(expr=expr, **arg)
         new_tree = self.sympy_expr_to_tree(expr)
         if new_tree is None:
@@ -224,7 +228,7 @@ class Simplifier:
     def write_infix(self, token, args):
         """
         Infix representation.
-    
+
         """
         if token == "add":
             return f"({args[0]})+({args[1]})"
