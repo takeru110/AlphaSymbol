@@ -12,8 +12,8 @@ from functools import partial
 import numpy as np
 import sklearn
 import torch
-from functorch import grad
 from scipy.optimize import minimize
+from torch.func import grad
 
 
 class TimedFun:
