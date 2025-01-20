@@ -74,21 +74,26 @@ def test_columns_exp(
     n_points_list = []
     logging.info("Generating inputs and outputs")
     logging.info(f"Processing {len(df)} rows")
-    for expr_str in tqdm(df["expr"], desc="Processing"):
+    for expr_str, input_str in tqdm(
+        zip(df["expr"], df["input"]), desc="Processing"
+    ):
+        input_reg = eval(input_str)
         expr = eval(expr_str)
-        input_dim = (
-            expr.arity
-            if expr.arity is not None
-            else generate_uniform_integer(1, max_arity)
-        )
+        input_dim = len(input_reg[0])
 
         # Generate x n-times and evaluate output
-        n_points_ = n_points
         x_list = []
         y_list = []
         actual_n_points = 0
-        for i in range(n_points_):
-            x = generate_exp_input(n=input_dim, rate=rate, max_value=max_value)
+        for _ in range(n_points):
+            # import pdb
+
+            # pdb.set_trace()
+            n_points_reg = len(input_reg)
+            lmbd = 1 / (rate * n_points_reg ** (1 / input_dim))
+            x = generate_exp_input(n=input_dim, rate=lmbd, max_value=max_value)
+            if x in x_list or x in input_reg:
+                continue
             try:
                 y = expr.eval(*x)
             except OverflowError:
@@ -101,7 +106,6 @@ def test_columns_exp(
         inputs.append(x_list)
         outputs.append(y_list)
         n_points_list.append(actual_n_points)
-
     df["test_input"] = inputs
     df["test_output"] = outputs
     df["test_n_points"] = n_points_list
