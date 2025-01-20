@@ -1,18 +1,14 @@
 import argparse
 import logging
-import math
-import sys
-from pathlib import Path
+import multiprocessing as mp
+from functools import partial
 from typing import Optional
 
 import numpy as np
-import numpy.typing as npt
 import pandas as pd
 from tqdm import tqdm
 
 from prfndim.prfndim import C, Expr, OverflowError, P, R, S, Z
-
-logging.basicConfig(stream=sys.stdout, level=logging.INFO)
 
 
 def generate_uniform_integer(n_min: int, n_max: int) -> int:
@@ -51,7 +47,64 @@ def generate_exp_input(
     return ret
 
 
-def input_output_columns_exp(
+def process_row(
+    expr_str: str,
+    max_arity: int,
+    rate: float,
+    max_value: Optional[int],
+    n_points: Optional[int],
+) -> dict:
+    """
+    Process a single row: generate inputs and outputs for the given expression.
+
+    Args:
+        expr_str (str): String representation of the expression.
+        max_arity (int): Maximum arity for the expression.
+        rate (float): Rate parameter λ for the exponential distribution.
+        max_value (Optional[int]): Maximum value of input.
+        n_points (Optional[int]): Number of points to generate.
+
+    Returns:
+        dict: Processed data including inputs, outputs, and number of points.
+    """
+    expr = eval(expr_str)
+    input_dim = (
+        expr.arity
+        if expr.arity is not None
+        else generate_uniform_integer(1, max_arity)
+    )
+
+    # Sample n from U[n_min, n_max]
+    n_min = 5 * input_dim
+    n_max = 20 * input_dim
+    if n_points is None:
+        n_points_sample = generate_uniform_integer(n_min, n_max)
+    else:
+        n_points_sample = n_points
+
+    # Generate x n-times and evaluate output
+    x_list = []
+    y_list = []
+    actual_n_points = 0
+
+    for _ in range(n_points_sample):
+        lmbd = 1 / (rate * n_points_sample ** (1 / input_dim))
+        x = generate_exp_input(n=input_dim, rate=lmbd, max_value=max_value)
+        if x in x_list:
+            continue
+        try:
+            y = expr.eval(*x)
+        except OverflowError:
+            continue
+
+        actual_n_points += 1
+        x_list.append(x)
+        y_list.append(y)
+
+    return {"input": x_list, "output": y_list, "n_points": actual_n_points}
+
+
+def input_output_columns_exp_parallel(
     df: pd.DataFrame,
     max_arity: int,
     rate=1.0,
@@ -59,7 +112,7 @@ def input_output_columns_exp(
     n_points: Optional[int] = None,
 ) -> pd.DataFrame:
     """
-    Apply exponential input generation row by row and generate input/output columns.
+    Apply exponential input generation row by row using multiprocessing.
 
     Args:
         df (pd.DataFrame): Input DataFrame containing expressions.
@@ -68,55 +121,26 @@ def input_output_columns_exp(
     Returns:
         pd.DataFrame: DataFrame with input and output columns.
     """
-
-    inputs = []
-    outputs = []
-    n_points_list = []
-    logging.info("Generating inputs and outputs")
+    logging.info("Generating inputs and outputs using multiprocessing")
     logging.info(f"Processing {len(df)} rows")
-    for expr_str in tqdm(df["expr"], desc="Processing"):
-        expr = eval(expr_str)
-        input_dim = (
-            expr.arity
-            if expr.arity is not None
-            else generate_uniform_integer(1, max_arity)
-        )
 
-        # Sample n from U[n_min, n_max]
-        n_min = 5 * input_dim
-        n_max = 20 * input_dim
+    # Prepare partial function for multiprocessing
+    process_func = partial(
+        process_row,
+        max_arity=max_arity,
+        rate=rate,
+        max_value=max_value,
+        n_points=n_points,
+    )
 
-        if n_points is None:
-            n_points_sample = generate_uniform_integer(n_min, n_max)
-        else:
-            n_points_sample = n_points
+    # Use multiprocessing Pool
+    with mp.Pool(mp.cpu_count()) as pool:
+        results = list(tqdm(pool.imap(process_func, df["expr"]), total=len(df)))
 
-        # Generate x n-times and evaluate output
-        x_list = []
-        y_list = []
-        actual_n_points = 0
-
-        for i in range(n_points_sample):
-            lmbd = 1 / (rate * n_points_sample ** (1 / input_dim))
-            x = generate_exp_input(n=input_dim, rate=lmbd, max_value=max_value)
-            if x in x_list:
-                continue
-            try:
-                y = expr.eval(*x)
-            except OverflowError:
-                continue
-
-            actual_n_points += 1
-            x_list.append(x)
-            y_list.append(y)
-
-        inputs.append(x_list)
-        outputs.append(y_list)
-        n_points_list.append(actual_n_points)
-
-    df["input"] = inputs
-    df["output"] = outputs
-    df["n_points"] = n_points_list
+    # Combine results into the DataFrame
+    df["input"] = [result["input"] for result in results]
+    df["output"] = [result["output"] for result in results]
+    df["n_points"] = [result["n_points"] for result in results]
     logging.info("Finished generating inputs and outputs")
     return df
 
@@ -154,7 +178,7 @@ if __name__ == "__main__":
 
     df = pd.read_csv(path)
 
-    df_in_out = input_output_columns_exp(
+    df_in_out = input_output_columns_exp_parallel(
         df,
         args.max_arity,
         rate=args.rate,
