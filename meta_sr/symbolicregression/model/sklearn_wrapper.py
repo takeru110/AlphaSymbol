@@ -178,7 +178,7 @@ class SymbolicTransformerRegressor(BaseEstimator):
                     candidate["predicted_tree"], X, y, metric
                 )
                 if math.isnan(score):
-                    score = np.infty if metric.startswith("_") else -np.infty
+                    score = np.inf if metric.startswith("_") else -np.inf
             else:
                 score = candidates[metric]
             scores.append(score)
