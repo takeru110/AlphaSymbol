@@ -86,7 +86,9 @@ def evaluate_model(model, data_module, df, tolerances):
     Args:
     - model: Trained model
     - data_module: Data module with vocab and test data
-    - test_loader: DataLoader for test data
+    - df: DataLoader for test data
+        - df should have columns "input", "output", "expr", "n_points",
+        "test_input", "test_output"
     - tolerances (list[float]): List of tolerance values for Accτ
 
     Returns:
@@ -97,40 +99,47 @@ def evaluate_model(model, data_module, df, tolerances):
     acc_taus = {tau: [] for tau in tolerances}
     error_counter = 0
 
-    for i, (src_input_str, src_output_str, correct_expr) in enumerate(
-        zip(df["input"], df["output"], df["expr"]),
+    for i, (
+        input_str,
+        output_str,
+        correct_expr,
+        test_input_str,
+        test_output_str,
+    ) in enumerate(
+        zip(
+            df["input"],
+            df["output"],
+            df["expr"],
+            df["test_input"],
+            df["test_output"],
+        ),
     ):
+        test_input = eval(test_input_str)
+        test_output = eval(test_output_str)
         logging.info(f"\n\nSample: {i + 1}")
         correct_func: Expr = eval(correct_expr)
         logging.info(f"Correct Expression: {correct_func}")
-        xs = eval(src_input_str)
-        arity = len(xs[0])
-        ys = eval(src_output_str)
+        xs = eval(input_str)
+        ys = eval(output_str)
         logging.info(f"x values for regression: {xs}")
         logging.info(f"y values for regression: {ys}")
         pred_func = beam_search(model, data_module, xs, ys, beam_width=3)
 
-        n_points = 10
-        rate = 0.1
-        x_values = [
-            generate_exp_input(n=arity, rate=rate) for _ in range(n_points)
-        ]
         try:
-            pred_y_values = [pred_func.eval(*x) for x in x_values]
-            corredt_y_values = [correct_func.eval(*x) for x in x_values]
+            pred_output = [pred_func.eval(*x) for x in test_input]
         except Exception:
             logging.info("Error in evaluating the expression")
             error_counter += 1
             continue
 
-        logging.info(f"x values for test: {x_values}")
-        logging.info(f"Correct y values : {corredt_y_values}")
+        logging.info(f"x values for test: {test_input}")
+        logging.info(f"Correct y values : {test_output}")
         logging.info(f"Predicted expression: {pred_func}")
-        logging.info(f"Predicted y values {pred_y_values}")
-        r2_score = compute_r2(corredt_y_values, pred_y_values)
+        logging.info(f"Predicted y values {pred_output}")
+        r2_score = compute_r2(test_output, pred_output)
         r2s.append(r2_score)
         for tau in tolerances:
-            acc_tau = inlier_rate(corredt_y_values, pred_y_values, tau)
+            acc_tau = inlier_rate(test_output, pred_output, tau)
             acc_taus[tau].append(acc_tau)
 
     r2 = np.mean(r2s)
@@ -142,9 +151,10 @@ def evaluate_model(model, data_module, df, tolerances):
 
 if __name__ == "__main__":
     # Paths to the model and data
-    model_path = "/home/takeru/AlphaSymbol/logs/2025-0116-1213-41-lowest-val/best_model-epoch=16-val_loss=0.04.ckpt"
-    data_module_path = "/home/takeru/AlphaSymbol/logs/2025-0116-1213-41-lowest-val/data_module.pkl"
-    csv_path = "/home/takeru/AlphaSymbol/data/prfndim/d5-a3-c2-r3-stopped-random-points-test10.csv"
+    model_path = "/home/takeru/AlphaSymbol/logs/2025-0117-0006-35-lowest-val/best_model-epoch=47-val_loss=0.02.ckpt"
+    data_module_path = "/home/takeru/AlphaSymbol/logs/2025-0117-0006-35-lowest-val/data_module.pkl"
+    # csv_path = "/home/takeru/AlphaSymbol/data/prfndim/d5-a3-c2-r3-stopped-random-points-test10k-test-columns.csv"
+    csv_path = "/home/takeru/AlphaSymbol/temp/d5-a3-c2-r3-stopped-random-points-test10k-crop10-test.csv"
 
     # Load the trained model
     model = LitTransformer.load_from_checkpoint(model_path)
