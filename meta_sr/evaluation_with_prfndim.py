@@ -109,6 +109,7 @@ if __name__ == "__main__":
         ),
     ):
         print("\n")
+        print("Sample number: ", i + 1)
         x = np.array(eval(input_str)[:n_points])
         y = np.array(eval(output_str)[:n_points])
         print("The number of points for regression: ", len(x))
