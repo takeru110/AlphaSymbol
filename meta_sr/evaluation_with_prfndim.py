@@ -10,10 +10,6 @@ import torch
 from IPython.display import display
 from sympy.parsing.sympy_parser import parse_expr
 
-n_points = 100
-csv_path = "/home/takeru/AlphaSymbol/data/prfndim/d5-a3-c2-r3-stopped-random-points-test10k-crop100-test-columns.csv"
-tolerances = [0, 1, 2, 3, 4]
-
 
 def compute_r2(y_true, y_pred):
     """
@@ -68,6 +64,8 @@ def inlier_rate(y_true, y_pred, tau):
 
 if __name__ == "__main__":
     model_path = "/home/takeru/AlphaSymbol/meta_sr/model.pt"
+    csv_path = "/home/takeru/AlphaSymbol/data/prfndim/d5-a3-c2-r3-stopped-random-points-test10k-crop100-test-columns.csv"
+    tolerances = [0, 1, 2, 3, 4]
     try:
         if not os.path.isfile(model_path):
             url = "https://dl.fbaipublicfiles.com/symbolicregression/model1.pt"
@@ -96,22 +94,20 @@ if __name__ == "__main__":
     for i, (
         input_str,
         output_str,
-        correct_expr,
         test_input_str,
         test_output_str,
     ) in enumerate(
         zip(
             df["input"],
             df["output"],
-            df["expr"],
             df["test_input"],
             df["test_output"],
         ),
     ):
         print("\n")
         print("Sample number: ", i + 1)
-        x = np.array(eval(input_str)[:n_points])
-        y = np.array(eval(output_str)[:n_points])
+        x = np.array(eval(input_str))
+        y = np.array(eval(output_str))
         print("The number of points for regression: ", len(x))
         test_input, test_output = eval(test_input_str), eval(test_output_str)
         print(f"Input points: {test_input}")
