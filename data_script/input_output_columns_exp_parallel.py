@@ -154,7 +154,7 @@ if __name__ == "__main__":
         "-r",
         "--rate",
         type=float,
-        default=0.2,
+        default=1.0,
         help="Rate parameter for the exponential distribution",
     )
     parser.add_argument(
