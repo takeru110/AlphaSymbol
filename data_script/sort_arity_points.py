@@ -25,5 +25,5 @@ if __name__ == "__main__":
     df["arity"] = df["expr"].apply(
         lambda x: eval(x).arity if eval(x).arity is not None else 0
     )
-    df_arity_sorted = df.sort_values(by="arity")
+    df_arity_sorted = df.sort_values(by=["arity", "n_points"])
     df_arity_sorted.to_csv(args.output_file, index=False)
