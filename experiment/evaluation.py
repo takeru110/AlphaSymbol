@@ -87,7 +87,7 @@ def evaluate_model(model, data_module, df, tolerances):
     - model: Trained model
     - data_module: Data module with vocab and test data
     - df: DataLoader for test data
-        - df should have columns "input", "output", "expr", "n_points",
+        - df should have columns "input", "output", "n_points",
         "test_input", "test_output"
     - tolerances (list[float]): List of tolerance values for Accτ
 
@@ -102,14 +102,12 @@ def evaluate_model(model, data_module, df, tolerances):
     for i, (
         input_str,
         output_str,
-        correct_expr,
         test_input_str,
         test_output_str,
     ) in enumerate(
         zip(
             df["input"],
             df["output"],
-            df["expr"],
             df["test_input"],
             df["test_output"],
         ),
@@ -117,8 +115,6 @@ def evaluate_model(model, data_module, df, tolerances):
         test_input = eval(test_input_str)
         test_output = eval(test_output_str)
         logging.info(f"\n\nSample: {i + 1}")
-        correct_func: Expr = eval(correct_expr)
-        logging.info(f"Correct Expression: {correct_func}")
         xs = eval(input_str)
         ys = eval(output_str)
         logging.info(f"x values for regression: {xs}")
@@ -137,9 +133,11 @@ def evaluate_model(model, data_module, df, tolerances):
         logging.info(f"Predicted expression: {pred_func}")
         logging.info(f"Predicted y values {pred_output}")
         r2_score = compute_r2(test_output, pred_output)
+        logging.info(f"R2 score: {r2_score}")
         r2s.append(r2_score)
         for tau in tolerances:
             acc_tau = inlier_rate(test_output, pred_output, tau)
+            logging.info(f"Accuracy tau={tau}: {acc_tau}")
             acc_taus[tau].append(acc_tau)
 
     r2 = np.mean(r2s)
@@ -151,10 +149,9 @@ def evaluate_model(model, data_module, df, tolerances):
 
 if __name__ == "__main__":
     # Paths to the model and data
-    model_path = "/home/takeru/AlphaSymbol/logs/2025-0117-0006-35-lowest-val/best_model-epoch=47-val_loss=0.02.ckpt"
-    data_module_path = "/home/takeru/AlphaSymbol/logs/2025-0117-0006-35-lowest-val/data_module.pkl"
-    # csv_path = "/home/takeru/AlphaSymbol/data/prfndim/d5-a3-c2-r3-stopped-random-points-test10k-test-columns.csv"
-    csv_path = "/home/takeru/AlphaSymbol/temp/d5-a3-c2-r3-stopped-random-points-test10k-crop10-test.csv"
+    model_path = "/home/takeru/AlphaSymbol/logs/2025-0121-1906-11-lowest-val/best_model-epoch=99-val_loss=0.02.ckpt"
+    data_module_path = "/home/takeru/AlphaSymbol/logs/2025-0121-1906-11-lowest-val/data_module.pkl"
+    csv_path = "/home/takeru/AlphaSymbol/data/prfndim/d5-a3-c2-r3-stopped-points-nodup-test-head5.csv"
 
     # Load the trained model
     model = LitTransformer.load_from_checkpoint(model_path)
