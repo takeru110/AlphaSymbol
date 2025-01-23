@@ -1,3 +1,4 @@
+import argparse
 import logging
 import pickle
 from pathlib import Path
@@ -100,19 +101,16 @@ def evaluate_model(pred_output_hook, df, tolerances):
     Evaluate the model using R2 score and Accτ metrics.
 
     Args:
-    - model: Trained model
-    - data_module: Data module with vocab and test data
+    - pred_output_hook (function): Function to predict the output
+        - Takes xs, ys, test_input as input and returns predicted output
     - df: DataLoader for test data
-        - df should have columns "input", "output", "n_points",
-        "test_input", "test_output"
+        - df must have columns "input", "output", "test_input", "test_output"
     - tolerances (list[float]): List of tolerance values for Accτ
 
     Returns:
     - summary (dict): Dictionary of metrics (R2, Accτ for each τ)
     - all_data (dict): Dictionary of all data for each sample
-
     """
-    model.eval()
     r2s = []
     acc_taus = {tau: [] for tau in tolerances}
     error_counter = 0
@@ -189,16 +187,21 @@ def evaluate_model(pred_output_hook, df, tolerances):
 
 
 if __name__ == "__main__":
-    # Paths to the model and data
-    model_path = "/home/takeru/AlphaSymbol/logs/2025-0121-1906-11-lowest-val/best_model-epoch=99-val_loss=0.02.ckpt"
-    data_module_path = "/home/takeru/AlphaSymbol/logs/2025-0121-1906-11-lowest-val/data_module.pkl"
-    csv_path = "/home/takeru/AlphaSymbol/data/prfndim/d5-a3-c2-r3-stopped-points-nodup-test-crop1000-no-const.csv"
-    csv_path = "/home/takeru/AlphaSymbol/data/prfndim/d5-a3-c2-r3-stopped-points-nodup-test-crop5.csv"
-    output_csv_path = "/home/takeru/AlphaSymbol/temp/evaluation_results.csv"
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-m", "--model_path", type=str)
+    parser.add_argument("-d", "--data_module_path", type=str)
+    parser.add_argument("-i", "--data_csv_path", type=str)
+    parser.add_argument("-o", "--output_csv_path", type=str)
+    args = parser.parse_args()
+    model_path = args.model_path
+    csv_path = args.data_csv_path
+    output_csv_path = args.output_csv_path
+    data_module_path = args.data_module_path
 
     # Load objects from files
     model = LitTransformer.load_from_checkpoint(model_path)
     model = model.to("cuda" if torch.cuda.is_available() else "cpu")
+    model.eval()
     with open(data_module_path, "rb") as f:
         data_module = pickle.load(f)
     df = pd.read_csv(csv_path)
