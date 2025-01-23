@@ -79,7 +79,23 @@ def inlier_rate(y_true, y_pred, tau):
     return int(num_inlier) / len(y_true)
 
 
-def evaluate_model(model, data_module, df, tolerances):
+def pred_output(model, data_module, xs_reg, ys_reg, test_input_points):
+    """
+    Predict the output using the trained model.
+    Args:
+    - model: Trained model
+    - data_module: Data module with meta data like vocab
+    - xs_reg (list[float]): x values for symbolic regression
+    - ys_reg (list[float]): y values for symbolic regression
+    - test_input_points (list[list[float]]): x values for test
+    """
+    pred_func = beam_search(model, data_module, xs_reg, ys_reg, beam_width=3)
+    pred_outputs = [pred_func.eval(*x) for x in test_input_points]
+    logging.info(f"Predicted function: {pred_func}")
+    return pred_outputs
+
+
+def evaluate_model(pred_output_hook, df, tolerances):
     """
     Evaluate the model using R2 score and Accτ metrics.
 
@@ -92,12 +108,28 @@ def evaluate_model(model, data_module, df, tolerances):
     - tolerances (list[float]): List of tolerance values for Accτ
 
     Returns:
-    - dict: Dictionary of metrics (R2, Accτ for each τ)
+    - summary (dict): Dictionary of metrics (R2, Accτ for each τ)
+    - all_data (dict): Dictionary of all data for each sample
+
     """
     model.eval()
     r2s = []
     acc_taus = {tau: [] for tau in tolerances}
     error_counter = 0
+
+    all_data = {
+        "x_reg": [],
+        "y_reg": [],
+        "n_reg": [],
+        "dim_reg": [],
+        "x_test": [],
+        "y_test": [],
+        "n_test": [],
+        "y_pred": [],
+        "r2": [],
+    }
+    for tau in tolerances:
+        all_data[f"acc_{tau}"] = []
 
     for i, (
         input_str,
@@ -119,24 +151,32 @@ def evaluate_model(model, data_module, df, tolerances):
         ys = eval(output_str)
         logging.info(f"x values for regression: {xs}")
         logging.info(f"y values for regression: {ys}")
-        pred_func = beam_search(model, data_module, xs, ys, beam_width=3)
 
         try:
-            pred_output = [pred_func.eval(*x) for x in test_input]
+            pred_output = pred_output_hook(xs, ys, test_input)
         except Exception:
             logging.info("Error in evaluating the expression")
             error_counter += 1
             continue
 
+        all_data["x_reg"].append(xs)
+        all_data["y_reg"].append(ys)
+        all_data["n_reg"].append(len(xs))
+        all_data["dim_reg"].append(len(xs[0]))
+        all_data["x_test"].append(test_input)
+        all_data["y_test"].append(test_output)
+        all_data["n_test"].append(len(test_input))
+        all_data["y_pred"].append(pred_output)
         logging.info(f"x values for test: {test_input}")
         logging.info(f"Correct y values : {test_output}")
-        logging.info(f"Predicted expression: {pred_func}")
         logging.info(f"Predicted y values {pred_output}")
         r2_score = compute_r2(test_output, pred_output)
+        all_data["r2"].append(r2_score)
         logging.info(f"R2 score: {r2_score}")
         r2s.append(r2_score)
         for tau in tolerances:
             acc_tau = inlier_rate(test_output, pred_output, tau)
+            all_data[f"acc_{tau}"].append(acc_tau)
             logging.info(f"Accuracy tau={tau}: {acc_tau}")
             acc_taus[tau].append(acc_tau)
 
@@ -144,37 +184,39 @@ def evaluate_model(model, data_module, df, tolerances):
     acc_tau = dict.fromkeys(tolerances, None)
     for tau in tolerances:
         acc_tau[tau] = np.mean(acc_taus[tau])
-    return {"r2": r2, "acc": acc_tau, "n_errors": error_counter}
+    summary = {"r2": r2, "acc": acc_tau, "n_errors": error_counter}
+    return summary, all_data
 
 
 if __name__ == "__main__":
     # Paths to the model and data
     model_path = "/home/takeru/AlphaSymbol/logs/2025-0121-1906-11-lowest-val/best_model-epoch=99-val_loss=0.02.ckpt"
     data_module_path = "/home/takeru/AlphaSymbol/logs/2025-0121-1906-11-lowest-val/data_module.pkl"
-    csv_path = "/home/takeru/AlphaSymbol/data/prfndim/d5-a3-c2-r3-stopped-points-nodup-test-head5.csv"
+    csv_path = "/home/takeru/AlphaSymbol/data/prfndim/d5-a3-c2-r3-stopped-points-nodup-test-crop1000-no-const.csv"
+    csv_path = "/home/takeru/AlphaSymbol/data/prfndim/d5-a3-c2-r3-stopped-points-nodup-test-crop5.csv"
+    output_csv_path = "/home/takeru/AlphaSymbol/temp/evaluation_results.csv"
 
-    # Load the trained model
+    # Load objects from files
     model = LitTransformer.load_from_checkpoint(model_path)
     model = model.to("cuda" if torch.cuda.is_available() else "cpu")
-
-    df = pd.read_csv(csv_path)
-
     with open(data_module_path, "rb") as f:
         data_module = pickle.load(f)
+    df = pd.read_csv(csv_path)
 
     # Define tolerances for Accτ
     tolerances = [0, 1, 2, 3, 4]
 
+    def pred_output_hook(xs, ys, test_input):
+        return pred_output(model, data_module, xs, ys, test_input)
+
     # Evaluate the model
-    metrics = evaluate_model(model, data_module, df, tolerances)
+    summary, all_data = evaluate_model(pred_output_hook, df, tolerances)
 
     # Print and save results
     print("Evaluation Metrics:")
-    for metric, value in metrics.items():
+    for metric, value in summary.items():
         print(f"{metric}: {value}")
 
-    results_path = Path("/home/takeru/AlphaSymbol/logs/evaluation_results.txt")
-    with open(results_path, "w") as f:
-        for metric, value in metrics.items():
-            f.write(f"{metric}: {value}\n")
-    print(f"Results saved to {results_path}")
+    df = pd.DataFrame(all_data)
+    df.to_csv(output_csv_path, index=False)
+    print(f"Results saved to {output_csv_path}")
