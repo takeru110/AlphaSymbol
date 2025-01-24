@@ -152,6 +152,20 @@ def evaluate_model(pred_output_hook, df, tolerances):
 
         try:
             pred_output = pred_output_hook(xs, ys, test_input)
+        except KeyboardInterrupt:
+            logging.info("Evaluation interrupted by user")
+            print("Evaluation interrupted by user")
+            print("Do you want to do? ")
+            print("1. Skip this sample")
+            print("2. Quit evaluation")
+            value = input()
+            error_counter += 1
+            if value == "1":
+                logging.info(f"User skipped sample {i}")
+                continue
+            elif value == "2":
+                logging.info(f"User terminated evaluation at sample {i}")
+                break
         except Exception:
             logging.info("Error in evaluating the expression")
             error_counter += 1
