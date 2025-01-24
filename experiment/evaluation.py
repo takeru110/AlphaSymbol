@@ -116,6 +116,7 @@ def evaluate_model(pred_output_hook, df, tolerances):
     error_counter = 0
 
     all_data = {
+        "expr": [],
         "x_reg": [],
         "y_reg": [],
         "n_reg": [],
@@ -130,12 +131,14 @@ def evaluate_model(pred_output_hook, df, tolerances):
         all_data[f"acc_{tau}"] = []
 
     for i, (
+        expr,
         input_str,
         output_str,
         test_input_str,
         test_output_str,
     ) in enumerate(
         zip(
+            df["expr"],
             df["input"],
             df["output"],
             df["test_input"],
@@ -171,6 +174,7 @@ def evaluate_model(pred_output_hook, df, tolerances):
             error_counter += 1
             continue
 
+        all_data["expr"].append(expr)
         all_data["x_reg"].append(xs)
         all_data["y_reg"].append(ys)
         all_data["n_reg"].append(len(xs))
