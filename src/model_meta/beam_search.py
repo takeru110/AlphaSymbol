@@ -97,34 +97,35 @@ def beam_search(model, data_module, xs, ys, beam_width=3):
     return best_candidate[0]
 
 
-# Load the model and data module
-model_path = "/home/takeru/AlphaSymbol/logs/2025-0114-1041-37/best_model-epoch=213-val_loss=0.08.ckpt"
-data_module_path = (
-    "/home/takeru/AlphaSymbol/logs/2025-0114-1041-37/data_module.pkl"
-)
+if __name__ == "__main__":
+    # Load the model and data module
+    model_path = "/home/takeru/AlphaSymbol/logs/2025-0114-1041-37/best_model-epoch=213-val_loss=0.08.ckpt"
+    data_module_path = (
+        "/home/takeru/AlphaSymbol/logs/2025-0114-1041-37/data_module.pkl"
+    )
 
-model = LitTransformer.load_from_checkpoint(model_path)
+    model = LitTransformer.load_from_checkpoint(model_path)
 
-with open(data_module_path, "rb") as f:
-    data_module = pickle.load(f)
+    with open(data_module_path, "rb") as f:
+        data_module = pickle.load(f)
 
-# Input data
+    # Input data
 
-xs = [(random.randint(0, 9),) for _ in range(20)]
-ys = [3 * i[0] for i in xs]
+    xs = [(random.randint(0, 9),) for _ in range(20)]
+    ys = [3 * i[0] for i in xs]
 
-print(xs)
-print(ys)
+    print(xs)
+    print(ys)
 
-# Perform beam search
-expression = beam_search(
-    model,
-    data_module,
-    xs,
-    ys,
-    beam_width=5,
-)
+    # Perform beam search
+    expression = beam_search(
+        model,
+        data_module,
+        xs,
+        ys,
+        beam_width=5,
+    )
 
-# Evaluate the result
-print(expression)
-print([expression.eval(*x) for x in xs])
+    # Evaluate the result
+    print(expression)
+    print([expression.eval(*x) for x in xs])
