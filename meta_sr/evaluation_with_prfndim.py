@@ -50,7 +50,9 @@ def pred_output(est, xs_reg, ys_reg, xs_test):
     ys_pred = []
     for xs in xs_test:
         dict_vars = {f"x_{i}": x for i, x in enumerate(xs)}
-        ys_pred.append(expr.subs(dict_vars))
+        val = expr.subs(dict_vars)
+        assert val.is_real
+        ys_pred.append(val)
     return ys_pred
 
 
