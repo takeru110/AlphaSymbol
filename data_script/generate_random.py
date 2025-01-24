@@ -10,7 +10,7 @@ import pandas as pd
 
 from prfndim.prfndim import C, Expr, OverflowError, P, R, S, Z
 
-BATCH_SIZE = 20
+BATCH_SIZE = 200
 
 OUTPUT_FILE = None
 data_buffer: list[Expr] = []
@@ -182,6 +182,7 @@ def generate_random(
     new_exprs: list[Expr] = []
     # visited[arity] set of output of Expr with arity
     while len(new_exprs) < sample_num:
+        logging.debug(f"Current number of exprs: {len(new_exprs)}")
         if random.random() < 0.5:
             base_arity: int = random.randint(
                 1, min(max_p_arity, max_c_args - 1)
@@ -203,6 +204,7 @@ def generate_random(
                 )
                 if is_new:
                     new_exprs.append(new_expr_c)
+                    add_data(new_expr_c)
 
             else:
                 outputs, is_new = if_not_visited_then_update_not_const(
@@ -210,6 +212,7 @@ def generate_random(
                 )
                 if is_new:
                     new_exprs.append(new_expr_c)
+                    add_data(new_expr_c)
         else:
             while True:
                 try:
@@ -241,15 +244,15 @@ def generate_random(
                 )
                 if is_updated:
                     new_exprs.append(new_expr_r)
+                    add_data(new_expr_r)
             else:
                 outputs, is_updated = if_not_visited_then_update_not_const(
                     gen_exprs, outputs, new_expr_r, eq_domain
                 )
                 if is_updated:
                     new_exprs.append(new_expr_r)
+                    add_data(new_expr_r)
 
-    for item in new_exprs:
-        add_data(item)
     logging.debug(f"Iter {iter}: {len(new_exprs)} is added")
 
     save_to_csv(data_buffer)
