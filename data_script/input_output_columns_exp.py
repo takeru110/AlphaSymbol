@@ -8,6 +8,7 @@ from typing import Optional
 import numpy as np
 import numpy.typing as npt
 import pandas as pd
+from prfndim_utils import expr_eval_safe
 from tqdm import tqdm
 
 from prfndim.prfndim import C, Expr, OverflowError, P, R, S, Z
@@ -75,7 +76,7 @@ def input_output_columns_exp(
     logging.info("Generating inputs and outputs")
     logging.info(f"Processing {len(df)} rows")
     for expr_str in tqdm(df["expr"], desc="Processing"):
-        expr = eval(expr_str)
+        expr = expr_eval_safe(expr_str)
         input_dim = (
             expr.arity
             if expr.arity is not None

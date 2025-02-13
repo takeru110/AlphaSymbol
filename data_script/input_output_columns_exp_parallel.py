@@ -8,6 +8,7 @@ import numpy as np
 import pandas as pd
 from tqdm import tqdm
 
+from data_script.prfndim_utils import expr_eval_safe
 from prfndim.prfndim import C, Expr, OverflowError, P, R, S, Z
 
 
@@ -67,7 +68,8 @@ def process_row(
     Returns:
         dict: Processed data including inputs, outputs, and number of points.
     """
-    expr = eval(expr_str)
+    np.random.seed()
+    expr = expr_eval_safe(expr_str)
     input_dim = (
         expr.arity
         if expr.arity is not None
