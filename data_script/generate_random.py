@@ -8,6 +8,7 @@ import numpy as np
 import numpy.typing as npt
 import pandas as pd
 
+from data_script.prfndim_utils import expr_eval_safe
 from prfndim.prfndim import C, Expr, OverflowError, P, R, S, Z
 
 BATCH_SIZE = 200
@@ -93,7 +94,7 @@ def init_exprs_from_csv(
     outputs: list[set[bytes]] = [set() for _ in range(max_arity + 1)]
     df = pd.read_csv(init_file)
     for index, row in df.iterrows():
-        expr: Expr = eval(row["expr"])
+        expr: Expr = expr_eval_safe(row["expr"])
         if expr.arity is None:
             try:
                 for input_size in range(1, max_arity + 1):

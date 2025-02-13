@@ -7,6 +7,7 @@ from pathlib import Path
 import numpy as np
 from numpy.typing import NDArray
 
+from data_script.prfndim_utils import expr_eval_safe
 from prfndim.prfndim import C, Expr, OverflowError, P, R, S, Z
 
 logging.basicConfig(
@@ -88,7 +89,7 @@ def unify_output_csv(
         writer.writerow(next(reader))  # copy and pass header
         unique_counter = 0
         for expr_counter, row in enumerate(reader, start=1):
-            expr: Expr = eval(row[0])
+            expr: Expr = expr_eval_safe(row[0])
             try:
                 if expr_is_unseen(expr, seen, max_arity, eq_domain):
                     writer.writerow(row)
