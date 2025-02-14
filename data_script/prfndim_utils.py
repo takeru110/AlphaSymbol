@@ -1,3 +1,4 @@
+import logging
 import math
 
 import numpy as np
@@ -87,3 +88,22 @@ def get_output(expr: Expr, eq_domain: list[npt.NDArray]) -> list[int]:
         except OverflowError:
             ans.append("Overflowed")
     return ans
+
+
+def handle_interrupt(place: str = "anywhere") -> int:
+    logging.info(f"""Evaluation interrupted by user in {place}
+    Evaluation interrupted by user
+    Do you want to do? 
+    [digits]: skip the number of samples
+    [q]: Quit evaluation""")
+    value = input("Press a keyboard: ")
+    if value.isdigit:
+        skip_num = int(value)
+        logging.info(f"Skipping {skip_num} samples...")
+        return skip_num
+    elif value == "q":
+        logging.info("Quitting program...")
+        exit(0)
+    else:
+        logging.info("Invalid input. Automatically skipping...")
+        return 1
