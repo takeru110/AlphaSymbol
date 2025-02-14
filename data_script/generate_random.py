@@ -19,8 +19,6 @@ saved_expr_counter = 0
 
 
 def add_data(new_data: Expr):
-    if OUTPUT_FILE is None:
-        return
     global data_buffer
 
     # データをバッファに追加
@@ -34,8 +32,6 @@ def add_data(new_data: Expr):
 
 def save_to_csv(data):
     global saved_expr_counter
-    if OUTPUT_FILE is None:
-        return
     # データをDataFrameに変換
     df = pd.DataFrame()
     df["expr"] = data
@@ -159,17 +155,16 @@ def generate_random(
     max_c_args,
     max_r_args,
     eq_domain,
-    output_path: Optional[Path],
-    init_csv: Optional[Path],
+    output_path: Path,
+    init_csv: Path,
 ):
-    if output_path is not None:
-        global OUTPUT_FILE
-        if output_path.exists():
-            output_path.unlink()
-        output_path.touch()
-        OUTPUT_FILE = output_path
-        with open(OUTPUT_FILE, "w") as f:
-            f.write("expr\n")
+    global OUTPUT_FILE
+    if output_path.exists():
+        output_path.unlink()
+    output_path.touch()
+    OUTPUT_FILE = output_path
+    with open(OUTPUT_FILE, "w") as f:
+        f.write("expr\n")
 
     # gen_exprs[arity]: list of Expr with arity
     # new exprs is generated combining exprs in gen_exprs
@@ -180,6 +175,7 @@ def generate_random(
     while len(new_exprs) < sample_num:
         logging.debug(f"Current number of exprs: {len(new_exprs)}")
         if random.random() < 0.5:
+            # create new expression with C
             base_arity: int = random.randint(1, min(max_arity, max_c_args - 1))
             arg_arity: int = random.randint(1, max_arity)
             base: Expr = random.choice(gen_exprs[base_arity])
@@ -188,6 +184,8 @@ def generate_random(
                 for _ in range(base_arity)
             )
             new_expr_c = C(base, *args)
+
+            # Check new expression is already visited
             if new_expr_c.arity is None:
                 outputs, is_new = if_not_visited_then_update_const(
                     gen_exprs,
@@ -208,13 +206,17 @@ def generate_random(
                     new_exprs.append(new_expr_c)
                     add_data(new_expr_c)
         else:
+            # Create new expression with R
             while True:
                 try:
+                    # Sample the arities of args of R randomly.
                     term_arity = random.randint(1, (max_r_args - 1) // 2)
                     step_arity = random.randint(
                         term_arity + 1, min(term_arity + 1, max_arity)
                     )
                     base_arity = random.randint(0, step_arity - term_arity - 1)
+
+                    # Sample the args of R randomly based on sampled arity numbers .
                     term: Expr = random.choice(gen_exprs[term_arity])
                     steps: tuple[Expr, ...] = tuple(
                         random.choice(gen_exprs[step_arity])
@@ -226,6 +228,7 @@ def generate_random(
                     )
                     break
                 except ValueError:
+                    # If the intersection of random choice is empty, retry.
                     continue
             new_expr_r = R(term, *steps, *bases)
             if new_expr_r.arity is None:
@@ -264,7 +267,7 @@ if __name__ == "__main__":
     parser.add_argument("-r", "--max_r_args", type=int)
     parser.add_argument("--sample_num", type=int, default=10)
     parser.add_argument("--sample_max", type=int, default=10)
-    parser.add_argument("-o", "--output", default=None, type=str)
+    parser.add_argument("-o", "--output", type=str)
     parser.add_argument("--log_level", type=str, default="INFO")
     parser.add_argument("--init_csv", type=str)
 
