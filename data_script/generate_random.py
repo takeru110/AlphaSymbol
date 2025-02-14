@@ -155,7 +155,7 @@ def if_not_visited_then_update_not_const(
 
 def generate_random(
     sample_num,
-    max_p_arity,
+    max_arity,
     max_c_args,
     max_r_args,
     eq_domain,
@@ -174,21 +174,14 @@ def generate_random(
     # gen_exprs[arity]: list of Expr with arity
     # new exprs is generated combining exprs in gen_exprs
 
-    if init_csv is None:
-        gen_exprs, outputs = init_exprs(max_p_arity, eq_domain)
-    else:
-        gen_exprs, outputs = init_exprs_from_csv(
-            init_csv, max_p_arity, eq_domain
-        )
+    gen_exprs, outputs = init_exprs_from_csv(init_csv, max_arity, eq_domain)
     new_exprs: list[Expr] = []
     # visited[arity] set of output of Expr with arity
     while len(new_exprs) < sample_num:
         logging.debug(f"Current number of exprs: {len(new_exprs)}")
         if random.random() < 0.5:
-            base_arity: int = random.randint(
-                1, min(max_p_arity, max_c_args - 1)
-            )
-            arg_arity: int = random.randint(1, max_p_arity)
+            base_arity: int = random.randint(1, min(max_arity, max_c_args - 1))
+            arg_arity: int = random.randint(1, max_arity)
             base: Expr = random.choice(gen_exprs[base_arity])
             args = tuple(
                 random.choice(gen_exprs[arg_arity] + gen_exprs[0])
@@ -200,7 +193,7 @@ def generate_random(
                     gen_exprs,
                     outputs,
                     new_expr_c,
-                    max_p_arity,
+                    max_arity,
                     eq_domain,
                 )
                 if is_new:
@@ -219,7 +212,7 @@ def generate_random(
                 try:
                     term_arity = random.randint(1, (max_r_args - 1) // 2)
                     step_arity = random.randint(
-                        term_arity + 1, min(term_arity + 1, max_p_arity)
+                        term_arity + 1, min(term_arity + 1, max_arity)
                     )
                     base_arity = random.randint(0, step_arity - term_arity - 1)
                     term: Expr = random.choice(gen_exprs[term_arity])
@@ -240,7 +233,7 @@ def generate_random(
                     gen_exprs,
                     outputs,
                     new_expr_r,
-                    max_p_arity,
+                    max_arity,
                     eq_domain,
                 )
                 if is_updated:
@@ -266,14 +259,14 @@ if __name__ == "__main__":
     )
 
     parser.add_argument("--sample", type=int)
-    parser.add_argument("-p", "--max_p_arity", type=int)
+    parser.add_argument("-a", "--max_arity", type=int)
     parser.add_argument("-c", "--max_c_args", type=int)
     parser.add_argument("-r", "--max_r_args", type=int)
     parser.add_argument("--sample_num", type=int, default=10)
     parser.add_argument("--sample_max", type=int, default=10)
     parser.add_argument("-o", "--output", default=None, type=str)
     parser.add_argument("--log_level", type=str, default="INFO")
-    parser.add_argument("--init_csv", type=str, default=None)
+    parser.add_argument("--init_csv", type=str)
 
     args = parser.parse_args()
 
@@ -290,11 +283,11 @@ if __name__ == "__main__":
     eq_domain[1] = np.array(range(10)).reshape(10, 1)
 
     output_path = None if args.output is None else Path(args.output)
-    init_csv_path = None if args.init_csv is None else Path(args.init_csv)
+    init_csv_path = Path(args.init_csv)
 
     exprs = generate_random(
         args.sample,
-        args.max_p_arity,
+        args.max_arity,
         args.max_c_args,
         args.max_r_args,
         eq_domain,
