@@ -9,6 +9,7 @@ import numpy as np
 import numpy.typing as npt
 import pandas as pd
 
+from data_script.prfndim_utils import handle_interrupt
 from prfndim.prfndim import C, Expr, OverflowError, P, R, S, Z, expr_list_to_str
 
 BATCH_SIZE = 100
@@ -127,19 +128,28 @@ def gen_exprs_by_arity(exprs):
     return ret_li
 
 
-def c_pattern(depth, exprs_by_arity, max_arity, max_c):
-    c_exprs = [[] for _ in range(max_arity + 1)]
+def c_pattern(
+    depth, exprs_by_arity, max_arity, max_c, const_mode: Optional[bool]
+):
     max_base_arity = min(max_arity, max_c - 1)
     outer_arities = tuple(range(1, max_base_arity + 1))
     inner_arities = tuple(range(max_arity + 1))
-    args_arities_list = tuple(
-        (outer_arity, *inner_airty_and_zero)
-        for outer_arity in outer_arities
-        for inner_arity in inner_arities
-        for inner_airty_and_zero in product(
-            (0, inner_arity), repeat=outer_arity
+
+    if const_mode:
+        args_arities_list = tuple(
+            (outer_arity,) + (0,) * outer_arity for outer_arity in outer_arities
         )
-    )
+    else:
+        args_arities_list = tuple(
+            (outer_arity, *inner_airty_and_zero)
+            for outer_arity in outer_arities
+            for inner_arity in inner_arities
+            for inner_airty_and_zero in product(
+                (0, inner_arity), repeat=outer_arity
+            )
+            if any(inner_arity != 0 for inner_arity in inner_airty_and_zero)
+        )
+
     for args in args_arities_list:
         # args is like (5, 2, 2, 0, 2, 2)
         new_args_list = list(product(*((exprs_by_arity[arg]) for arg in args)))
@@ -148,10 +158,17 @@ def c_pattern(depth, exprs_by_arity, max_arity, max_c):
             for tup in new_args_list
             if any(expr.depth == depth - 1 for expr in tup)
         ]
+        skip_samples = 0
         for new_args in new_args_list_filterd_depth:
-            new_arity = max(args[1:])
-            c_exprs[new_arity].extend([C(*new_args)])
-    return c_exprs
+            if skip_samples != 0:
+                logging.debug(f"Remaining {skip_samples} skipping")
+                skip_samples -= 1
+                continue
+            try:
+                new_expr = C(*new_args)
+                yield new_expr
+            except KeyboardInterrupt:
+                skip_samples = handle_interrupt("C pattern generator")
 
 
 def get_r_arity(args: tuple):
@@ -193,7 +210,12 @@ def r_pattern(depth, exprs_by_arity, max_arity, max_r):
             if any(expr.depth == depth - 1 for expr in tup)
         ]
         arity = get_r_arity(args)
-        r_exprs[arity].extend([R(*args) for args in expr_list_filterd_depth])
+        try:
+            r_exprs[arity].extend(
+                [R(*args) for args in expr_list_filterd_depth]
+            )
+        except KeyboardInterrupt:
+            handle_interrupt("R pattern generator")
     return r_exprs
 
 
@@ -268,18 +290,43 @@ def _generate_prfndim_by_depth(
     exprs_by_arity = gen_exprs_by_arity(exprs)
     exprs.append([[] for _ in range(max_arity + 1)])
 
-    c_exprs = c_pattern(depth, exprs_by_arity, max_arity, max_c)
+    c_exprs_const = c_pattern(
+        depth, exprs_by_arity, max_arity, max_c, const_mode=True
+    )
 
-    for expr in c_exprs[0]:
-        exprs[depth], visited, _ = if_not_visited_then_update_const(
-            exprs[depth], visited, expr, max_arity, eq_domain
-        )
+    skip_counter = 0
+    for expr in c_exprs_const:
+        if skip_counter != 0:
+            logging.debug(f"""
+Skipped {expr}.
+Remaining {skip_counter} expressions to skip.""")
+            skip_counter -= 1
+            continue
+        try:
+            exprs[depth], visited, _ = if_not_visited_then_update_const(
+                exprs[depth], visited, expr, max_arity, eq_domain
+            )
+        except KeyboardInterrupt:
+            skip_counter = handle_interrupt("Searching C of const")
 
-    for _exprs in c_exprs[1:]:
-        for expr in _exprs:
+    c_exprs_not_const = c_pattern(
+        depth, exprs_by_arity, max_arity, max_c, const_mode=False
+    )
+
+    skip_counter = 0
+    for expr in c_exprs_not_const:
+        if skip_counter != 0:
+            logging.debug(f"""
+Skipped {expr}.
+Remaining {skip_counter} expressions to skip.""")
+            skip_counter -= 1
+            continue
+        try:
             exprs[depth], visited, _ = if_not_visited_then_update_not_const(
                 exprs[depth], visited, expr, eq_domain
             )
+        except KeyboardInterrupt:
+            skip_counter = handle_interrupt("Searching C of non-const")
 
     r_exprs = r_pattern(depth, exprs_by_arity, max_arity, max_r)
 
