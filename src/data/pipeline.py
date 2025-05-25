@@ -6,8 +6,8 @@ from generate_by_depth import generate_by_depth
 from generate_random import generate_random
 from unify_output_csv import unify_output_csv
 
-from data_script.input_output_columns import input_output_columns
-from data_script.status_columns import status_columns
+from src.data.input_output_columns import input_output_columns
+from src.data.status_columns import status_columns
 
 max_value = 10
 sample_num = 10

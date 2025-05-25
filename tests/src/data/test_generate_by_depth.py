@@ -2,7 +2,7 @@ import logging
 
 import numpy as np
 
-from data_script.generate_by_depth import (
+from src.data.generate_by_depth import (
     _generate_prfndim_by_depth,
     c_pattern,
     get_r_arity,
@@ -26,8 +26,12 @@ def test_c_pattern_base_arity_1():
         [P(3, 1), P(3, 2), P(3, 3)],
     ]
 
-    c_exprs = c_pattern(2, exprs_by_arity, max_arity, max_c)
-    assert len(c_exprs) > 0
+    gen = c_pattern(2, exprs_by_arity, max_arity, max_c, const_mode=False)
+    try:
+        first_expr = next(gen)
+        assert first_expr is not None, "First expression should not be None"
+    except StopIteration:
+        assert False, "Generator did not yield any elements"
 
 
 def test_c_pattern_arity_2():
@@ -40,8 +44,12 @@ def test_c_pattern_arity_2():
         [P(3, 1), P(3, 2), P(3, 3)],
     ]
 
-    c_exprs = c_pattern(2, exprs_by_arity, max_arity, max_c)
-    assert len(c_exprs) > 0
+    c_exprs = c_pattern(2, exprs_by_arity, max_arity, max_c, const_mode=False)
+    try:
+        first_expr = next(c_exprs)
+        assert first_expr is not None, "First expression should not be None"
+    except StopIteration:
+        assert False, "Generator did not yield any elements"
 
 
 def test_r_pattern_r_3():

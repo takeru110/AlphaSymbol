@@ -9,7 +9,7 @@ import numpy as np
 import numpy.typing as npt
 import pandas as pd
 
-from data_script.prfndim_utils import handle_interrupt
+from src.data.prfndim_utils import handle_interrupt
 from prfndim.prfndim import C, Expr, OverflowError, P, R, S, Z, expr_list_to_str
 
 BATCH_SIZE = 100
@@ -131,6 +131,13 @@ def gen_exprs_by_arity(exprs):
 def c_pattern(
     depth, exprs_by_arity, max_arity, max_c, const_mode: Optional[bool]
 ):
+    """C(inner, outer1,..., )という形の式を生成する
+    - depth: 生成される式の最大深さ
+    - exprs_by_arity: list[list[Expr]]: exprs_by_arity[i]は式arity=1のExprリスト
+    - max_arity: 生成される式の最大arity
+    - max_c: C(a_1, a_3, ...,a_n)の最大値n
+    - const_mode: 返すC(...)式は定数か定数でないか
+    """
     max_base_arity = min(max_arity, max_c - 1)
     outer_arities = tuple(range(1, max_base_arity + 1))
     inner_arities = tuple(range(max_arity + 1))

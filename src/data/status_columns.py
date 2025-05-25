@@ -1,3 +1,5 @@
+"""add some columns of status to csv file which have expr column"""
+
 import argparse
 import logging
 import math
@@ -8,7 +10,7 @@ import numpy as np
 import numpy.typing as npt
 import pandas as pd
 
-from data_script.prfndim_utils import (
+from src.data.prfndim_utils import (
     expr_eval_safe,
     generate_eq_domain,
     get_input,
@@ -17,10 +19,22 @@ from data_script.prfndim_utils import (
 from prfndim.prfndim import C, Expr, OverflowError, P, R, S, Z
 
 
-def input_output_columns(df: pd.DataFrame, eq_domain) -> pd.DataFrame:
-    df["input"] = df["expr"].apply(
-        lambda x: get_input(expr_eval_safe(x).arity, eq_domain)
+def status_columns(df: pd.DataFrame) -> pd.DataFrame:
+    """Add status len, arity, and depth columns to df"""
+    df["expr_Expr"] = df["expr"].apply(lambda x: expr_eval_safe(x))
+    df["arity"] = df["expr_Expr"].apply(
+        lambda x: 0 if x.arity is None else x.arity
     )
+    df["len"] = df["expr"].apply(len)
+    df["depth"] = df["expr_Expr"].apply(lambda x: x.depth)
+
+    df = df.drop(columns=["expr_Expr"])
+    return df
+
+
+def input_output_columns(df: pd.DataFrame, eq_domain) -> pd.DataFrame:
+    df.fillna(0)
+    df["input"] = df["arity"].apply(lambda x: get_input(x, eq_domain))
     df["output"] = df["expr"].apply(
         lambda x: get_output(expr_eval_safe(x), eq_domain)
     )
@@ -39,5 +53,5 @@ if __name__ == "__main__":
 
     df = pd.read_csv(path)
     eq_domain = generate_eq_domain(sample_max=10, sample_num=10, max_arity=5)
-    df_in_out = input_output_columns(df, eq_domain)
-    df_in_out.to_csv(output_path, index=False)
+    df_status = status_columns(df)
+    df_status.to_csv(output_path, index=False)

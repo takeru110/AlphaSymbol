@@ -8,7 +8,7 @@ import pandas as pd
 import torch
 from tqdm import tqdm
 
-from data_script.input_output_columns_exp import generate_exp_input
+from src.data.input_output_columns_exp import generate_exp_input
 from prfndim.prfndim import C, Expr, P, R, S, Z
 from src.model_meta.beam_search import beam_search
 from src.model_meta.data import PREDataModule

@@ -4,7 +4,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from data_script.prfndim_utils import expr_eval_safe
+from src.data.prfndim_utils import expr_eval_safe
 from prfndim.prfndim import C, P, R, S, Z
 
 if __name__ == "__main__":

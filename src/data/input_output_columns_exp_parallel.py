@@ -8,7 +8,7 @@ import numpy as np
 import pandas as pd
 from tqdm import tqdm
 
-from data_script.prfndim_utils import expr_eval_safe
+from src.data.prfndim_utils import expr_eval_safe
 from prfndim.prfndim import C, Expr, OverflowError, P, R, S, Z
 
 
