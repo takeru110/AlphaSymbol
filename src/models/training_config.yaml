@@ -1,7 +1,8 @@
 hydra:
   run:
     dir: "./logs/${now:%Y-%m%d-%H%M-%S}/"
-csv_path: /home/takeru/AlphaSymbol/data/prfndim/d3-a5-c3-r5.csv
+csv_path: /Users/takeruito/work/AlphaSymbol/data/prfndim/d3-a5-c3-r5.csv
+accelerator: mps # gpu for Linux, mps for Mac
 max_epochs: 2
 learning_rate: "8*10**(-5)"
 batch_size: 32
