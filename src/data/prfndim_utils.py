@@ -48,7 +48,7 @@ def get_input(arity: Optional[int], eq_domain: list[npt.NDArray]) -> list[tuple[
     Generate input tuples for a given function arity from the provided domain.
 
     This function retrieves a set of input tuples corresponding to the given
-    function arity from the `eq_domain`. If the provided `arity` is NaN or None,
+    function arity from the `eq_domain`. If the provided `arity` is None,
     it defaults to 0.
 
     Args:
