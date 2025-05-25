@@ -36,11 +36,11 @@ def get_tgt_str(inputs: list[tuple[int]], outputs: list[int]) -> str:
 def get_tgt(row: pd.Series) -> str:
     """
     Usage:
-        row = {"inputs": "[(1, 10), (2, 20), (3, 30)]", "outputs": "[4, 5, 6]"}
+        row = {"input": "[(1, 10), (2, 20), (3, 30)]", "output": "[4, 5, 6]"}
         get_tgt(row) # [1,10]:4,[2,20]:5,[3,30]:6
     """
-    inputs = eval(row["inputs"])
-    outputs = eval(row["outputs"])
+    inputs = eval(row["input"])
+    outputs = eval(row["output"])
     return get_tgt_str(inputs, outputs)
 
 
@@ -54,7 +54,7 @@ class TransformerDataset(Dataset):
     def __init__(self, df: pd.DataFrame):
         """
         Args
-        df: Should have columns "expr", "inputs" and "outputs".
+        df: Should have columns "expr", "input" and "output".
         """
         self.df = df
         self.df["tgt_str"] = df["expr"].apply(lambda x: x.replace(" ", ""))

@@ -1,4 +1,5 @@
 import logging
+from typing import Optional
 import math
 
 import numpy as np
@@ -42,12 +43,12 @@ def generate_eq_domain(sample_max, sample_num, max_arity) -> list[npt.NDArray]:
     return eq_domain
 
 
-def get_input(arity: int, eq_domain: list[npt.NDArray]) -> list[tuple[int]]:
+def get_input(arity: Optional[int], eq_domain: list[npt.NDArray]) -> list[tuple[int]]:
     """
     Generate input tuples for a given function arity from the provided domain.
 
     This function retrieves a set of input tuples corresponding to the given
-    function arity from the `eq_domain`. If the provided `arity` is NaN,
+    function arity from the `eq_domain`. If the provided `arity` is NaN or None,
     it defaults to 0.
 
     Args:
@@ -63,7 +64,7 @@ def get_input(arity: int, eq_domain: list[npt.NDArray]) -> list[tuple[int]]:
         >>> get_input(1, eq_domain)
         [(3, 4), (5, 6)]
     """
-    if math.isnan(arity):
+    if arity is None:
         arity = 0
     ans = [tuple(int(x) for x in input) for input in eq_domain[int(arity)]]
     return ans
