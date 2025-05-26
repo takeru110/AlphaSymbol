@@ -151,7 +151,7 @@ def main(cfg: DictConfig):
     trainer = L.Trainer(
         default_root_dir=log_dir,
         max_epochs=cfg.max_epochs,
-        accelerator="gpu",
+        accelerator=cfg.accelerator,
         devices=1,
     )
     trainer.fit(lightning_module, train_loader, val_loader)

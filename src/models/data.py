@@ -54,7 +54,7 @@ class TransformerDataset(Dataset):
     def __init__(self, df: pd.DataFrame):
         """
         Args
-        df: Should have columns "expr", "input" and "output.
+        df: Should have columns "expr", "input" and "output".
         """
         self.df = df
         self.df["tgt_str"] = df["expr"].apply(lambda x: x.replace(" ", ""))

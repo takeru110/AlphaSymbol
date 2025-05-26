@@ -12,7 +12,7 @@ import torch
 from IPython.display import display
 from sympy.parsing.sympy_parser import parse_expr
 
-from experiment.evaluation import evaluate_model
+from visualization.evaluation import evaluate_model
 
 logging.basicConfig(level=logging.INFO)
 

@@ -7,6 +7,9 @@
         },
         "editor.defaultFormatter": "charliermarsh.ruff"
     },
+    "terminal.integrated.env.osx": {
+        "PATH": "${workspaceRoot}:${env:PATH}"
+    },
     "python.testing.pytestArgs": [
         "--log-cli-level=DEBUG",
         "-s",
