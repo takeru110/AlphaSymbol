@@ -1,0 +1,19 @@
+{
+    "[python]": {
+        "editor.formatOnSave": true,
+        "editor.codeActionsOnSave": {
+            "source.fixAll": "explicit",
+            "source.organizeImports": "explicit"
+        },
+        "editor.defaultFormatter": "charliermarsh.ruff"
+    },
+    "terminal.integrated.env.osx": {
+        "PATH": "${workspaceRoot}:${env:PATH}"
+    },
+    "python.testing.pytestArgs": [
+        "--log-cli-level=DEBUG",
+        "-s",
+    ],
+    "python.testing.unittestEnabled": false,
+    "python.testing.pytestEnabled": true
+}
