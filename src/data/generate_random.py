@@ -16,7 +16,7 @@ from src.data.prfndim_utils import expr_eval_safe
 BATCH_SIZE = 200
 
 class InputExprs:
-    def __init__(self, input_file: Path, max_arity: int, max_exprs_in_memory: int = 10000, pop_counter_threshold: int = 100):
+    def __init__(self, input_file: Path, max_arity: int, max_exprs_in_memory: int = 100000, pop_counter_threshold: int = 1000):
         self.input_file = input_file
         self.max_arity = max_arity
         self.max_exprs_in_memory = max_exprs_in_memory
@@ -53,6 +53,12 @@ class InputExprs:
 
     def _load_random_exprs(self):
         """Load random expressions from input file into memory."""
+        # Skip reloading if we already have expressions for each arity
+        if self.total_lines <= self.max_exprs_in_memory:
+            # Check if we have at least one expression exprs_by_arity have been already set.
+            if all(len(exprs) > 0 for exprs in self.exprs_by_arity):
+                return
+        
         # Clear existing expressions
         for arity in range(self.max_arity + 1):
             self.exprs_by_arity[arity] = []
