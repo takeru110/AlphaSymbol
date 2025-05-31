@@ -86,17 +86,28 @@ def unify_output_csv(
     ):
         reader = csv.reader(infile)
         writer = csv.writer(outfile)
-        writer.writerow(next(reader))  # copy and pass header
+        
+        # Read header and get expr column index
+        header = next(reader)
+        try:
+            expr_column_index = header.index('expr')
+        except ValueError:
+            raise ValueError("CSV file must contain a column named 'expr'")
+        
+        writer.writerow(header)  # copy and pass header
         unique_counter = 0
         for expr_counter, row in enumerate(reader, start=1):
-            expr: Expr = expr_eval_safe(row[0])
+            if len(row) <= expr_column_index:
+                continue
+                
             try:
+                expr: Expr = expr_eval_safe(row[expr_column_index])
                 if expr_is_unseen(expr, seen, max_arity, eq_domain):
                     writer.writerow(row)
                     update_seen(expr, seen, max_arity, eq_domain)
                     unique_counter += 1
-            except OverflowError:
-                pass
+            except (IndexError, OverflowError):
+                continue
             if unique_counter % buffer_size == 0:
                 seen = init_seen(max_arity)
             if expr_counter % 10000 == 0:
