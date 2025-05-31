@@ -8,8 +8,8 @@ import numpy as np
 import numpy.typing as npt
 import pandas as pd
 
-from src.data.prfndim_utils import expr_eval_safe
 from prfndim.prfndim import C, Expr, OverflowError, P, R, S, Z
+from src.data.prfndim_utils import expr_eval_safe
 
 BATCH_SIZE = 200
 
@@ -261,15 +261,15 @@ if __name__ == "__main__":
         description="Generate expressions randomly"
     )
 
-    parser.add_argument("--sample", type=int)
-    parser.add_argument("-a", "--max_arity", type=int)
-    parser.add_argument("-c", "--max_c_args", type=int)
-    parser.add_argument("-r", "--max_r_args", type=int)
+    parser.add_argument("-s", "--sample", type=int, required=True)
+    parser.add_argument("-a", "--max_arity", type=int, required=True)
+    parser.add_argument("-c", "--max_c_args", type=int, required=True)
+    parser.add_argument("-r", "--max_r_args", type=int, required=True)
     parser.add_argument("--sample_num", type=int, default=10)
     parser.add_argument("--sample_max", type=int, default=10)
-    parser.add_argument("-o", "--output", type=str)
+    parser.add_argument("-o", "--output", type=str, default="output.csv")
     parser.add_argument("--log_level", type=str, default="INFO")
-    parser.add_argument("--init_csv", type=str)
+    parser.add_argument("--init_csv", type=str, required=True)
 
     args = parser.parse_args()
 
