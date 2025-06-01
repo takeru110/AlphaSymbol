@@ -77,8 +77,8 @@ def process_row(
     )
 
     # Sample n from U[n_min, n_max]
-    n_min = 5 * input_dim
-    n_max = 20 * input_dim
+    n_min = 2 * 2 ** input_dim
+    n_max = 5 * 2 ** input_dim
     if n_points is None:
         n_points_sample = generate_uniform_integer(n_min, n_max)
     else:

@@ -51,18 +51,18 @@ def tokenize(string: str, vocab: dict[str, int]) -> list[int]:
 
 
 class TransformerDataset(Dataset):
-    def __init__(self, df: pd.DataFrame):
+    def __init__(self, csv_path):
         """
         Args
         df: Should have columns "expr", "input" and "output".
         """
-        self.df = df
-        self.df["tgt_str"] = df["expr"].apply(lambda x: x.replace(" ", ""))
-        self.df["src_str"] = df.apply(get_tgt, axis=1)
-        self.src_vocab = build_vocab(df["src_str"])
-        self.tgt_vocab = build_vocab(df["tgt_str"])
-        self.src_max_len = int(df["src_str"].apply(len).max() + 2)
-        self.tgt_max_len = int(df["tgt_str"].apply(len).max() + 2)
+        self.df = pd.read_csv(csv_path)
+        self.df["tgt_str"] = self.df["expr"].apply(lambda x: x.replace(" ", ""))
+        self.df["src_str"] = self.df.apply(get_tgt, axis=1)
+        self.src_vocab = build_vocab(self.df["src_str"])
+        self.tgt_vocab = build_vocab(self.df["tgt_str"])
+        self.src_max_len = int(self.df["src_str"].apply(len).max() + 2)
+        self.tgt_max_len = int(self.df["tgt_str"].apply(len).max() + 2)
         self.config = {
             "src_vocab": self.src_vocab,
             "tgt_vocab": self.tgt_vocab,
