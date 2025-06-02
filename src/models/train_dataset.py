@@ -61,14 +61,12 @@ def collate_fn(batch):
     tgt_list = []
 
     for item in batch:
-        # Convert numpy arrays to tensors and flatten src if needed
+        # Convert numpy arrays to tensors
         src = torch.tensor(item["src"], dtype=torch.long)
         tgt = torch.tensor(item["tgt"], dtype=torch.long)
 
-        # Flatten src array: (d+1, max_src_points) -> (flattened_size,)
-        src_flattened = src.flatten()
-
-        src_list.append(src_flattened)
+        # srcは既にトークン化済みなので、そのまま使用
+        src_list.append(src)
         tgt_list.append(tgt)
 
     # Find maximum lengths for padding

@@ -45,6 +45,10 @@ class CustomTokenizer:
 
         self.padding_token = padding_token
         self.padding_id = self.vocab.get(padding_token, self.vocab["[PAD]"])
+        
+        # デバッグ情報
+        print(f"Tokenizer initialized with {len(self.vocab)} total tokens")
+        print(f"Max token ID: {max(self.vocab.values())}")
 
     def encode(
         self,
@@ -80,7 +84,12 @@ class CustomTokenizer:
             token_ids.append(self.vocab["[BOS]"])
 
         for token in merged_tokens:
-            token_ids.append(self.vocab.get(token, self.vocab["[UNK]"]))
+            token_id = self.vocab.get(token, self.vocab["[UNK]"])
+            # デバッグ: 範囲外チェック
+            if token_id >= len(self.vocab):
+                logging.warning(f"Token ID {token_id} for token '{token}' exceeds vocab size {len(self.vocab)}")
+                token_id = self.vocab["[UNK]"]
+            token_ids.append(token_id)
 
         if add_special_tokens:
             token_ids.append(self.vocab["[EOS]"])
@@ -92,6 +101,10 @@ class CustomTokenizer:
             elif padding == "max_length":
                 while len(token_ids) < max_length:
                     token_ids.append(self.padding_id)
+
+        # 最終チェック: すべてのトークンIDが範囲内にあることを確認
+        max_valid_id = len(self.vocab) - 1
+        token_ids = [min(tid, max_valid_id) for tid in token_ids]
 
         return token_ids
 
@@ -355,7 +368,7 @@ class PRFDataset(Dataset):
         output_data: nのリスト（n個の出力値）
 
         Returns:
-            (d+1)×max_src_pointsのnp.array of type int（パディング済み）
+            tokenizeされたsrcのarray
         """
         # input_dataをnumpy arrayに変換
         if len(input_data) == 0:
@@ -376,19 +389,20 @@ class PRFDataset(Dataset):
         # inputとoutputを結合して(d+1)×nの配列を作成
         src_array = np.vstack([input_array, output_array]).astype(int)
 
-        # パディングまたはトランケート
-        current_points = src_array.shape[1]
-        if current_points > self.max_src_points:
-            # 点数が多すぎる場合はトランケート
-            src_array = src_array[:, : self.max_src_points]
-        elif current_points < self.max_src_points:
-            # 点数が少ない場合はパディング（0で埋める）
-            padding_width = ((0, 0), (0, self.max_src_points - current_points))
-            src_array = np.pad(
-                src_array, padding_width, mode="constant", constant_values=0
-            )
+        # 数値配列を文字列に変換してからトークン化
+        src_str = str(src_array.tolist())
+        
+        # srcトークナイザーでエンコード
+        src_tokens = self.src_tokenizer.encode(
+            src_str,
+            add_special_tokens=True,
+            padding="max_length",
+            max_length=self.max_src_points,
+            truncation=True,
+            return_tensors=None,
+        )
 
-        return src_array
+        return np.array(src_tokens, dtype=int)
 
     def _create_tgt_array(self, expr: str) -> np.ndarray:
         """

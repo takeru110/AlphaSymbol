@@ -1,11 +1,15 @@
 hydra:
   run:
     dir: "./logs/${now:%Y-%m%d-%H%M-%S}/"
-csv_path: /Users/takeruito/work/PrfSR/data/training/d5-a2-c3-r3.csv
-accelerator: mps # gpu for Linux, mps for Mac
-max_epochs: 2
+#csv_path: /home/takeruito/work/PrfSR/data/training/d5-a2-c3-r3.csv
+#metadata_path: /home/takeruito/work/PrfSR/data/training/d5-a2-c3-r3_metadata.yaml
+csv_path: /home/takeruito/work/PrfSR/data/training/superfib_r1.csv
+metadata_path: /home/takeruito/work/PrfSR/data/training/superfib_r1_metadata.yaml
+accelerator: gpu # gpu for Linux, mps for Mac
+max_epochs: 100
 learning_rate: "8*10**(-5)"
-batch_size: 32
+batch_size: 16
+num_workers: 14
 transformer:
   d_model: 512
   nhead: 8

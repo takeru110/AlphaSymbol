@@ -155,14 +155,12 @@ def collate_fn(batch):
     tgt_list = []
 
     for item in batch:
-        # Convert numpy arrays to tensors and flatten src if needed
+        # Convert numpy arrays to tensors
         src = torch.tensor(item["src"], dtype=torch.long)
         tgt = torch.tensor(item["tgt"], dtype=torch.long)
 
-        # Flatten src array: (d+1, max_src_points) -> (flattened_size,)
-        src_flattened = src.flatten()
-
-        src_list.append(src_flattened)
+        # srcは既にトークン化済みなので、そのまま使用
+        src_list.append(src)
         tgt_list.append(tgt)
 
     # Stack tensors to create batch
@@ -212,8 +210,16 @@ def main(cfg: DictConfig):
         config["max_src_points"] * 2
     )  # Assuming (d+1) where d=1
 
+    # デバッグ情報を追加
+    print(f"Config info:")
+    print(f"  - src_vocab_size: {config['src_vocab_size']}")
+    print(f"  - tgt_vocab_size: {config['tgt_vocab_size']}")
+    print(f"  - flattened_input_size: {flattened_input_size}")
+    print(f"  - max_src_points: {config['max_src_points']}")
+    print(f"  - max_tgt_length: {config['max_tgt_length']}")
+
     lightning_module = LitTransformer(
-        src_vocab_size=flattened_input_size,
+        src_vocab_size=config["src_vocab_size"],  # 正しい語彙サイズを使用
         tgt_vocab_size=config["tgt_vocab_size"],
         src_max_len=config["src_max_len"],
         tgt_max_len=config["tgt_max_len"],
