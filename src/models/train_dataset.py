@@ -1,4 +1,7 @@
+import argparse
 import logging
+import os
+import sys
 from datetime import datetime
 from pathlib import Path
 from typing import Iterable, Optional
@@ -15,6 +18,35 @@ from torch.utils.data import DataLoader, Dataset
 
 from src.models.dataset import PRFDataset
 from src.models.train import LitTransformer
+
+
+def setup_logging(level=None):
+    """ログレベルを設定する関数"""
+    if level is None:
+        # 1. コマンドライン引数をチェック
+        if "--log-level" in sys.argv:
+            idx = sys.argv.index("--log-level")
+            if idx + 1 < len(sys.argv):
+                level = sys.argv[idx + 1].upper()
+        # 2. 環境変数をチェック
+        elif "LOG_LEVEL" in os.environ:
+            level = os.environ["LOG_LEVEL"].upper()
+        # 3. デフォルト値
+        else:
+            level = "INFO"
+
+    numeric_level = getattr(logging, level.upper(), logging.INFO)
+    logging.basicConfig(
+        level=numeric_level,
+        format="%(asctime)s - %(name)s - %(levelname)s - %(filename)s:%(lineno)d - %(message)s",
+        force=True,  # 既存の設定を上書き
+    )
+
+    return level
+
+
+# 早期にログレベルを設定
+current_log_level = setup_logging()
 
 
 def collate_fn(batch):
@@ -93,6 +125,7 @@ def collate_fn(batch):
 
 def train(
     csv_path: str,
+    metadata_path: str,
     batch_size: int = 32,
     max_epochs: int = 10,
     learning_rate: float = 3e-4,
@@ -104,12 +137,14 @@ def train(
     dropout: float = 0.1,
     accelerator: str = "auto",
     log_dir: str = None,
+    num_workers: int = 4,  # 新しいパラメータを追加
 ):
     """
     Train the transformer model using PRFDataset with separate src and tgt tokenizers.
 
     Args:
         csv_path: Path to the CSV file containing training data
+        metadata_path: Path to the metadata.yaml file
         batch_size: Batch size for training
         max_epochs: Maximum number of training epochs
         learning_rate: Learning rate for optimizer
@@ -133,8 +168,22 @@ def train(
 
     log_dir.mkdir(parents=True, exist_ok=True)
 
-    logging.info("Start Loading csv")
-    dataset = PRFDataset(csv_path)
+    logging.info("Start Loading metadata and csv")
+
+    # Load metadata.yaml first
+    with open(metadata_path, "r", encoding="utf-8") as f:
+        metadata = yaml.safe_load(f)
+
+    logging.info(f"Loaded metadata: {metadata}")
+
+    # Create PRFDataset with the new signature
+    dataset = PRFDataset(
+        csv_path=csv_path,
+        max_tgt_length=metadata["max_tgt_length"],
+        max_src_points=metadata["max_src_points"],
+        src_vocab_list=metadata["src_vocab_list"],
+        tgt_vocab_list=metadata["tgt_vocab_list"],
+    )
     logging.info("Finished Loading csv")
 
     # Get dataset configuration with separate tokenizers
@@ -153,13 +202,23 @@ def train(
 
     # Use custom collate function to convert data format
     train_loader = DataLoader(
-        train_dataset, batch_size=batch_size, collate_fn=collate_fn
+        train_dataset,
+        batch_size=batch_size,
+        collate_fn=collate_fn,
+        num_workers=num_workers,
+        shuffle=True,
     )
     val_loader = DataLoader(
-        val_dataset, batch_size=batch_size, collate_fn=collate_fn
+        val_dataset,
+        batch_size=batch_size,
+        collate_fn=collate_fn,
+        num_workers=num_workers,
     )
     test_loader = DataLoader(
-        test_dataset, batch_size=batch_size, collate_fn=collate_fn
+        test_dataset,
+        batch_size=batch_size,
+        collate_fn=collate_fn,
+        num_workers=num_workers,
     )
 
     # Create vocab dictionaries from the custom tokenizers
@@ -232,6 +291,7 @@ def main(cfg: DictConfig):
     # Call the train function with parameters from config
     model, trainer, dataset = train(
         csv_path=cfg.csv_path,
+        metadata_path=cfg.metadata_path,
         batch_size=cfg.batch_size,
         max_epochs=cfg.max_epochs,
         learning_rate=eval(cfg.learning_rate),
@@ -243,6 +303,9 @@ def main(cfg: DictConfig):
         dropout=cfg.transformer.dropout,
         accelerator=cfg.accelerator,
         log_dir=str(log_dir),
+        num_workers=cfg.get(
+            "num_workers", 4
+        ),  # 設定ファイルからnum_workersを取得、デフォルトは4
     )
 
     logging.info("Training completed successfully!")

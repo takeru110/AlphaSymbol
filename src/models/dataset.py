@@ -1,3 +1,4 @@
+import logging
 import os
 import re
 import shutil
@@ -7,9 +8,11 @@ from typing import Any, Dict, List, Optional, Set
 import numpy as np
 import pandas as pd
 import torch
+import yaml
 from datasets import Dataset as HFDataset
 from datasets import load_dataset
 from torch.utils.data import Dataset
+from tqdm import tqdm
 
 
 class CustomTokenizer:
@@ -116,23 +119,51 @@ def extract_src_vocab_from_csv(csv_path: str) -> Set[str]:
     # CSVファイルをチャンクで読み込み
     try:
         chunk_size = 1000
-        for chunk in pd.read_csv(csv_path, chunksize=chunk_size):
-            for _, row in chunk.iterrows():
-                # inputとoutputの文字列から語彙を抽出
-                if "input" in row and pd.notna(row["input"]):
-                    input_str = str(row["input"])
-                    # 数字、括弧、カンマ、スペースを抽出
-                    tokens = re.findall(r"\d+|[\[\],\(\)\s]", input_str)
-                    vocab.update(tokens)
 
-                if "output" in row and pd.notna(row["output"]):
-                    output_str = str(row["output"])
-                    tokens = re.findall(r"\d+|[\[\],\(\)\s]", output_str)
-                    vocab.update(tokens)
-    except Exception:
+        logging.info(f"Starting src vocabulary extraction from {csv_path}")
+        logging.debug(f"Using chunk size: {chunk_size}")
+
+        # まずファイルの総行数を取得（進捗表示のため）
+        total_rows = sum(1 for _ in open(csv_path)) - 1  # ヘッダーを除く
+        logging.info(f"Total rows to process: {total_rows}")
+
+        # tqdmで進捗表示付きでチャンク処理
+        with tqdm(
+            total=total_rows, desc="Extracting src vocab", unit="rows"
+        ) as pbar:
+            for chunk in pd.read_csv(csv_path, chunksize=chunk_size):
+                for _, row in chunk.iterrows():
+                    # inputとoutputの文字列から語彙を抽出
+                    if "input" in row and pd.notna(row["input"]):
+                        input_str = str(row["input"])
+                        # 数字、括弧、カンマ、スペースを抽出
+                        tokens = re.findall(r"\d+|[\[\],\(\)\s]", input_str)
+                        vocab.update(tokens)
+
+                    if "output" in row and pd.notna(row["output"]):
+                        output_str = str(row["output"])
+                        tokens = re.findall(r"\d+|[\[\],\(\)\s]", output_str)
+                        vocab.update(tokens)
+
+                    pbar.update(1)
+
+                    # 語彙サイズの更新（1000行ごと）
+                    if pbar.n % 1000 == 0:
+                        pbar.set_postfix(vocab_size=len(vocab))
+
+    except Exception as e:
+        logging.warning(f"Chunk reading failed: {e}. Trying normal reading...")
         # チャンク読み込みが失敗した場合は通常の読み込み
         df = pd.read_csv(csv_path)
-        for _, row in df.iterrows():
+
+        logging.info(f"Fallback: Processing {len(df)} rows in single batch")
+
+        for _, row in tqdm(
+            df.iterrows(),
+            total=len(df),
+            desc="Extracting src vocab (fallback)",
+            unit="rows",
+        ):
             if "input" in row and pd.notna(row["input"]):
                 input_str = str(row["input"])
                 tokens = re.findall(r"\d+|[\[\],\(\)\s]", input_str)
@@ -145,6 +176,12 @@ def extract_src_vocab_from_csv(csv_path: str) -> Set[str]:
 
     # 空文字列を除去
     vocab.discard("")
+
+    logging.info(
+        f"Src vocabulary extraction completed. Final vocab size: {len(vocab)}"
+    )
+    logging.debug(f"Sample src tokens: {sorted(list(vocab))[:20]}")
+
     return vocab
 
 
@@ -155,17 +192,46 @@ def extract_tgt_vocab_from_csv(csv_path: str) -> Set[str]:
     # CSVファイルをチャンクで読み込み
     try:
         chunk_size = 1000
-        for chunk in pd.read_csv(csv_path, chunksize=chunk_size):
-            for _, row in chunk.iterrows():
-                if "expr" in row and pd.notna(row["expr"]):
-                    expr_str = str(row["expr"])
-                    # 関数名（Z,S,P,C,R）、数字、括弧、カンマ、スペースを抽出
-                    tokens = re.findall(r"[ZSPCRPRF]+|\d+|[\(\),\s]", expr_str)
-                    vocab.update(tokens)
-    except Exception:
+
+        logging.info(f"Starting tgt vocabulary extraction from {csv_path}")
+        logging.debug(f"Using chunk size: {chunk_size}")
+
+        # まずファイルの総行数を取得（進捗表示のため）
+        total_rows = sum(1 for _ in open(csv_path)) - 1  # ヘッダーを除く
+
+        # tqdmで進捗表示付きでチャンク処理
+        with tqdm(
+            total=total_rows, desc="Extracting tgt vocab", unit="rows"
+        ) as pbar:
+            for chunk in pd.read_csv(csv_path, chunksize=chunk_size):
+                for _, row in chunk.iterrows():
+                    if "expr" in row and pd.notna(row["expr"]):
+                        expr_str = str(row["expr"])
+                        # 関数名（Z,S,P,C,R）、数字、括弧、カンマ、スペースを抽出
+                        tokens = re.findall(
+                            r"[ZSPCRPRF]+|\d+|[\(\),\s]", expr_str
+                        )
+                        vocab.update(tokens)
+
+                    pbar.update(1)
+
+                    # 語彙サイズの更新（1000行ごと）
+                    if pbar.n % 1000 == 0:
+                        pbar.set_postfix(vocab_size=len(vocab))
+
+    except Exception as e:
+        logging.warning(f"Chunk reading failed: {e}. Trying normal reading...")
         # チャンク読み込みが失敗した場合は通常の読み込み
         df = pd.read_csv(csv_path)
-        for _, row in df.iterrows():
+
+        logging.info(f"Fallback: Processing {len(df)} rows in single batch")
+
+        for _, row in tqdm(
+            df.iterrows(),
+            total=len(df),
+            desc="Extracting tgt vocab (fallback)",
+            unit="rows",
+        ):
             if "expr" in row and pd.notna(row["expr"]):
                 expr_str = str(row["expr"])
                 tokens = re.findall(r"[ZSPCRPRF]+|\d+|[\(\),\s]", expr_str)
@@ -173,6 +239,12 @@ def extract_tgt_vocab_from_csv(csv_path: str) -> Set[str]:
 
     # 空文字列を除去
     vocab.discard("")
+
+    logging.info(
+        f"Tgt vocabulary extraction completed. Final vocab size: {len(vocab)}"
+    )
+    logging.debug(f"Sample tgt tokens: {sorted(list(vocab))[:20]}")
+
     return vocab
 
 
@@ -182,6 +254,7 @@ class PRFDataset(Dataset):
 
     機能要件:
     - csvを読み込む
+    - メタデータパラメータから初期化
     - モデルへのsrcを作成：csvファイルの各サンプルにおいて"input"(d×nのarray), "output"(nのarray)を
       int array配列を組み合わせて、(d+1)×nのnp.array of type intを作成
     - モデルへのtgtを作成：csvファイルの"expr"をtokenizeしてpaddingし、
@@ -192,30 +265,46 @@ class PRFDataset(Dataset):
     def __init__(
         self,
         csv_path: str,
-        max_tgt_length: Optional[int] = None,
-        max_src_points: Optional[int] = None,
+        max_tgt_length: int,
+        max_src_points: int,
+        src_vocab_list: List[str],
+        tgt_vocab_list: List[str],
         padding_token: str = "[PAD]",
     ):
         """
         Args:
             csv_path: CSVファイルのパス
-            max_tgt_length: 最大ターゲット長（Noneの場合は自動計算）
-            max_src_points: 最大ソース点数（Noneの場合は自動計算）
+            max_tgt_length: 最大ターゲット長
+            max_src_points: 最大ソース点数
+            src_vocab_list: ソース語彙リスト
+            tgt_vocab_list: ターゲット語彙リスト
             padding_token: パディングトークン
         """
-        # datasetsを使用してCSVを読み込む（大きなファイルにも対応）
-        # pandasで読み込んでからdatasetsに変換する方法を使用
-        from datasets import Dataset
+        # パラメータを設定
+        self.max_tgt_length = max_tgt_length
+        self.max_src_points = max_src_points
 
-        # まずpandasでCSVを読み込み（チャンク処理で大きなファイルにも対応）
+        logging.info("Initializing PRFDataset with parameters:")
+        logging.info(f"  - max_tgt_length: {self.max_tgt_length}")
+        logging.info(f"  - max_src_points: {self.max_src_points}")
+        logging.info(f"  - src_vocab_size: {len(src_vocab_list)}")
+        logging.info(f"  - tgt_vocab_size: {len(tgt_vocab_list)}")
+
+        # CSVファイルを読み込み
         try:
             # 大きなファイルの場合はチャンク読み込みを試行
             df_chunks = []
             chunk_size = 10000  # 1万行ずつ処理
 
+            logging.debug(
+                f"Loading CSV file: {csv_path} in chunks of {chunk_size} rows"
+            )
             for chunk in pd.read_csv(csv_path, chunksize=chunk_size):
                 df_chunks.append(chunk)
 
+            logging.debug(
+                f"Finished loading CSV file: {csv_path} in chunks of {chunk_size} rows"
+            )
             # 全チャンクを結合
             df = pd.concat(df_chunks, ignore_index=True)
 
@@ -223,8 +312,11 @@ class PRFDataset(Dataset):
             # チャンク読み込みが失敗した場合は通常の読み込み
             df = pd.read_csv(csv_path)
 
+        from datasets import Dataset
+
         # pandasデータフレームをdatasetsオブジェクトに変換
         self.dataset = Dataset.from_pandas(df)
+        logging.debug(f"Loaded dataset with {len(self.dataset)} samples")
 
         # 必要なカラムの存在確認
         required_columns = ["expr"]
@@ -232,56 +324,20 @@ class PRFDataset(Dataset):
             if col not in self.dataset.column_names:
                 raise ValueError(f"CSV file must contain column: {col}")
 
-        # CSVファイルから語彙を抽出
-        print("Extracting vocabularies from CSV...")
-        src_vocab_set = extract_src_vocab_from_csv(csv_path)
-        tgt_vocab_set = extract_tgt_vocab_from_csv(csv_path)
-
-        print(f"Source vocabulary size: {len(src_vocab_set)}")
-        print(f"Target vocabulary size: {len(tgt_vocab_set)}")
-        print(f"Source vocab sample: {sorted(list(src_vocab_set))[:10]}")
-        print(f"Target vocab sample: {sorted(list(tgt_vocab_set))[:10]}")
+        # 語彙でtokenizerを初期化
+        print("Initializing tokenizers from vocabulary...")
+        print(f"Source vocabulary size: {len(src_vocab_list)}")
+        print(f"Target vocabulary size: {len(tgt_vocab_list)}")
+        print(f"Source vocab sample: {sorted(src_vocab_list)[:10]}")
+        print(f"Target vocab sample: {sorted(tgt_vocab_list)[:10]}")
 
         # 分離されたtokenizerの初期化
-        self.src_tokenizer = CustomTokenizer(list(src_vocab_set), padding_token)
-        self.tgt_tokenizer = CustomTokenizer(list(tgt_vocab_set), padding_token)
+        self.src_tokenizer = CustomTokenizer(src_vocab_list, padding_token)
+        self.tgt_tokenizer = CustomTokenizer(tgt_vocab_list, padding_token)
 
         self.padding_token = padding_token
         self.src_padding_id = self.src_tokenizer.padding_id
         self.tgt_padding_id = self.tgt_tokenizer.padding_id
-
-        # 最大ターゲット長の計算
-        if max_tgt_length is None:
-            # 全てのexprをtokenizeして最大長を計算
-            expr_lengths = []
-            for example in self.dataset:
-                tokens = self.tgt_tokenizer.encode(
-                    str(example["expr"]),
-                    add_special_tokens=True,
-                    return_tensors=None,
-                )
-                expr_lengths.append(len(tokens))
-            self.max_tgt_length = max(expr_lengths) if expr_lengths else 128
-        else:
-            self.max_tgt_length = max_tgt_length
-
-        # 最大ソース点数の計算
-        if max_src_points is None:
-            max_points = 0
-            for example in self.dataset:
-                try:
-                    if "input" in example and pd.notna(example["input"]):
-                        input_data = (
-                            eval(example["input"])
-                            if isinstance(example["input"], str)
-                            else example["input"]
-                        )
-                        max_points = max(max_points, len(input_data))
-                except (ValueError, SyntaxError, TypeError):
-                    continue
-            self.max_src_points = max_points if max_points > 0 else 20
-        else:
-            self.max_src_points = max_src_points
 
         # 語彙サイズとエイリアスの設定
         self.src_vocab_size = len(self.src_tokenizer.vocab)
@@ -290,49 +346,6 @@ class PRFDataset(Dataset):
         # TransformerDatasetとの互換性のためのエイリアス
         self.src_max_len = self.max_src_points
         self.tgt_max_len = self.max_tgt_length
-
-        # データの前処理
-        self._preprocess_data()
-
-    def _preprocess_data(self):
-        """データの前処理を行う"""
-        self.processed_data = []
-
-        for idx, example in enumerate(self.dataset):
-            try:
-                # srcの作成：input/outputがある場合はそれを使用、ない場合はダミーデータ
-                if (
-                    "input" in example
-                    and "output" in example
-                    and pd.notna(example["input"])
-                    and pd.notna(example["output"])
-                ):
-                    # inputとoutputの解析
-                    input_data = (
-                        eval(example["input"])
-                        if isinstance(example["input"], str)
-                        else example["input"]
-                    )
-                    output_data = (
-                        eval(example["output"])
-                        if isinstance(example["output"], str)
-                        else example["output"]
-                    )
-                    src = self._create_src_array(input_data, output_data)
-                else:
-                    # ダミーのsrcデータを作成（数値の配列として）
-                    src = np.zeros((2, self.max_src_points), dtype=int)
-
-                # tgtの作成：tokenizeしてpadding
-                tgt = self._create_tgt_array(example["expr"])
-
-                self.processed_data.append(
-                    {"src": src, "tgt": tgt, "original_expr": example["expr"]}
-                )
-
-            except Exception as e:
-                print(f"Warning: Skipping row {idx} due to error: {e}")
-                continue
 
     def _create_src_array(
         self, input_data: List[List[int]], output_data: List[int]
@@ -400,7 +413,7 @@ class PRFDataset(Dataset):
         return np.array(token_ids, dtype=int)
 
     def __len__(self) -> int:
-        return len(self.processed_data)
+        return len(self.dataset)
 
     def __getitem__(self, idx: int) -> Dict[str, Any]:
         """
@@ -410,7 +423,47 @@ class PRFDataset(Dataset):
                 - 'tgt': max_tgt_length numpy array of token IDs
                 - 'original_expr': original expression string
         """
-        return self.processed_data[idx]
+        example = self.dataset[idx]
+
+        try:
+            # srcの作成：input/outputがある場合はそれを使用、ない場合はダミーデータ
+            if (
+                "input" in example
+                and "output" in example
+                and pd.notna(example["input"])
+                and pd.notna(example["output"])
+            ):
+                # inputとoutputの解析
+                input_data = (
+                    eval(example["input"])
+                    if isinstance(example["input"], str)
+                    else example["input"]
+                )
+                output_data = (
+                    eval(example["output"])
+                    if isinstance(example["output"], str)
+                    else example["output"]
+                )
+                src = self._create_src_array(input_data, output_data)
+            else:
+                # ダミーのsrcデータを作成（数値の配列として）
+                src = np.zeros((2, self.max_src_points), dtype=int)
+
+            # tgtの作成：tokenizeしてpadding
+            tgt = self._create_tgt_array(example["expr"])
+
+            return {"src": src, "tgt": tgt, "original_expr": example["expr"]}
+
+        except Exception as e:
+            logging.warning(f"Error processing sample {idx}: {e}")
+            # エラーが発生した場合はダミーデータを返す
+            src = np.zeros((2, self.max_src_points), dtype=int)
+            tgt = np.zeros(self.max_tgt_length, dtype=int)
+            return {
+                "src": src,
+                "tgt": tgt,
+                "original_expr": str(example.get("expr", "")),
+            }
 
     def get_src_vocab_size(self) -> int:
         """src語彙サイズを返す"""
@@ -443,25 +496,65 @@ class PRFDataset(Dataset):
         }
 
 
-def load_prf_dataset(csv_path: str, **kwargs) -> PRFDataset:
+def load_prf_dataset(csv_path: str, metadata_path: str, **kwargs) -> PRFDataset:
     """
     datasetsライブラリのload_datasetスタイルでデータセットを読み込む関数
 
     Args:
         csv_path: CSVファイルのパス
+        metadata_path: metadata.yamlファイルのパス
         **kwargs: PRFDatasetの追加引数
 
     Returns:
         PRFDataset instance
     """
-    return PRFDataset(csv_path, **kwargs)
+    # metadata.yamlファイルを読み込み
+    try:
+        with open(metadata_path, "r", encoding="utf-8") as f:
+            metadata = yaml.safe_load(f)
+
+        # メタデータから値を取得
+        max_tgt_length = metadata["max_tgt_length"]
+        max_src_points = metadata["max_src_points"]
+        src_vocab_list = metadata["src_vocab_list"]
+        tgt_vocab_list = metadata["tgt_vocab_list"]
+
+        return PRFDataset(
+            csv_path=csv_path,
+            max_tgt_length=max_tgt_length,
+            max_src_points=max_src_points,
+            src_vocab_list=src_vocab_list,
+            tgt_vocab_list=tgt_vocab_list,
+            **kwargs,
+        )
+
+    except FileNotFoundError:
+        raise FileNotFoundError(f"Metadata file not found: {metadata_path}")
+    except KeyError as e:
+        raise KeyError(f"Required key missing in metadata file: {e}")
+    except Exception as e:
+        raise Exception(f"Error loading metadata file: {e}")
 
 
 # 使用例とテスト用の関数
-def test_dataset(csv_path: str):
+def test_dataset(csv_path: str, metadata_path: str):
     """データセットのテスト用関数"""
     try:
-        dataset = load_prf_dataset(csv_path)
+        # metadata.yamlを読み込んでパラメータを取得
+        with open(metadata_path, "r", encoding="utf-8") as f:
+            metadata = yaml.safe_load(f)
+
+        print(f"Finished Loading metadata from: {metadata_path}")
+
+        # PRFDatasetを直接パラメータで初期化
+        dataset = PRFDataset(
+            csv_path=csv_path,
+            max_tgt_length=metadata["max_tgt_length"],
+            max_src_points=metadata["max_src_points"],
+            src_vocab_list=metadata["src_vocab_list"],
+            tgt_vocab_list=metadata["tgt_vocab_list"],
+        )
+
         print("Dataset loaded successfully!")
         print(f"Number of samples: {len(dataset)}")
         print(f"Config: {dataset.get_config()}")
@@ -495,7 +588,7 @@ if __name__ == "__main__":
     # テスト実行用
     import sys
 
-    if len(sys.argv) > 1:
-        test_dataset(sys.argv[1])
+    if len(sys.argv) > 2:
+        test_dataset(sys.argv[1], sys.argv[2])
     else:
-        print("Usage: python dataset.py <csv_path>")
+        print("Usage: python dataset.py <csv_path> <metadata_path>")

@@ -1,10 +1,10 @@
 hydra:
   run:
     dir: "./logs/${now:%Y-%m%d-%H%M-%S}/"
-csv_path: /Users/takeruito/work/PrfSR/tests/data/test_train_d3-a2-c3-r3.csv
+csv_path: /Users/takeruito/work/PrfSR/tests/data/d2/d2-a2-c3-r3.csv
 accelerator: mps # gpu for Linux, mps for Mac
 max_epochs: 2
-learning_rate: "8*10**(-5)"
+learning_rate: "8*10**(-4)"
 batch_size: 8
 transformer:
   d_model: 512
