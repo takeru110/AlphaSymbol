@@ -69,6 +69,8 @@ dependencies = [
     "pytz==2025.2",
     "pyzmq==26.4.0",
     "requests==2.32.3",
+    "scipy>=1.15.3",
+    "seaborn>=0.13.2",
     "setuptools==80.8.0",
     "six==1.17.0",
     "stack-data==0.6.3",

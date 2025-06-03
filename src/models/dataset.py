@@ -124,6 +124,58 @@ class CustomTokenizer:
         """トークンをIDに変換"""
         return self.vocab.get(token, self.vocab["[UNK]"])
 
+    def to_one_hot(self, token_ids: List[int]) -> np.ndarray:
+        """
+        トークンIDのリストをone-hotエンコーディングに変換
+        
+        Args:
+            token_ids: トークンIDのリスト
+            
+        Returns:
+            one-hot エンコードされた配列 (len(token_ids), vocab_size)
+        """
+        vocab_size = len(self.vocab)
+        one_hot = np.zeros((len(token_ids), vocab_size), dtype=np.float32)
+        
+        for i, token_id in enumerate(token_ids):
+            if 0 <= token_id < vocab_size:
+                one_hot[i, token_id] = 1.0
+        
+        return one_hot
+    
+    def encode_to_one_hot(
+        self,
+        text: str,
+        add_special_tokens: bool = True,
+        padding: str = None,
+        max_length: int = None,
+        truncation: bool = False,
+    ) -> np.ndarray:
+        """
+        テキストを直接one-hotエンコーディングに変換
+        
+        Args:
+            text: 入力テキスト
+            add_special_tokens: 特別トークンを追加するか
+            padding: パディング方法
+            max_length: 最大長
+            truncation: トランケートするか
+            
+        Returns:
+            one-hot エンコードされた配列 (sequence_length, vocab_size)
+        """
+        # まずトークンIDに変換
+        token_ids = self.encode(
+            text=text,
+            add_special_tokens=add_special_tokens,
+            padding=padding,
+            max_length=max_length,
+            truncation=truncation
+        )
+        
+        # one-hotに変換
+        return self.to_one_hot(token_ids)
+        
 
 def extract_src_vocab_from_csv(csv_path: str) -> Set[str]:
     """CSVファイルからsrc（input/output）の語彙を抽出"""

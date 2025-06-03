@@ -1,15 +1,41 @@
 hydra:
   run:
     dir: "./logs/${now:%Y-%m%d-%H%M-%S}/"
-#csv_path: /home/takeruito/work/PrfSR/data/training/d5-a2-c3-r3.csv
-#metadata_path: /home/takeruito/work/PrfSR/data/training/d5-a2-c3-r3_metadata.yaml
-csv_path: /home/takeruito/work/PrfSR/data/training/superfib_r1.csv
-metadata_path: /home/takeruito/work/PrfSR/data/training/superfib_r1_metadata.yaml
-accelerator: gpu # gpu for Linux, mps for Mac
-max_epochs: 100
-learning_rate: "8*10**(-5)"
+csv_path: /home/takeruito/work/PrfSR/data/training/d3-a5-c3-r5.csv
+metadata_path: /home/takeruito/work/PrfSR/data/training/d3-a5-c3-r5_metadata.yaml
+#csv_path: /home/takeruito/work/PrfSR/data/training/superfib_r1.csv
+#metadata_path: /home/takeruito/work/PrfSR/data/training/superfib_r1_metadata.yaml
+accelerator: cuda # gpu for Linux, mps for Mac
+max_epochs: 5
+learning_rate: "2.0*10**(-5)"
 batch_size: 16
-num_workers: 14
+num_workers: 28
+
+# WandB configuration
+wandb:
+  project: "PrfSR"  # Your WandB project name
+  entity: null # Your WandB entity (username/team), null for default
+  name: null                   # Experiment name, null for auto-generated
+  tags: ["transformer", "symbolic-regression"]  # Tags for organizing experiments
+  log_model: "all"             # Log model checkpoints to WandB
+  log_gradients: false         # Log gradient histograms (can be expensive)
+  save_code: true              # Save source code with the experiment
+
+# Step-based training settings for large datasets
+checkpoint:
+  every_n_train_steps: 500 # Save checkpoint every 1000 training steps
+  save_top_k: 3             # Keep top 3 checkpoints
+  monitor: "val_loss"       # Metric to monitor for best checkpoint
+  mode: "min"               # Minimize validation loss
+
+validation:
+  check_val_every_n_epoch: null  # Disable epoch-based validation
+  val_check_interval: 500 # Run validation every 2000 training steps
+  limit_val_batches: 20 # Limit validation to 100 batches for speed
+
+logging:
+  log_every_n_steps: 50     # Log training metrics every 50 steps
+  
 transformer:
   d_model: 512
   nhead: 8

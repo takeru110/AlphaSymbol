@@ -15,6 +15,8 @@ from hydra.core.hydra_config import HydraConfig
 from omegaconf import DictConfig
 from torch import Tensor, nn, optim, utils
 from torch.utils.data import DataLoader, Dataset
+from lightning.pytorch.callbacks import ModelCheckpoint
+from lightning.pytorch.loggers import WandbLogger
 
 from src.models.dataset import PRFDataset
 from src.models.train import LitTransformer
@@ -135,7 +137,21 @@ def train(
     dropout: float = 0.1,
     accelerator: str = "auto",
     log_dir: str = None,
-    num_workers: int = 4,  # 新しいパラメータを追加
+    num_workers: int = 4,
+    # 新しいstep-based設定パラメータを追加
+    checkpoint_every_n_steps: int = 1000,
+    val_check_interval: int = 2000,
+    limit_val_batches: int = 100,
+    log_every_n_steps: int = 50,
+    save_top_k: int = 3,
+    # WandB設定パラメータを追加
+    wandb_project: str = "PrfSR-experiments",
+    wandb_entity: str = None,
+    wandb_name: str = None,
+    wandb_tags: list = None,
+    wandb_log_model: str = "all",
+    wandb_log_gradients: bool = False,
+    wandb_save_code: bool = True,
 ):
     """
     Train the transformer model using PRFDataset with separate src and tgt tokenizers.
@@ -174,6 +190,16 @@ def train(
 
     logging.info(f"Loaded metadata: {metadata}")
 
+    # Initialize WandB logger
+    wandb_logger = WandbLogger(
+        project=wandb_project,
+        entity=wandb_entity,
+        name=wandb_name,
+        tags=wandb_tags,
+        log_model=wandb_log_model,
+        save_code=wandb_save_code,
+    )
+
     # Create PRFDataset with the new signature
     dataset = PRFDataset(
         csv_path=csv_path,
@@ -183,6 +209,10 @@ def train(
         tgt_vocab_list=metadata["tgt_vocab_list"],
     )
     logging.info("Finished Loading csv")
+    logging.info("Example data from PRFDataset:")
+    logging.info(f"First item: {dataset[0]}")
+    logging.info(f"Dataset size: {len(dataset)}")
+    
 
     # Get dataset configuration with separate tokenizers
     config = dataset.get_config()
@@ -251,11 +281,65 @@ def train(
         dropout=dropout,
     )
 
+    # Set up step-based checkpoint callback
+    checkpoint_callback = ModelCheckpoint(
+        monitor="val_loss",
+        dirpath=log_dir / "checkpoints",
+        filename="model-{step}-{val_loss:.2f}",
+        save_top_k=save_top_k,
+        mode="min",
+        every_n_train_steps=checkpoint_every_n_steps,
+        save_last=True,  # Always save the last checkpoint
+    )
+
+    
+    # Log experiment configuration to WandB
+    wandb_logger.experiment.config.update({
+        "dataset": {
+            "csv_path": csv_path,
+            "metadata_path": metadata_path,
+            "train_size": len(train_dataset),
+            "val_size": len(val_dataset),
+            "test_size": len(test_dataset),
+            "src_vocab_size": src_vocab_size,
+            "tgt_vocab_size": tgt_vocab_size,
+            "src_max_len": src_max_len,
+            "tgt_max_len": tgt_max_len,
+        },
+        "model": {
+            "d_model": d_model,
+            "nhead": nhead,
+            "num_encoder_layers": num_encoder_layers,
+            "num_decoder_layers": num_decoder_layers,
+            "dim_feedforward": dim_feedforward,
+            "dropout": dropout,
+            "learning_rate": learning_rate,
+        },
+        "training": {
+            "batch_size": batch_size,
+            "max_epochs": max_epochs,
+            "accelerator": accelerator,
+            "num_workers": num_workers,
+            "checkpoint_every_n_steps": checkpoint_every_n_steps,
+            "val_check_interval": val_check_interval,
+            "limit_val_batches": limit_val_batches,
+            "log_every_n_steps": log_every_n_steps,
+        }
+    })
+
     trainer = L.Trainer(
         default_root_dir=log_dir,
         max_epochs=max_epochs,
         accelerator=accelerator,
         devices=1,
+        # Step-based validation and logging settings
+        check_val_every_n_epoch=None,  # Disable epoch-based validation
+        val_check_interval=val_check_interval,  # Validate every N training steps
+        limit_val_batches=limit_val_batches,  # Limit validation batches for speed
+        log_every_n_steps=log_every_n_steps,  # Log training metrics every N steps
+        callbacks=[checkpoint_callback],
+        logger=wandb_logger,  # Add WandB logger
+        enable_progress_bar=True,
     )
 
     trainer.fit(lightning_module, train_loader, val_loader)
@@ -286,6 +370,12 @@ def main(cfg: DictConfig):
     """
     log_dir = Path(HydraConfig.get().run.dir)
 
+    # Extract step-based settings from config with defaults
+    checkpoint_cfg = cfg.get("checkpoint", {})
+    validation_cfg = cfg.get("validation", {})
+    logging_cfg = cfg.get("logging", {})
+    wandb_cfg = cfg.get("wandb", {})
+
     # Call the train function with parameters from config
     model, trainer, dataset = train(
         csv_path=cfg.csv_path,
@@ -301,9 +391,21 @@ def main(cfg: DictConfig):
         dropout=cfg.transformer.dropout,
         accelerator=cfg.accelerator,
         log_dir=str(log_dir),
-        num_workers=cfg.get(
-            "num_workers", 4
-        ),  # 設定ファイルからnum_workersを取得、デフォルトは4
+        num_workers=cfg.get("num_workers", 4),
+        # Step-based configuration from config file
+        checkpoint_every_n_steps=checkpoint_cfg.get("every_n_train_steps", 1000),
+        val_check_interval=validation_cfg.get("val_check_interval", 2000),
+        limit_val_batches=validation_cfg.get("limit_val_batches", 100),
+        log_every_n_steps=logging_cfg.get("log_every_n_steps", 50),
+        save_top_k=checkpoint_cfg.get("save_top_k", 3),
+        # WandB configuration from config file
+        wandb_project=wandb_cfg.get("project", "PrfSR-experiments"),
+        wandb_entity=wandb_cfg.get("entity"),
+        wandb_name=wandb_cfg.get("name"),
+        wandb_tags=wandb_cfg.get("tags", []),
+        wandb_log_model=wandb_cfg.get("log_model", "all"),
+        wandb_log_gradients=wandb_cfg.get("log_gradients", False),
+        wandb_save_code=wandb_cfg.get("save_code", True),
     )
 
     logging.info("Training completed successfully!")
