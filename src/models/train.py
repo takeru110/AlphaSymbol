@@ -1,3 +1,4 @@
+import logging
 from datetime import datetime
 from pathlib import Path
 
@@ -11,8 +12,8 @@ from omegaconf import DictConfig
 from torch import Tensor, nn, optim, utils
 from torch.utils.data import DataLoader, Dataset
 
-from data import TransformerDataset
-from models import PositionalEncoding
+from src.models.dataset import PRFDataset
+from src.models.models import PositionalEncoding
 
 
 class LitTransformer(L.LightningModule):
@@ -34,14 +35,40 @@ class LitTransformer(L.LightningModule):
     ):
         super().__init__()
         self.save_hyperparameters()
-        self.src_pos_enc = PositionalEncoding(d_model, src_max_len)
-        self.tgt_pos_enc = PositionalEncoding(d_model, tgt_max_len - 1)
+
+        # Handle different padding token formats for backwards compatibility
+        src_pad_idx = 0  # Default padding index
+        tgt_pad_idx = 0  # Default padding index
+
+        if isinstance(src_vocab, dict):
+            # Try different padding token names
+            if "[PAD]" in src_vocab:
+                src_pad_idx = src_vocab["[PAD]"]
+            elif "<pad>" in src_vocab:
+                src_pad_idx = src_vocab["<pad>"]
+            elif "<PAD>" in src_vocab:
+                src_pad_idx = src_vocab["<PAD>"]
+
+        if isinstance(tgt_vocab, dict):
+            # Try different padding token names
+            if "[PAD]" in tgt_vocab:
+                tgt_pad_idx = tgt_vocab["[PAD]"]
+            elif "<pad>" in tgt_vocab:
+                tgt_pad_idx = tgt_vocab["<pad>"]
+            elif "<PAD>" in tgt_vocab:
+                tgt_pad_idx = tgt_vocab["<PAD>"]
+
         self.src_embedding = nn.Embedding(
-            src_vocab_size, d_model, padding_idx=src_vocab["<pad>"]
+            src_vocab_size, d_model, padding_idx=src_pad_idx
         )
         self.tgt_embedding = nn.Embedding(
-            tgt_vocab_size, d_model, padding_idx=tgt_vocab["<pad>"]
+            tgt_vocab_size, d_model, padding_idx=tgt_pad_idx
         )
+
+        # Position encodings - use actual max lengths
+        self.src_pos_enc = PositionalEncoding(d_model, src_max_len)
+        self.tgt_pos_enc = PositionalEncoding(d_model, tgt_max_len)
+
         self.src_max_len = src_max_len
         self.tgt_max_len = tgt_max_len
         self.transformer = nn.Transformer(
@@ -57,7 +84,9 @@ class LitTransformer(L.LightningModule):
         self.learning_rate = learning_rate
         self.src_vocab = src_vocab
         self.tgt_vocab = tgt_vocab
-        self.loss_fn = nn.CrossEntropyLoss(ignore_index=tgt_vocab["<pad>"])
+
+        # Set loss function with appropriate padding index
+        self.loss_fn = nn.CrossEntropyLoss(ignore_index=tgt_pad_idx)
 
     def forward(self, src, tgt):
         """
@@ -102,8 +131,43 @@ class LitTransformer(L.LightningModule):
         self.log("val_loss", loss, prog_bar=True)
         return loss
 
+    def test_step(self, batch, batch_idx):
+        # src_batch: (N, S), tgt_batch: (N, T)
+        src_batch, tgt_batch = batch
+        tgt_input = tgt_batch[:, :-1]
+        tgt_output = tgt_batch[:, 1:]
+        output = self(src_batch, tgt_input)  # (T, N, C)
+        output = output.permute(1, 2, 0)  # (N, C, T)
+        loss = self.loss_fn(output, tgt_output)
+        self.log("test_loss", loss, prog_bar=True)
+        return loss
+
     def configure_optimizers(self):
         return optim.Adam(self.parameters(), lr=self.learning_rate)
+
+
+def collate_fn(batch):
+    """
+    Custom collate function to convert PRFDataset output format
+    to the format expected by LitTransformer.
+    """
+    src_list = []
+    tgt_list = []
+
+    for item in batch:
+        # Convert numpy arrays to tensors
+        src = torch.tensor(item["src"], dtype=torch.long)
+        tgt = torch.tensor(item["tgt"], dtype=torch.long)
+
+        # srcは既にトークン化済みなので、そのまま使用
+        src_list.append(src)
+        tgt_list.append(tgt)
+
+    # Stack tensors to create batch
+    src_batch = torch.stack(src_list)
+    tgt_batch = torch.stack(tgt_list)
+
+    return src_batch, tgt_batch
 
 
 @hydra.main(version_base=None, config_path=".", config_name="training_config")
@@ -112,8 +176,14 @@ def main(cfg: DictConfig):
 
     log_dir = Path(HydraConfig.get().run.dir)
 
-    df = pd.read_csv(csv_path)
-    dataset = TransformerDataset(df)
+    logging.info("Start Loading csv")
+    dataset = PRFDataset(csv_path)
+    logging.info("Finished Loading csv")
+
+    # Get configuration from PRFDataset
+    config = dataset.get_config()
+    src_tokenizer = dataset.get_src_tokenizer()
+    tgt_tokenizer = dataset.get_tgt_tokenizer()
 
     train_size = int(0.7 * len(dataset))
     val_size = int(0.15 * len(dataset))
@@ -122,24 +192,40 @@ def main(cfg: DictConfig):
         dataset, [train_size, val_size, test_size]
     )
 
+    # Use custom collate function
     train_loader: DataLoader = DataLoader(
-        train_dataset, batch_size=cfg.batch_size
+        train_dataset, batch_size=cfg.batch_size, collate_fn=collate_fn
     )
 
-    val_loader: DataLoader = DataLoader(val_dataset, batch_size=cfg.batch_size)
+    val_loader: DataLoader = DataLoader(
+        val_dataset, batch_size=cfg.batch_size, collate_fn=collate_fn
+    )
 
     test_loader: DataLoader = DataLoader(
-        test_dataset, batch_size=cfg.batch_size
+        test_dataset, batch_size=cfg.batch_size, collate_fn=collate_fn
     )
 
+    # Calculate flattened input size for src_vocab_size
+    flattened_input_size = (
+        config["max_src_points"] * 2
+    )  # Assuming (d+1) where d=1
+
+    # デバッグ情報を追加
+    print(f"Config info:")
+    print(f"  - src_vocab_size: {config['src_vocab_size']}")
+    print(f"  - tgt_vocab_size: {config['tgt_vocab_size']}")
+    print(f"  - flattened_input_size: {flattened_input_size}")
+    print(f"  - max_src_points: {config['max_src_points']}")
+    print(f"  - max_tgt_length: {config['max_tgt_length']}")
+
     lightning_module = LitTransformer(
-        src_vocab_size=len(dataset.src_vocab),
-        tgt_vocab_size=len(dataset.tgt_vocab),
-        src_max_len=dataset.src_max_len,
-        tgt_max_len=dataset.tgt_max_len,
+        src_vocab_size=config["src_vocab_size"],  # 正しい語彙サイズを使用
+        tgt_vocab_size=config["tgt_vocab_size"],
+        src_max_len=config["src_max_len"],
+        tgt_max_len=config["tgt_max_len"],
         learning_rate=eval(cfg.learning_rate),
-        src_vocab=dataset.src_vocab,
-        tgt_vocab=dataset.tgt_vocab,
+        src_vocab=src_tokenizer.vocab,
+        tgt_vocab=tgt_tokenizer.vocab,
         d_model=cfg.transformer.d_model,
         nhead=cfg.transformer.nhead,
         num_encoder_layers=cfg.transformer.num_encoder_layers,

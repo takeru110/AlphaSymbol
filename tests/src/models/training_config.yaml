@@ -1,0 +1,15 @@
+hydra:
+  run:
+    dir: "./logs/${now:%Y-%m%d-%H%M-%S}/"
+csv_path: /Users/takeruito/work/PrfSR/tests/data/d2/d2-a2-c3-r3.csv
+accelerator: mps # gpu for Linux, mps for Mac
+max_epochs: 2
+learning_rate: "8*10**(-4)"
+batch_size: 8
+transformer:
+  d_model: 512
+  nhead: 8
+  num_encoder_layers: 4
+  num_decoder_layers: 16
+  dim_feedforward: 2048
+  dropout: 0.1

@@ -6,6 +6,7 @@ comm
 contourpy
 coverage
 cycler
+datasets
 debugpy
 decorator
 exceptiongroup
@@ -67,8 +68,10 @@ torchvision
 torchaudio
 tqdm
 traitlets
+transformers
 typing_extensions
 tzdata
 urllib3
+wandb
 wcwidth
 zipp
