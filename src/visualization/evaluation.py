@@ -11,7 +11,7 @@ from tqdm import tqdm
 from src.data.input_output_columns_exp import generate_exp_input
 from prfndim.prfndim import C, Expr, P, R, S, Z
 from src.model_meta.beam_search import beam_search
-from src.model_meta.data import PREDataModule
+from model_meta.dataset import PREDataModule
 from src.model_meta.train import LitTransformer
 
 logging.basicConfig(level=logging.INFO)

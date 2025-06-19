@@ -14,7 +14,7 @@ from omegaconf import DictConfig, OmegaConf
 from torch import Tensor, nn, optim, utils
 
 import wandb
-from src.model_meta.data import PREDataModule
+from model_meta.dataset import PREDataModule
 from src.model_meta.models import PositionalEncoding
 
 logging.basicConfig(
