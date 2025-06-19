@@ -24,165 +24,243 @@ from tqdm import tqdm
 
 def encode_expr(expr_str: str) -> List[str]:
     """exprをトークン化（カスタムトークナイザーの処理を模擬）"""
-    # 関数名（Z,S,P,C,R）、数字、括弧、カンマ、スペースを抽出
-    tokens = re.findall(r"[ZSPCRPRF]+|\d+|[\(\),\s]", expr_str)
+    # 関数名（Z,S,P,C,R）、数字、括弧、カンマを抽出（空白は除外）
+    tokens = re.findall(r"[ZSPCRPRF]+|\d+|[\(\),]", expr_str)
     # 空文字列を除去
     tokens = [token for token in tokens if token.strip()]
     # BOS, EOSトークンを追加
     return ["[BOS]"] + tokens + ["[EOS]"]
 
 
-def process_chunk(chunk_data: Tuple[int, pd.DataFrame]) -> Tuple[Set[str], Set[str], int, int, int]:
+def process_single_row(
+    row: pd.Series,
+) -> Tuple[Set[str], Set[str], int, int, int, int]:
     """
-    チャンクを処理してメタデータを抽出する関数（並列処理用）
-    
+    単一行を処理してメタデータを抽出する共通関数
+
     Args:
-        chunk_data: (chunk_id, DataFrame) のタプル
-        
+        row: pandas DataFrame の行
+
     Returns:
-        Tuple[src_vocab_set, tgt_vocab_set, max_tgt_length, max_src_points, skipped_count]
+        Tuple[src_vocab_set, tgt_vocab_set, max_tgt_length, max_src_points, max_point_dim, skipped_count]
     """
-    chunk_id, chunk_df = chunk_data
-    
     src_vocab = set()
     tgt_vocab = set()
     max_tgt_length = 0
     max_src_points = 0
+    max_point_dim = 0
     skipped_count = 0
-    
-    for _, row in chunk_df.iterrows():
-        # 1. src語彙の抽出（input/output）
-        if "input" in row and pd.notna(row["input"]):
-            input_str = str(row["input"])
-            # 数字、括弧、カンマ、スペースを抽出
-            tokens = re.findall(r"\d+|[\[\],\(\)\s]", input_str)
-            src_vocab.update(tokens)
 
-            # 3. max_src_pointsの計算
-            try:
-                input_data = (
-                    eval(input_str)
-                    if isinstance(input_str, str)
-                    else input_str
-                )
-                points = len(input_data)
-                max_src_points = max(max_src_points, points)
-            except (ValueError, SyntaxError, TypeError):
-                skipped_count += 1
+    # 1. src語彙の抽出（inputs/outputs）
+    if "inputs" in row and pd.notna(row["inputs"]):
+        inputs_str = str(row["inputs"])
+        # 数字のみを抽出（空白、カンマ、括弧は除く）
+        tokens = re.findall(r"\d+", inputs_str)
+        src_vocab.update(tokens)
 
-        if "output" in row and pd.notna(row["output"]):
-            output_str = str(row["output"])
-            tokens = re.findall(r"\d+|[\[\],\(\)\s]", output_str)
-            src_vocab.update(tokens)
-
-        # 2. tgt語彙の抽出とmax_tgt_lengthの計算（expr）
-        if "expr" in row and pd.notna(row["expr"]):
-            expr_str = str(row["expr"])
-
-            # tgt語彙の抽出
-            tokens = re.findall(
-                r"[ZSPCRPRF]+|\d+|[\(\),\s]", expr_str
+        # max_src_pointsとmax_point_dimの計算
+        try:
+            inputs_data = (
+                eval(inputs_str) if isinstance(inputs_str, str) else inputs_str
             )
-            tgt_vocab.update(tokens)
+            points = len(inputs_data)
+            max_src_points = max(max_src_points, points)
 
-            # max_tgt_lengthの計算
-            encoded_tokens = encode_expr(expr_str)
-            max_tgt_length = max(
-                max_tgt_length, len(encoded_tokens)
-            )
-    
+            # inputsの各要素（1番目のindex）の長さの最大値を計算
+            if inputs_data and isinstance(inputs_data, list):
+                for point in inputs_data:
+                    if isinstance(point, list) and len(point) > 0:
+                        point_dim = len(point)
+                        max_point_dim = max(max_point_dim, point_dim)
+
+        except (ValueError, SyntaxError, TypeError):
+            skipped_count += 1
+
+    if "outputs" in row and pd.notna(row["outputs"]):
+        outputs_str = str(row["outputs"])
+        # 数字のみを抽出（空白、カンマ、括弧は除く）
+        tokens = re.findall(r"\d+", outputs_str)
+        src_vocab.update(tokens)
+
+    # 2. tgt語彙の抽出とmax_tgt_lengthの計算（expr）
+    if "expr" in row and pd.notna(row["expr"]):
+        expr_str = str(row["expr"])
+
+        # tgt語彙の抽出（空白を除外）
+        tokens = re.findall(r"[ZSPCRPRF]+|\d+|[\(\),]", expr_str)
+        tgt_vocab.update(tokens)
+
+        # max_tgt_lengthの計算
+        encoded_tokens = encode_expr(expr_str)
+        max_tgt_length = max(max_tgt_length, len(encoded_tokens))
+
     # 空文字列を除去
     src_vocab.discard("")
     tgt_vocab.discard("")
-    
-    return src_vocab, tgt_vocab, max_tgt_length, max_src_points, skipped_count
+
+    return (
+        src_vocab,
+        tgt_vocab,
+        max_tgt_length,
+        max_src_points,
+        max_point_dim,
+        skipped_count,
+    )
+
+
+def process_chunk(
+    chunk_data: Tuple[int, pd.DataFrame],
+) -> Tuple[Set[str], Set[str], int, int, int, int]:
+    """
+    チャンクを処理してメタデータを抽出する関数（並列処理用）
+
+    Args:
+        chunk_data: (chunk_id, DataFrame) のタプル
+
+    Returns:
+        Tuple[src_vocab_set, tgt_vocab_set, max_tgt_length, max_src_points, max_point_dim, skipped_count]
+    """
+    chunk_id, chunk_df = chunk_data
+
+    src_vocab_global = set()
+    tgt_vocab_global = set()
+    max_tgt_length_global = 0
+    max_src_points_global = 0
+    max_point_dim_global = 0
+    total_skipped = 0
+
+    for _, row in chunk_df.iterrows():
+        (
+            src_vocab,
+            tgt_vocab,
+            max_tgt_length,
+            max_src_points,
+            max_point_dim,
+            skipped_count,
+        ) = process_single_row(row)
+
+        # 結果をマージ
+        src_vocab_global.update(src_vocab)
+        tgt_vocab_global.update(tgt_vocab)
+        max_tgt_length_global = max(max_tgt_length_global, max_tgt_length)
+        max_src_points_global = max(max_src_points_global, max_src_points)
+        max_point_dim_global = max(max_point_dim_global, max_point_dim)
+        total_skipped += skipped_count
+
+    return (
+        src_vocab_global,
+        tgt_vocab_global,
+        max_tgt_length_global,
+        max_src_points_global,
+        max_point_dim_global,
+        total_skipped,
+    )
 
 
 def calculate_metadata_parallel(
-    csv_path: str,
-    n_workers: int = None,
-    chunk_size: int = 1000
-) -> Tuple[Set[str], Set[str], int, int]:
+    csv_path: str, n_workers: int = None, chunk_size: int = 1000
+) -> Tuple[Set[str], Set[str], int, int, int]:
     """
     並列処理でCSVファイルからメタデータを計算
-    
+
     Args:
         csv_path: CSVファイルのパス
         n_workers: ワーカープロセス数（Noneの場合はCPU数）
         chunk_size: チャンクサイズ
-        
+
     Returns:
-        Tuple[src_vocab_set, tgt_vocab_set, max_tgt_length, max_src_points]
+        Tuple[src_vocab_set, tgt_vocab_set, max_tgt_length, max_src_points, max_point_dim]
     """
     if n_workers is None:
         n_workers = min(mp.cpu_count(), 8)  # 最大8プロセス
-    
+
     logging.info(f"Starting parallel processing with {n_workers} workers")
-    
+
     # ファイルの総行数を取得
     total_rows = sum(1 for _ in open(csv_path)) - 1  # ヘッダーを除く
     logging.info(f"Total rows to process: {total_rows}")
-    
+
     # チャンクに分割してDataFrameのリストを作成
     chunks = []
     chunk_id = 0
-    
+
     print("📚 Loading and splitting CSV into chunks...")
     chunk_reader = pd.read_csv(csv_path, chunksize=chunk_size)
-    
+
     for chunk_df in tqdm(chunk_reader, desc="Loading chunks"):
         chunks.append((chunk_id, chunk_df))
         chunk_id += 1
-    
+
     logging.info(f"Created {len(chunks)} chunks for processing")
-    
+
     # 並列処理で各チャンクを処理
     src_vocab_global = set()
     tgt_vocab_global = set()
     max_tgt_length_global = 0
     max_src_points_global = 0
+    max_point_dim_global = 0
     total_skipped = 0
-    
+
     print(f"⚡ Processing {len(chunks)} chunks with {n_workers} workers...")
-    
+
     with ProcessPoolExecutor(max_workers=n_workers) as executor:
         # 全てのチャンクをサブミット
-        futures = {executor.submit(process_chunk, chunk): chunk[0] 
-                  for chunk in chunks}
-        
+        futures = {
+            executor.submit(process_chunk, chunk): chunk[0] for chunk in chunks
+        }
+
         # 進捗バー付きで結果を取得
-        with tqdm(total=len(chunks), desc="Processing chunks", unit="chunk") as pbar:
+        with tqdm(
+            total=len(chunks), desc="Processing chunks", unit="chunk"
+        ) as pbar:
             for future in as_completed(futures):
                 chunk_id = futures[future]
                 try:
-                    src_vocab, tgt_vocab, max_tgt_length, max_src_points, skipped_count = future.result()
-                    
+                    (
+                        src_vocab,
+                        tgt_vocab,
+                        max_tgt_length,
+                        max_src_points,
+                        max_point_dim,
+                        skipped_count,
+                    ) = future.result()
+
                     # 結果をマージ
                     src_vocab_global.update(src_vocab)
                     tgt_vocab_global.update(tgt_vocab)
-                    max_tgt_length_global = max(max_tgt_length_global, max_tgt_length)
-                    max_src_points_global = max(max_src_points_global, max_src_points)
+                    max_tgt_length_global = max(
+                        max_tgt_length_global, max_tgt_length
+                    )
+                    max_src_points_global = max(
+                        max_src_points_global, max_src_points
+                    )
+                    max_point_dim_global = max(
+                        max_point_dim_global, max_point_dim
+                    )
                     total_skipped += skipped_count
-                    
+
                     pbar.set_postfix(
                         src_vocab=len(src_vocab_global),
                         tgt_vocab=len(tgt_vocab_global),
                         max_tgt_len=max_tgt_length_global,
                         max_src_pts=max_src_points_global,
+                        max_pt_dim=max_point_dim_global,
                         skipped=total_skipped,
-                        refresh=False
+                        refresh=False,
                     )
-                    
+
                 except Exception as e:
                     logging.error(f"Error processing chunk {chunk_id}: {e}")
-                    
+
                 pbar.update(1)
-    
+
     # デフォルト値の設定
     if max_tgt_length_global == 0:
         max_tgt_length_global = 128
     if max_src_points_global == 0:
         max_src_points_global = 20
+    if max_point_dim_global == 0:
+        max_point_dim_global = 1
 
     if total_skipped > 0:
         logging.warning(f"Skipped {total_skipped} samples during processing")
@@ -192,23 +270,31 @@ def calculate_metadata_parallel(
     logging.info(f"  - Tgt vocabulary size: {len(tgt_vocab_global)}")
     logging.info(f"  - Max target length: {max_tgt_length_global}")
     logging.info(f"  - Max source points: {max_src_points_global}")
+    logging.info(f"  - Max point dimension: {max_point_dim_global}")
 
-    return src_vocab_global, tgt_vocab_global, max_tgt_length_global, max_src_points_global
+    return (
+        src_vocab_global,
+        tgt_vocab_global,
+        max_tgt_length_global,
+        max_src_points_global,
+        max_point_dim_global,
+    )
 
 
 def calculate_all_metadata(
     csv_path: str,
-) -> Tuple[Set[str], Set[str], int, int]:
+) -> Tuple[Set[str], Set[str], int, int, int]:
     """
     CSVファイルを1回だけ走査して全てのメタデータを計算（シーケンシャル版）
 
     Returns:
-        Tuple[src_vocab_set, tgt_vocab_set, max_tgt_length, max_src_points]
+        Tuple[src_vocab_set, tgt_vocab_set, max_tgt_length, max_src_points, max_point_dim]
     """
     src_vocab = set()
     tgt_vocab = set()
     max_tgt_length = 0
     max_src_points = 0
+    max_point_dim = 0
     skipped_count = 0
 
     try:
@@ -226,48 +312,23 @@ def calculate_all_metadata(
         ) as pbar:
             for chunk in pd.read_csv(csv_path, chunksize=chunk_size):
                 for _, row in chunk.iterrows():
-                    # 1. src語彙の抽出（input/output）
-                    if "input" in row and pd.notna(row["input"]):
-                        input_str = str(row["input"])
-                        # 数字、括弧、カンマ、スペースを抽出
-                        tokens = re.findall(r"\d+|[\[\],\(\)\s]", input_str)
-                        src_vocab.update(tokens)
+                    # 共通関数を使用して行を処理
+                    (
+                        row_src_vocab,
+                        row_tgt_vocab,
+                        row_max_tgt_length,
+                        row_max_src_points,
+                        row_max_point_dim,
+                        row_skipped_count,
+                    ) = process_single_row(row)
 
-                        # 3. max_src_pointsの計算
-                        try:
-                            input_data = (
-                                eval(input_str)
-                                if isinstance(input_str, str)
-                                else input_str
-                            )
-                            points = len(input_data)
-                            max_src_points = max(max_src_points, points)
-                        except (ValueError, SyntaxError, TypeError) as e:
-                            skipped_count += 1
-                            logging.debug(
-                                f"Skipping input data due to error: {e}"
-                            )
-
-                    if "output" in row and pd.notna(row["output"]):
-                        output_str = str(row["output"])
-                        tokens = re.findall(r"\d+|[\[\],\(\)\s]", output_str)
-                        src_vocab.update(tokens)
-
-                    # 2. tgt語彙の抽出とmax_tgt_lengthの計算（expr）
-                    if "expr" in row and pd.notna(row["expr"]):
-                        expr_str = str(row["expr"])
-
-                        # tgt語彙の抽出
-                        tokens = re.findall(
-                            r"[ZSPCRPRF]+|\d+|[\(\),\s]", expr_str
-                        )
-                        tgt_vocab.update(tokens)
-
-                        # max_tgt_lengthの計算
-                        encoded_tokens = encode_expr(expr_str)
-                        max_tgt_length = max(
-                            max_tgt_length, len(encoded_tokens)
-                        )
+                    # 結果をマージ
+                    src_vocab.update(row_src_vocab)
+                    tgt_vocab.update(row_tgt_vocab)
+                    max_tgt_length = max(max_tgt_length, row_max_tgt_length)
+                    max_src_points = max(max_src_points, row_max_src_points)
+                    max_point_dim = max(max_point_dim, row_max_point_dim)
+                    skipped_count += row_skipped_count
 
                     pbar.update(1)
 
@@ -278,6 +339,7 @@ def calculate_all_metadata(
                             tgt_vocab=len(tgt_vocab),
                             max_tgt_len=max_tgt_length,
                             max_src_pts=max_src_points,
+                            max_pt_dim=max_point_dim,
                             skipped=skipped_count,
                             refresh=False,
                         )
@@ -295,36 +357,23 @@ def calculate_all_metadata(
             desc="🔍 Processing CSV data (fallback)",
             unit="rows",
         ):
-            # 同じ処理をフォールバック用に実行
-            if "input" in row and pd.notna(row["input"]):
-                input_str = str(row["input"])
-                tokens = re.findall(r"\d+|[\[\],\(\)\s]", input_str)
-                src_vocab.update(tokens)
+            # 共通関数を使用してフォールバック処理も統一
+            (
+                row_src_vocab,
+                row_tgt_vocab,
+                row_max_tgt_length,
+                row_max_src_points,
+                row_max_point_dim,
+                row_skipped_count,
+            ) = process_single_row(row)
 
-                try:
-                    input_data = (
-                        eval(input_str)
-                        if isinstance(input_str, str)
-                        else input_str
-                    )
-                    points = len(input_data)
-                    max_src_points = max(max_src_points, points)
-                except (ValueError, SyntaxError, TypeError) as e:
-                    skipped_count += 1
-                    logging.debug(f"Skipping input data due to error: {e}")
-
-            if "output" in row and pd.notna(row["output"]):
-                output_str = str(row["output"])
-                tokens = re.findall(r"\d+|[\[\],\(\)\s]", output_str)
-                src_vocab.update(tokens)
-
-            if "expr" in row and pd.notna(row["expr"]):
-                expr_str = str(row["expr"])
-                tokens = re.findall(r"[ZSPCRPRF]+|\d+|[\(\),\s]", expr_str)
-                tgt_vocab.update(tokens)
-
-                encoded_tokens = encode_expr(expr_str)
-                max_tgt_length = max(max_tgt_length, len(encoded_tokens))
+            # 結果をマージ
+            src_vocab.update(row_src_vocab)
+            tgt_vocab.update(row_tgt_vocab)
+            max_tgt_length = max(max_tgt_length, row_max_tgt_length)
+            max_src_points = max(max_src_points, row_max_src_points)
+            max_point_dim = max(max_point_dim, row_max_point_dim)
+            skipped_count += row_skipped_count
 
     # 空文字列を除去
     src_vocab.discard("")
@@ -335,6 +384,8 @@ def calculate_all_metadata(
         max_tgt_length = 128
     if max_src_points == 0:
         max_src_points = 20
+    if max_point_dim == 0:
+        max_point_dim = 1
 
     if skipped_count > 0:
         logging.warning(f"Skipped {skipped_count} samples during processing")
@@ -344,8 +395,9 @@ def calculate_all_metadata(
     logging.info(f"  - Tgt vocabulary size: {len(tgt_vocab)}")
     logging.info(f"  - Max target length: {max_tgt_length}")
     logging.info(f"  - Max source points: {max_src_points}")
+    logging.info(f"  - Max point dimension: {max_point_dim}")
 
-    return src_vocab, tgt_vocab, max_tgt_length, max_src_points
+    return src_vocab, tgt_vocab, max_tgt_length, max_src_points, max_point_dim
 
 
 def main():
@@ -357,25 +409,43 @@ def main():
         "-i", "--input", required=True, help="Input CSV file path"
     )
     parser.add_argument(
-        "-o", "--output", required=True, help="Output YAML file path"
+        "-o",
+        "--output",
+        help="Output YAML file path (default: input_file_metadata.yaml)",
     )
     parser.add_argument(
         "-v", "--verbose", action="store_true", help="Enable verbose logging"
     )
     parser.add_argument(
-        "-p", "--parallel", action="store_true", 
-        help="Enable parallel processing"
+        "-p",
+        "--parallel",
+        action="store_true",
+        help="Enable parallel processing",
     )
     parser.add_argument(
-        "-w", "--workers", type=int, default=None,
-        help="Number of worker processes (default: CPU count, max 8)"
+        "-w",
+        "--workers",
+        type=int,
+        default=None,
+        help="Number of worker processes (default: CPU count, max 8)",
     )
     parser.add_argument(
-        "-c", "--chunk-size", type=int, default=1000,
-        help="Chunk size for processing (default: 1000)"
+        "-c",
+        "--chunk-size",
+        type=int,
+        default=1000,
+        help="Chunk size for processing (default: 1000)",
     )
 
     args = parser.parse_args()
+
+    # outputファイル名のデフォルト値を設定
+    if args.output is None:
+        input_path = args.input
+        if input_path.endswith(".csv"):
+            args.output = input_path[:-4] + "_metadata.yaml"
+        else:
+            args.output = input_path + "_metadata.yaml"
 
     # ログレベルの設定
     log_level = logging.DEBUG if args.verbose else logging.INFO
@@ -394,32 +464,45 @@ def main():
 
         # 並列処理か順次処理かを選択
         if args.parallel:
-            print(f"\n⚡ Starting parallel metadata calculation...")
-            print(f"🔧 Workers: {args.workers or 'auto'}, Chunk size: {args.chunk_size}")
-            
-            src_vocab_set, tgt_vocab_set, max_tgt_length, max_src_points = (
-                calculate_metadata_parallel(
-                    args.input, 
-                    n_workers=args.workers,
-                    chunk_size=args.chunk_size
-                )
+            print("\n⚡ Starting parallel metadata calculation...")
+            print(
+                f"🔧 Workers: {args.workers or 'auto'}, Chunk size: {args.chunk_size}"
+            )
+
+            (
+                src_vocab_set,
+                tgt_vocab_set,
+                max_tgt_length,
+                max_src_points,
+                max_point_dim,
+            ) = calculate_metadata_parallel(
+                args.input, n_workers=args.workers, chunk_size=args.chunk_size
             )
         else:
             print("\n🚀 Starting single-pass metadata calculation...")
-            
-            src_vocab_set, tgt_vocab_set, max_tgt_length, max_src_points = (
-                calculate_all_metadata(args.input)
-            )
+
+            (
+                src_vocab_set,
+                tgt_vocab_set,
+                max_tgt_length,
+                max_src_points,
+                max_point_dim,
+            ) = calculate_all_metadata(args.input)
 
         print("\n🔄 Converting vocabularies to sorted lists...")
         # リストに変換してソート
         src_vocab_list = sorted(list(src_vocab_set))
         tgt_vocab_list = sorted(list(tgt_vocab_set))
 
+        # 特殊トークンを先頭に追加
+        src_vocab_list = ["[PAD]"] + src_vocab_list
+        tgt_vocab_list = ["[PAD]", "[BOS]", "[EOS]"] + tgt_vocab_list
+
         # YAMLに出力するデータを作成（2つのlistが最後になる並び）
         metadata = {
             "max_tgt_length": max_tgt_length,
             "max_src_points": max_src_points,
+            "max_point_dim": max_point_dim,
             "src_vocab_list": src_vocab_list,
             "tgt_vocab_list": tgt_vocab_list,
         }
@@ -434,6 +517,7 @@ def main():
         print("=" * 50)
         print(f"📏 Max target length:     {max_tgt_length:,}")
         print(f"📊 Max source points:     {max_src_points:,}")
+        print(f"📐 Max point dimension:   {max_point_dim:,}")
         print(f"📚 Source vocabulary size: {len(src_vocab_list):,}")
         print(f"🎯 Target vocabulary size: {len(tgt_vocab_list):,}")
         print("=" * 50)
