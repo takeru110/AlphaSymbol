@@ -1,5 +1,7 @@
+import argparse
 import ast
 import math
+import pickle
 import random
 from collections import Counter, defaultdict
 from pathlib import Path
@@ -286,6 +288,39 @@ class CSVDataModule(pl.LightningDataModule):
             pin_memory=True,
         )
 
+    def save_pickle(self, file_path: str):
+        """
+        Save the CSVDataModule instance to a pickle file.
+
+        Args:
+            file_path: Path to save the pickle file
+        """
+        pickle_path = Path(file_path)
+        pickle_path.parent.mkdir(parents=True, exist_ok=True)
+
+        with open(pickle_path, "wb") as f:
+            pickle.dump(self, f)
+
+        print(f"CSVDataModule saved to {pickle_path}")
+
+    @classmethod
+    def load_pickle(cls, file_path: str) -> "CSVDataModule":
+        """
+        Load a CSVDataModule instance from a pickle file.
+
+        Args:
+            file_path: Path to the pickle file
+
+        Returns:
+            Loaded CSVDataModule instance
+        """
+        with open(file_path, "rb") as f:
+            module = pickle.load(f)
+
+        print(f"CSVDataModule loaded from {file_path}")
+        return module
+        print(f"Dataset saved as pickle: {file_path}")
+
 
 def custom_collate_fn(batch):
     """
@@ -361,68 +396,195 @@ def analyze_batch_variance(dataloader, num_batches=5):
 
 # 使用例
 if __name__ == "__main__":
-    print("=== Testing Different Batching Strategies ===")
-
-    data_path = "data/training/superfib_r1_dataset.csv"
-    metadata_path = "data/training/superfib_r1_metadata.yaml"
-    batch_size = 2
-    # 1. デフォルト（固定バッチサイズ）
-    print("\n1. Default Fixed Batch Size")
-    data_module_default = CSVDataModule(
-        data_path=data_path,
-        batch_size=batch_size,
-        num_workers=0,  # テスト用に0に設定
-        train_val_split=0.8,
-        collate_fn=custom_collate_fn,
-        batching_strategy="default",
+    # Command line argument parsing
+    parser = argparse.ArgumentParser(
+        description="CSVDataModule - Load CSV data or save as pickle"
+    )
+    parser.add_argument(
+        "--save-pickle",
+        type=str,
+        help="Save the CSVDataModule as a pickle file to the specified path",
+    )
+    parser.add_argument("--csv-path", type=str, help="Path to the CSV file")
+    parser.add_argument(
+        "--metadata-path", type=str, help="Path to the metadata file"
+    )
+    parser.add_argument(
+        "--num-workers",
+        type=int,
+        default=0,
+        help="Number of workers for data loading (default: 0)",
+    )
+    parser.add_argument(
+        "--demo", action="store_true", help="Run the original demo/test"
+    )
+    parser.add_argument(
+        "--batch-test", action="store_true", help="Run batching strategy tests"
     )
 
-    data_module_default.setup("fit")
-    train_loader_default = data_module_default.train_dataloader()
+    args = parser.parse_args()
 
-    print(f"Train samples: {len(data_module_default.train_dataset)}")
+    if args.save_pickle:
+        if not args.csv_path:
+            print("Error: --csv-path is required when using --save-pickle")
+            parser.print_help()
+            exit(1)
 
-    # 2. 長さを考慮したトークン数ベースのバッチング
-    print("\n2. Length-Aware Token Count-based Batching")
-    data_module_token = CSVDataModule(
-        data_path=data_path,
-        batch_size=batch_size,  # 最大バッチサイズとして機能
-        num_workers=13,
-        train_val_split=0.8,
-        collate_fn=custom_collate_fn,
-        batching_strategy="length_aware_token",
-        min_tokens_per_batch=10000,  # 最小トークン数
-        max_batch_size=128,
-        metadata_path=metadata_path,
-    )
+        # Create and save CSVDataModule
+        print(f"Creating CSVDataModule from: {args.csv_path}")
+        if args.metadata_path:
+            print(f"Using metadata from: {args.metadata_path}")
 
-    data_module_token.setup("fit")
-    print("===Train loader===")
-    train_loader_token = data_module_token.train_dataloader()
-
-    print("Batch info for length-aware token-based batching:")
-    for i, batch in enumerate(train_loader_token):
-        if i >= 10:
-            break
-        batch_size = len(batch["source"])
-        source_lengths = [src.size(0) for src in batch["source"]]
-        count_dict = dict(Counter(source_lengths))
-        print(
-            f"  Batch {i + 1}: size={batch_size}, total_tokens={sum(source_lengths)} "
-            f"Histogram of source_lengths: {count_dict}",
+        data_module = CSVDataModule(
+            data_path=args.csv_path,
+            batch_size=32,
+            num_workers=args.num_workers,
+            train_val_split=0.9,
+            collate_fn=custom_collate_fn,
+            metadata_path=args.metadata_path,
         )
 
-    print("===Val loader===")
-    val_loader_token = data_module_token.val_dataloader()
+        # Setup to load the data
+        data_module.setup()
 
-    print("Batch info for length-aware token-based batching:")
-    for i, batch in enumerate(val_loader_token):
-        if i >= 10:
-            break
-        batch_size = len(batch["source"])
-        source_lengths = [src.size(0) for src in batch["source"]]
-        count_dict = dict(Counter(source_lengths))
-        print(
-            f"  Batch {i + 1}: size={batch_size}, total_tokens={sum(source_lengths)} "
-            f"Histogram of source_lengths: {count_dict}",
+        print(f"Saving CSVDataModule to: {args.save_pickle}")
+        data_module.save_pickle(args.save_pickle)
+        print("✅ CSVDataModule saved successfully!")
+
+        # Print some stats
+        print("📊 Dataset stats:")
+        print(f"  - Total samples: {len(data_module.dataset)}")
+        print(f"  - Train samples: {len(data_module.train_dataset)}")
+        print(f"  - Val samples: {len(data_module.val_dataset)}")
+        if data_module.test_dataset:
+            print(f"  - Test samples: {len(data_module.test_dataset)}")
+
+    elif args.demo:
+        # Run the original demo/test code
+        print("🚀 Running CSVDataModule demo...")
+
+        # Use default paths if not provided
+        csv_path = args.csv_path or "experiment/column_format.csv"
+        metadata_path = args.metadata_path or "test_metadata.yaml"
+
+        # Test CSVDataModule
+        data_module = CSVDataModule(
+            data_path=csv_path,
+            batch_size=32,
+            num_workers=args.num_workers,
+            train_val_split=0.9,
+            collate_fn=custom_collate_fn,
+            metadata_path=metadata_path,
         )
+
+        print("Setting up data module...")
+        data_module.setup()
+
+        print(f"Dataset size: {len(data_module.dataset)}")
+        print(f"Train size: {len(data_module.train_dataset)}")
+        print(f"Val size: {len(data_module.val_dataset)}")
+        print(f"Test size: {len(data_module.test_dataset)}")
+
+        # Test train dataloader
+        train_loader = data_module.train_dataloader()
+        print(f"Train batches: {len(train_loader)}")
+
+        # Get a sample batch
+        batch = next(iter(train_loader))
+        print(f"Sample batch keys: {batch.keys()}")
+        for key, value in batch.items():
+            if isinstance(value, torch.Tensor):
+                print(f"  {key}: {value.shape}")
+            else:
+                print(f"  {key}: {type(value)}")
+
+        print("✅ Demo completed successfully!")
+
+    elif args.batch_test:
+        # Run batching strategy tests
+        print("=== Testing Different Batching Strategies ===")
+
+        data_path = "data/training/superfib_r1_dataset.csv"
+        metadata_path = "data/training/superfib_r1_metadata.yaml"
+        batch_size = 2
+
+        # 1. デフォルト（固定バッチサイズ）
+        print("\n1. Default Fixed Batch Size")
+        data_module_default = CSVDataModule(
+            data_path=data_path,
+            batch_size=batch_size,
+            num_workers=0,  # テスト用に0に設定
+            train_val_split=0.8,
+            collate_fn=custom_collate_fn,
+            batching_strategy="default",
+        )
+
+        data_module_default.setup("fit")
+        train_loader_default = data_module_default.train_dataloader()
+
+        print(f"Train samples: {len(data_module_default.train_dataset)}")
+
+        # 2. 長さを考慮したトークン数ベースのバッチング
+        print("\n2. Length-Aware Token Count-based Batching")
+        data_module_token = CSVDataModule(
+            data_path=data_path,
+            batch_size=batch_size,  # 最大バッチサイズとして機能
+            num_workers=13,
+            train_val_split=0.8,
+            collate_fn=custom_collate_fn,
+            batching_strategy="length_aware_token",
+            min_tokens_per_batch=10000,  # 最小トークン数
+            max_batch_size=128,
+            metadata_path=metadata_path,
+        )
+
+        data_module_token.setup("fit")
+        print("===Train loader===")
+        train_loader_token = data_module_token.train_dataloader()
+
+        print("Batch info for length-aware token-based batching:")
+        for i, batch in enumerate(train_loader_token):
+            if i >= 10:
+                break
+            batch_size = len(batch["source"])
+            source_lengths = [src.size(0) for src in batch["source"]]
+            count_dict = dict(Counter(source_lengths))
+            print(
+                f"  Batch {i + 1}: size={batch_size}, total_tokens={sum(source_lengths)} "
+                f"Histogram of source_lengths: {count_dict}",
+            )
+
+        print("===Val loader===")
+        val_loader_token = data_module_token.val_dataloader()
+
+        print("Batch info for length-aware token-based batching:")
+        for i, batch in enumerate(val_loader_token):
+            if i >= 10:
+                break
+            batch_size = len(batch["source"])
+            source_lengths = [src.size(0) for src in batch["source"]]
+            count_dict = dict(Counter(source_lengths))
+            print(
+                f"  Batch {i + 1}: size={batch_size}, total_tokens={sum(source_lengths)} "
+                f"Histogram of source_lengths: {count_dict}",
+            )
+
+        print("✅ Batch test completed successfully!")
+
+    else:
+        # Default behavior - show help
+        parser.print_help()
+        print("\nExamples:")
+        print("  # Save CSVDataModule as pickle:")
+        print(
+            "  python -m src.model_meta.dataset --save-pickle my_datamodule.pkl --csv-path data.csv"
+        )
+        print(
+            "  python -m src.model_meta.dataset --save-pickle output.pkl --csv-path data/my_data.csv --metadata-path metadata.yaml --num-workers 4"
+        )
+        print()
+        print("  # Run demo:")
+        print("  python -m src.model_meta.dataset --demo --csv-path data.csv")
+        print()
+        print("  # Run batching strategy tests:")
+        print("  python -m src.model_meta.dataset --batch-test")

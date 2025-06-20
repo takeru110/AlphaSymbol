@@ -10,9 +10,11 @@ PRFDatasetの初期化処理を参考にして、以下の値を計算しYAMLフ
 """
 
 import argparse
+import json
 import logging
 import multiprocessing as mp
 import os
+import pickle
 import re
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from typing import Any, Dict, List, Set, Tuple
@@ -493,7 +495,14 @@ def main():
     parser.add_argument(
         "-o",
         "--output",
-        help="Output YAML file path (default: input_file_metadata.yaml)",
+        help="Output file path (default: input_file_metadata.pickle)",
+    )
+    parser.add_argument(
+        "-f",
+        "--format",
+        choices=["pickle", "yaml", "json"],
+        default="pickle",
+        help="Output format (default: pickle)",
     )
     parser.add_argument(
         "-v", "--verbose", action="store_true", help="Enable verbose logging"
@@ -525,9 +534,17 @@ def main():
     if args.output is None:
         input_path = args.input
         if input_path.endswith(".csv"):
-            args.output = input_path[:-4] + "_metadata.yaml"
+            base_name = input_path[:-4]
         else:
-            args.output = input_path + "_metadata.yaml"
+            base_name = input_path
+
+        # フォーマットに応じて拡張子を設定
+        if args.format == "pickle":
+            args.output = base_name + "_metadata.pickle"
+        elif args.format == "yaml":
+            args.output = base_name + "_metadata.yaml"
+        elif args.format == "json":
+            args.output = base_name + "_metadata.json"
 
     # ログレベルの設定
     log_level = logging.DEBUG if args.verbose else logging.INFO
@@ -582,7 +599,7 @@ def main():
         src_vocab_list = ["[PAD]"] + src_vocab_list
         tgt_vocab_list = ["[PAD]", "[BOS]", "[EOS]"] + tgt_vocab_list
 
-        # YAMLに出力するデータを作成（2つのlistが最後になる並び）
+        # 出力するデータを作成
         metadata = {
             "max_tgt_length": max_tgt_length,
             "max_src_points": max_src_points,
@@ -592,10 +609,20 @@ def main():
             "point_num_dist": point_num_dist,
         }
 
-        # YAMLファイルに書き出し
-        print(f"💾 Writing metadata to: {args.output}")
-        with open(args.output, "w", encoding="utf-8") as f:
-            yaml.dump(metadata, f, default_flow_style=False, allow_unicode=True)
+        # 指定されたフォーマットでファイルに書き出し
+        print(f"💾 Writing metadata to: {args.output} (format: {args.format})")
+
+        if args.format == "pickle":
+            with open(args.output, "wb") as f:
+                pickle.dump(metadata, f)
+        elif args.format == "yaml":
+            with open(args.output, "w", encoding="utf-8") as f:
+                yaml.dump(
+                    metadata, f, default_flow_style=False, allow_unicode=True
+                )
+        elif args.format == "json":
+            with open(args.output, "w", encoding="utf-8") as f:
+                json.dump(metadata, f, indent=2, ensure_ascii=False)
 
         # 結果のサマリーを表示
         print("\n✅ Metadata calculation completed!")
@@ -618,7 +645,7 @@ def main():
                 f"   Range: {min_points} to {max_points} points ({total_samples:,} total samples)"
             )
         print("=" * 50)
-        print(f"💾 Results saved to: {args.output}")
+        print(f"💾 Results saved to: {args.output} ({args.format} format)")
 
     except Exception as e:
         logging.error(f"❌ Error processing file: {e}")
