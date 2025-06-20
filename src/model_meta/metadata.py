@@ -33,16 +33,17 @@ def encode_expr(expr_str: str) -> List[str]:
 
 
 def process_single_row(
-    row: pd.Series,
-) -> Tuple[Set[str], Set[str], int, int, int, int]:
+    row: pd.Series, row_index: int = None
+) -> Tuple[Set[str], Set[str], int, int, int, int, Dict[int, List[int]]]:
     """
     単一行を処理してメタデータを抽出する共通関数
 
     Args:
         row: pandas DataFrame の行
+        row_index: 行のインデックス
 
     Returns:
-        Tuple[src_vocab_set, tgt_vocab_set, max_tgt_length, max_src_points, max_point_dim, skipped_count]
+        Tuple[src_vocab_set, tgt_vocab_set, max_tgt_length, max_src_points, max_point_dim, skipped_count, point_num_dist(Dict[int, List[int]])]
     """
     src_vocab = set()
     tgt_vocab = set()
@@ -50,21 +51,61 @@ def process_single_row(
     max_src_points = 0
     max_point_dim = 0
     skipped_count = 0
+    point_num_dist = {}
 
-    # 1. src語彙の抽出（inputs/outputs）
+    # 1. src語彙の抽出とpoint_num_distの計算（source）
+    if "source" in row and pd.notna(row["source"]):
+        source_str = str(row["source"])
+        # 数字のみを抽出（空白、カンマ、括弧は除く）
+        tokens = re.findall(r"\d+", source_str)
+        src_vocab.update(tokens)
+
+        # max_src_pointsとmax_point_dimの計算、およびpoint_num_distの計算
+        try:
+            source_data = (
+                eval(source_str) if isinstance(source_str, str) else source_str
+            )
+            points = len(source_data)
+            max_src_points = max(max_src_points, points)
+
+            # point_num_distの計算（sourceの0次元目のサイズ）
+            point_count = len(source_data)
+            if row_index is not None:
+                if point_count not in point_num_dist:
+                    point_num_dist[point_count] = []
+                point_num_dist[point_count].append(row_index)
+
+            # sourceの各要素（1番目のindex）の長さの最大値を計算
+            if source_data and isinstance(source_data, list):
+                for point in source_data:
+                    if isinstance(point, list) and len(point) > 0:
+                        point_dim = len(point)
+                        max_point_dim = max(max_point_dim, point_dim)
+
+        except (ValueError, SyntaxError, TypeError):
+            skipped_count += 1
+
+    # inputsカラムも処理（データによってはこちらを使用）
     if "inputs" in row and pd.notna(row["inputs"]):
         inputs_str = str(row["inputs"])
         # 数字のみを抽出（空白、カンマ、括弧は除く）
         tokens = re.findall(r"\d+", inputs_str)
         src_vocab.update(tokens)
 
-        # max_src_pointsとmax_point_dimの計算
+        # max_src_pointsとmax_point_dimの計算、およびpoint_num_distの計算
         try:
             inputs_data = (
                 eval(inputs_str) if isinstance(inputs_str, str) else inputs_str
             )
             points = len(inputs_data)
             max_src_points = max(max_src_points, points)
+
+            # point_num_distの計算（inputsの0次元目のサイズ）
+            point_count = len(inputs_data)
+            if row_index is not None:
+                if point_count not in point_num_dist:
+                    point_num_dist[point_count] = []
+                point_num_dist[point_count].append(row_index)
 
             # inputsの各要素（1番目のindex）の長さの最大値を計算
             if inputs_data and isinstance(inputs_data, list):
@@ -105,12 +146,13 @@ def process_single_row(
         max_src_points,
         max_point_dim,
         skipped_count,
+        point_num_dist,
     )
 
 
 def process_chunk(
     chunk_data: Tuple[int, pd.DataFrame],
-) -> Tuple[Set[str], Set[str], int, int, int, int]:
+) -> Tuple[Set[str], Set[str], int, int, int, int, Dict[int, List[int]]]:
     """
     チャンクを処理してメタデータを抽出する関数（並列処理用）
 
@@ -118,7 +160,7 @@ def process_chunk(
         chunk_data: (chunk_id, DataFrame) のタプル
 
     Returns:
-        Tuple[src_vocab_set, tgt_vocab_set, max_tgt_length, max_src_points, max_point_dim, skipped_count]
+        Tuple[src_vocab_set, tgt_vocab_set, max_tgt_length, max_src_points, max_point_dim, skipped_count, point_num_dist]
     """
     chunk_id, chunk_df = chunk_data
 
@@ -128,8 +170,9 @@ def process_chunk(
     max_src_points_global = 0
     max_point_dim_global = 0
     total_skipped = 0
+    point_num_dist_global = {}
 
-    for _, row in chunk_df.iterrows():
+    for row_index, row in chunk_df.iterrows():
         (
             src_vocab,
             tgt_vocab,
@@ -137,7 +180,8 @@ def process_chunk(
             max_src_points,
             max_point_dim,
             skipped_count,
-        ) = process_single_row(row)
+            point_num_dist,
+        ) = process_single_row(row, row_index)
 
         # 結果をマージ
         src_vocab_global.update(src_vocab)
@@ -147,6 +191,12 @@ def process_chunk(
         max_point_dim_global = max(max_point_dim_global, max_point_dim)
         total_skipped += skipped_count
 
+        # point_num_distをマージ
+        for point_count, row_indices in point_num_dist.items():
+            if point_count not in point_num_dist_global:
+                point_num_dist_global[point_count] = []
+            point_num_dist_global[point_count].extend(row_indices)
+
     return (
         src_vocab_global,
         tgt_vocab_global,
@@ -154,12 +204,13 @@ def process_chunk(
         max_src_points_global,
         max_point_dim_global,
         total_skipped,
+        point_num_dist_global,
     )
 
 
 def calculate_metadata_parallel(
     csv_path: str, n_workers: int = None, chunk_size: int = 1000
-) -> Tuple[Set[str], Set[str], int, int, int]:
+) -> Tuple[Set[str], Set[str], int, int, int, Dict[int, List[int]]]:
     """
     並列処理でCSVファイルからメタデータを計算
 
@@ -169,7 +220,7 @@ def calculate_metadata_parallel(
         chunk_size: チャンクサイズ
 
     Returns:
-        Tuple[src_vocab_set, tgt_vocab_set, max_tgt_length, max_src_points, max_point_dim]
+        Tuple[src_vocab_set, tgt_vocab_set, max_tgt_length, max_src_points, max_point_dim, point_num_dist]
     """
     if n_workers is None:
         n_workers = min(mp.cpu_count(), 8)  # 最大8プロセス
@@ -200,6 +251,7 @@ def calculate_metadata_parallel(
     max_src_points_global = 0
     max_point_dim_global = 0
     total_skipped = 0
+    point_num_dist_global = {}
 
     print(f"⚡ Processing {len(chunks)} chunks with {n_workers} workers...")
 
@@ -223,6 +275,7 @@ def calculate_metadata_parallel(
                         max_src_points,
                         max_point_dim,
                         skipped_count,
+                        point_num_dist,
                     ) = future.result()
 
                     # 結果をマージ
@@ -238,6 +291,12 @@ def calculate_metadata_parallel(
                         max_point_dim_global, max_point_dim
                     )
                     total_skipped += skipped_count
+
+                    # point_num_distをマージ
+                    for point_count, row_indices in point_num_dist.items():
+                        if point_count not in point_num_dist_global:
+                            point_num_dist_global[point_count] = []
+                        point_num_dist_global[point_count].extend(row_indices)
 
                     pbar.set_postfix(
                         src_vocab=len(src_vocab_global),
@@ -278,17 +337,18 @@ def calculate_metadata_parallel(
         max_tgt_length_global,
         max_src_points_global,
         max_point_dim_global,
+        point_num_dist_global,
     )
 
 
 def calculate_all_metadata(
     csv_path: str,
-) -> Tuple[Set[str], Set[str], int, int, int]:
+) -> Tuple[Set[str], Set[str], int, int, int, Dict[int, List[int]]]:
     """
     CSVファイルを1回だけ走査して全てのメタデータを計算（シーケンシャル版）
 
     Returns:
-        Tuple[src_vocab_set, tgt_vocab_set, max_tgt_length, max_src_points, max_point_dim]
+        Tuple[src_vocab_set, tgt_vocab_set, max_tgt_length, max_src_points, max_point_dim, point_num_dist(Dict[int, List[int]])]
     """
     src_vocab = set()
     tgt_vocab = set()
@@ -296,6 +356,7 @@ def calculate_all_metadata(
     max_src_points = 0
     max_point_dim = 0
     skipped_count = 0
+    point_num_dist = {}
 
     try:
         chunk_size = 1000
@@ -311,7 +372,7 @@ def calculate_all_metadata(
             bar_format="{l_bar}{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}, {rate_fmt}]",
         ) as pbar:
             for chunk in pd.read_csv(csv_path, chunksize=chunk_size):
-                for _, row in chunk.iterrows():
+                for row_index, row in chunk.iterrows():
                     # 共通関数を使用して行を処理
                     (
                         row_src_vocab,
@@ -320,7 +381,8 @@ def calculate_all_metadata(
                         row_max_src_points,
                         row_max_point_dim,
                         row_skipped_count,
-                    ) = process_single_row(row)
+                        row_point_num_dist,
+                    ) = process_single_row(row, row_index)
 
                     # 結果をマージ
                     src_vocab.update(row_src_vocab)
@@ -329,6 +391,12 @@ def calculate_all_metadata(
                     max_src_points = max(max_src_points, row_max_src_points)
                     max_point_dim = max(max_point_dim, row_max_point_dim)
                     skipped_count += row_skipped_count
+
+                    # point_num_distをマージ
+                    for point_count, row_indices in row_point_num_dist.items():
+                        if point_count not in point_num_dist:
+                            point_num_dist[point_count] = []
+                        point_num_dist[point_count].extend(row_indices)
 
                     pbar.update(1)
 
@@ -351,7 +419,7 @@ def calculate_all_metadata(
 
         logging.info(f"Fallback: Processing {len(df)} rows in single batch")
 
-        for _, row in tqdm(
+        for row_index, row in tqdm(
             df.iterrows(),
             total=len(df),
             desc="🔍 Processing CSV data (fallback)",
@@ -365,7 +433,8 @@ def calculate_all_metadata(
                 row_max_src_points,
                 row_max_point_dim,
                 row_skipped_count,
-            ) = process_single_row(row)
+                row_point_num_dist,
+            ) = process_single_row(row, row_index)
 
             # 結果をマージ
             src_vocab.update(row_src_vocab)
@@ -374,6 +443,12 @@ def calculate_all_metadata(
             max_src_points = max(max_src_points, row_max_src_points)
             max_point_dim = max(max_point_dim, row_max_point_dim)
             skipped_count += row_skipped_count
+
+            # point_num_distをマージ
+            for point_count, row_indices in row_point_num_dist.items():
+                if point_count not in point_num_dist:
+                    point_num_dist[point_count] = []
+                point_num_dist[point_count].extend(row_indices)
 
     # 空文字列を除去
     src_vocab.discard("")
@@ -397,7 +472,14 @@ def calculate_all_metadata(
     logging.info(f"  - Max source points: {max_src_points}")
     logging.info(f"  - Max point dimension: {max_point_dim}")
 
-    return src_vocab, tgt_vocab, max_tgt_length, max_src_points, max_point_dim
+    return (
+        src_vocab,
+        tgt_vocab,
+        max_tgt_length,
+        max_src_points,
+        max_point_dim,
+        point_num_dist,
+    )
 
 
 def main():
@@ -475,6 +557,7 @@ def main():
                 max_tgt_length,
                 max_src_points,
                 max_point_dim,
+                point_num_dist,
             ) = calculate_metadata_parallel(
                 args.input, n_workers=args.workers, chunk_size=args.chunk_size
             )
@@ -487,6 +570,7 @@ def main():
                 max_tgt_length,
                 max_src_points,
                 max_point_dim,
+                point_num_dist,
             ) = calculate_all_metadata(args.input)
 
         print("\n🔄 Converting vocabularies to sorted lists...")
@@ -505,6 +589,7 @@ def main():
             "max_point_dim": max_point_dim,
             "src_vocab_list": src_vocab_list,
             "tgt_vocab_list": tgt_vocab_list,
+            "point_num_dist": point_num_dist,
         }
 
         # YAMLファイルに書き出し
@@ -520,6 +605,18 @@ def main():
         print(f"📐 Max point dimension:   {max_point_dim:,}")
         print(f"📚 Source vocabulary size: {len(src_vocab_list):,}")
         print(f"🎯 Target vocabulary size: {len(tgt_vocab_list):,}")
+        print(
+            f"📈 Point count distribution: {len(point_num_dist)} unique counts"
+        )
+        if point_num_dist:
+            sorted_dist = sorted(point_num_dist.items())
+            min_points, max_points = sorted_dist[0][0], sorted_dist[-1][0]
+            total_samples = sum(
+                len(indices) for indices in point_num_dist.values()
+            )
+            print(
+                f"   Range: {min_points} to {max_points} points ({total_samples:,} total samples)"
+            )
         print("=" * 50)
         print(f"💾 Results saved to: {args.output}")
 
