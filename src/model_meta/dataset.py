@@ -57,15 +57,15 @@ class LengthAwareTokenBatchSampler(Sampler):
         self,
         dataset: Dataset,
         min_tokens_per_batch: int,
+        point_num_dist,
         max_batch_size: int = 32,
         shuffle: bool = True,
-        metadata_path: Optional[str] = None,
     ):
         self.dataset = dataset
         self.min_tokens_per_batch = min_tokens_per_batch
         self.max_batch_size = max_batch_size
         self.shuffle = shuffle
-        self.metadata_path = metadata_path
+        self.point_num_dist = point_num_dist
 
         self._create_length_groups()
 
@@ -74,41 +74,29 @@ class LengthAwareTokenBatchSampler(Sampler):
         print("Creating length-based groups...")
 
         # metadata.yamlからpoint_num_distを読み込む
-        if self.metadata_path and Path(self.metadata_path).exists():
-            print(f"Loading point_num_dist from: {self.metadata_path}")
-            with open(self.metadata_path, "r") as f:
-                metadata = yaml.safe_load(f)
-                point_num_dist = metadata.get("point_num_dist", {})
-            print(f"finished loading point_num_dist from: {self.metadata_path}")
 
-            original_to_subset = {}
-            for subset_idx, orig_idx in tqdm(
-                enumerate(self.dataset.indices),
-                desc="Creating orig to subset idx mapping",
-            ):
-                original_to_subset[orig_idx] = subset_idx
+        original_to_subset = {}
+        for subset_idx, orig_idx in tqdm(
+            enumerate(self.dataset.indices),
+            desc="Creating orig to subset idx mapping",
+        ):
+            original_to_subset[orig_idx] = subset_idx
 
-            self.tokens_groups = defaultdict(list)
-            for tokens, original_indices in tqdm(
-                point_num_dist.items(),
-                desc="Mapping point_num_dist to subset indices",
-            ):
-                for orig_idx in original_indices:
-                    if orig_idx not in original_to_subset:
-                        continue
-                    self.tokens_groups[tokens].append(
-                        original_to_subset[orig_idx]
-                    )
+        self.tokens_groups = defaultdict(list)
+        for tokens, original_indices in tqdm(
+            self.point_num_dist.items(),
+            desc="Mapping point_num_dist to subset indices",
+        ):
+            for orig_idx in original_indices:
+                if orig_idx not in original_to_subset:
+                    continue
+                self.tokens_groups[tokens].append(original_to_subset[orig_idx])
 
-            print(f"Mapped to {len(self.tokens_groups)} groups for Subset:")
-            for tokens, indices in list(self.tokens_groups.items())[:5]:
-                print(
-                    f"  Length {tokens}: {len(indices)} samples (subset indices: {indices[:10]}{'...' if len(indices) > 10 else ''})"
-                )
-
-        else:
-            print("No metadata file provided, creating groups dynamically...")
-            self._create_groups_dynamically()
+        print(f"Mapped to {len(self.tokens_groups)} groups for Subset:")
+        for tokens, indices in list(self.tokens_groups.items())[:5]:
+            print(
+                f"  Length {tokens}: {len(indices)} samples (subset indices: {indices[:10]}{'...' if len(indices) > 10 else ''})"
+            )
 
     def _create_groups_dynamically(self):
         """動的にグループを作成（メタデータファイルがない場合のフォールバック）"""
@@ -158,8 +146,9 @@ class CSVDataModule(pl.LightningDataModule):
 
     def __init__(
         self,
-        data_path: str,
-        batch_size: int = 32,
+        data_path: Optional[str],
+        dataset,  # Optional[torch.utis.data.Dataset] used when data_path is None,
+        batch_size: int = 32,  # used for default batching
         num_workers: int = 4,
         train_val_split: float = 0.9,
         seed: int = 42,
@@ -168,7 +157,7 @@ class CSVDataModule(pl.LightningDataModule):
         batching_strategy: str = "default",  # "default", "length_aware_token"
         min_tokens_per_batch: Optional[int] = None,
         max_batch_size: int = 32,
-        metadata_path: Optional[str] = None,
+        point_num_dist: Optional[dict] = None,
     ):
         super().__init__()
         self.data_path = data_path
@@ -182,7 +171,7 @@ class CSVDataModule(pl.LightningDataModule):
         self.batching_strategy = batching_strategy
         self.min_tokens_per_batch = min_tokens_per_batch
         self.max_batch_size = max_batch_size
-        self.metadata_path = metadata_path
+        self.point_num_dist = point_num_dist
 
         # バリデーション
         if (
@@ -194,7 +183,7 @@ class CSVDataModule(pl.LightningDataModule):
             )
 
         # データセットを保存する変数
-        self.dataset = None
+        self.dataset = dataset
         self.train_dataset = None
         self.val_dataset = None
         self.test_dataset = None
@@ -246,7 +235,7 @@ class CSVDataModule(pl.LightningDataModule):
                 min_tokens_per_batch=self.min_tokens_per_batch,
                 max_batch_size=self.max_batch_size,
                 shuffle=True,
-                metadata_path=self.metadata_path,
+                point_num_dist=self.point_num_dist,
             )
             return DataLoader(
                 self.train_dataset,
@@ -435,13 +424,18 @@ if __name__ == "__main__":
         if args.metadata_path:
             print(f"Using metadata from: {args.metadata_path}")
 
+        with open(args.metadata_path, "rb") as f:
+            metadata = pickle.load(f)
+            point_num_dist = metadata.get("point_num_dist", {})
+
         data_module = CSVDataModule(
             data_path=args.csv_path,
+            dataset=None,
             batch_size=32,
             num_workers=args.num_workers,
             train_val_split=0.9,
             collate_fn=custom_collate_fn,
-            metadata_path=args.metadata_path,
+            point_num_dist=point_num_dist,
         )
 
         # Setup to load the data
