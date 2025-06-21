@@ -6,7 +6,6 @@ import torch
 import torch.nn.functional as F
 
 from prfndim.prfndim import C, Expr, P, R, S, Z
-from src.model_meta.data import PREDataModule
 from src.model_meta.train import LitTransformer
 
 

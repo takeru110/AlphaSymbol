@@ -4,7 +4,7 @@ from pathlib import Path
 import torch
 
 from prfndim.prfndim import C, P, R, S, Z
-from src.model_meta.data import PREDataModule
+from model_meta.dataset import PREDataModule
 from src.model_meta.train import LitTransformer
 
 
