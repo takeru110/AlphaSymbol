@@ -452,6 +452,14 @@ if __name__ == "__main__":
         print(f"  - Val samples: {len(data_module.val_dataset)}")
         if data_module.test_dataset:
             print(f"  - Test samples: {len(data_module.test_dataset)}")
+        sample = next(iter(data_module.train_dataloader()))
+        print(f"  - Sample batch keys: {sample.keys()}")
+        print("  - Sample batch shapes:")
+        for key, value in sample.items():
+            if isinstance(value, torch.Tensor):
+                print(f"    {key}: {value.shape}")
+            else:
+                print(f"    {key}: {type(value)}")
 
     elif args.demo:
         # Run the original demo/test code
