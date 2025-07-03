@@ -3,17 +3,19 @@ hydra:
     dir: "./logs/${now:%Y-%m%d-%H%M-%S}/"
   
 data_path: "/home/takeru/AlphaSymbol/data/training/mini.csv"
-metadata_path: "/home/takeru/AlphaSymbol/data/training/mini_metadata.yaml
+metadata_path: "/home/takeru/AlphaSymbol/data/training/mini_metadata.yaml"
 max_epoch: 1000
 max_value: 2000 # max value occurd in input and output of PRE
 min_n_tokens_in_batch: 2000
-test_ratio: 0.5 # (test + val) / (test + val + train)
+test_ratio: 0.1 # (test + val) / (test + val + train)
 val_ratio: 0.25 # val / (val + test)
-num_workers: 16
+num_workers: 13
 token_embed_dim: 16
 emb_expansion_factor: 1
 learning_rate: "3*10**(-4)"
-  
+batching_strategy: "length_aware_token" # "dynamic" or "fixed"
+batch_size: 64
+
 transformer:
   nhead: 16
   num_encoder_layers: 4
