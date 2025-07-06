@@ -250,7 +250,7 @@ def custom_collate_fn(batch):
         target_len = len(tgt)
         padded_targets[i, :target_len] = torch.tensor(tgt)
 
-    return {"source": padded_sources, "target": padded_targets}
+    return (padded_sources, padded_targets)
 
 
 def add_source_length(sample):
@@ -367,7 +367,6 @@ if __name__ == "__main__":
             collate_fn=custom_collate_fn,
             batching_strategy="length_aware_token",
             min_tokens_per_batch=7,
-            max_batch_size=16,
         )
 
         datamodule_token.setup("fit")
