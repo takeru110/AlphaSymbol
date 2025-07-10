@@ -2,8 +2,6 @@ hydra:
   run:
     dir: "./logs/${now:%Y-%m%d-%H%M-%S}/"
   
-#data_path: "/home/takeru/AlphaSymbol/data/training/mini.csv"
-#metadata_path: "/home/takeru/AlphaSymbol/data/training/mini_metadata.yaml"
 data_path: "/Users/takeruito/work/PrfSR/data/training/superfib_r1_dataset.csv"
 metadata_path: "/Users/takeruito/work/PrfSR/data/training/superfib_r1_metadata.yaml"
 max_epoch: 1
