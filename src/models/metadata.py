@@ -104,12 +104,6 @@ def process_single_row(
         except (ValueError, SyntaxError, TypeError):
             skipped_count += 1
 
-    if "outputs" in row and pd.notna(row["outputs"]):
-        outputs_str = str(row["outputs"])
-        # 数字のみを抽出（空白、カンマ、括弧は除く）
-        tokens = re.findall(r"\d+", outputs_str)
-        src_vocab.update(tokens)
-
     # 2. tgt語彙の抽出とmax_tgt_lengthの計算（expr）
     if "expr" in row and pd.notna(row["expr"]):
         expr_str = str(row["expr"])
